@@ -127,7 +127,7 @@ export default function AdminPortal() {
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontFamily: 'var(--font-heading)' }}>Itineraries Dashboard</h2>
               <p style={{ color: '#6B7280', marginTop: '0.25rem' }}>Manage and publish your travel guides here.</p>
             </div>
-            <button className="btn btn-primary" style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontWeight: 600 }}>
+            <button onClick={() => router.push('/admin/new')} className="btn btn-primary" style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontWeight: 600 }}>
               + New Itinerary
             </button>
           </div>
