@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lost & Sound | Travel Stories</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Import Supabase directly via CDN (No NPM required!) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">
+        <!-- Pure SVG Vector Logo! -->
+        <svg height="50" viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+          <text x="0" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56"
+            fill="var(--color-golden)">L</text>
+          <g transform="translate(45, 10)">
+            <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" stroke-width="4" />
+            <path d="M 22 10 Q 34 30 22 50 Q 10 30 22 10" fill="none" stroke="var(--color-golden)" stroke-width="3" />
+            <line x1="2" y1="30" x2="42" y2="30" stroke="var(--color-golden)" stroke-width="3" />
+            <line x1="22" y1="10" x2="22" y2="50" stroke="var(--color-golden)" stroke-width="3" />
+          </g>
+          <text x="100" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56"
+            fill="var(--color-golden)">ST</text>
+          <text x="180" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56"
+            fill="var(--color-orange)">&amp;</text>
+          <text x="235" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56"
+            fill="var(--color-golden)">S</text>
+          <g transform="translate(280, 10)">
+            <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" stroke-width="4" />
+            <circle cx="22" cy="30" r="4" fill="var(--color-golden)" />
+            <path d="M 22 14 L 26 30 L 22 46 L 18 30 Z" fill="none" stroke="var(--color-golden)" stroke-width="2" />
+          </g>
+          <text x="330" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56"
+            fill="var(--color-golden)">UND</text>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="itineraries.html">Destinations</a>
+        <a href="services.html">Services</a>
+        <a href="stories.html" style="color: var(--color-orange);">Travel Stories</a>
+        <a href="#" class="btn btn-primary" style="padding: 12px 24px; margin-left: 12px;">Start Planning</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="container" style="padding-top: 100px; min-height: 80vh;">
+    <h1 style="font-size: 4rem; margin-bottom: 1rem; color: var(--color-purple);">Travel Stories</h1>
+    <p style="font-size: 1.4rem; color: var(--color-text); margin-bottom: 4rem;">
+      Real experiences, honest reviews, and lessons learned on the road.
+    </p>
+
+    <!-- This is where Supabase will inject your blog posts -->
+    <div id="stories-grid" class="cards-grid">
+      <h3 style="color: var(--color-orange);">Loading your stories from Supabase...</h3>
+    </div>
+  </section>
+
+  <script>
+    // Connect to your Supabase Project instantly
+    const supabaseUrl = 'https://vuqjsakeffkdzamujbpe.supabase.co';
+    const supabaseKey = 'sb_publishable_BYx8o0TbcufebQcuaEU4Aw_OAFc2gjA';
+    const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+
+    async function fetchStories() {
+      const grid = document.getElementById('stories-grid');
+
+      const { data, error } = await supabase
+        .from('travel_stories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        grid.innerHTML = `<p style="color: red;">Error loading stories: ${error.message}</p>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        grid.innerHTML = `
+          <div style="padding: 60px; text-align: center; background-color: white; border-radius: var(--radius-card); grid-column: 1 / -1;">
+            <h3 style="font-size: 1.8rem; color: var(--color-orange);">No stories yet!</h3>
+            <p style="margin-top: 1rem;">Go to your Supabase dashboard, open the "travel_stories" table, and add your first post.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Generate the HTML for your stories dynamically!
+      grid.innerHTML = data.map(story => `
+        <div class="card">
+          <div class="card-content">
+            <h3 style="color: var(--color-purple);">${story.title}</h3>
+            <p style="opacity: 0.7; font-size: 0.9rem; margin-bottom: 1rem;">
+              ${new Date(story.created_at).toLocaleDateString()}
+            </p>
+            <p>${story.excerpt || ''}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Run the fetch function as soon as the page loads
+    fetchStories();
+  </script>
+</body>
+
+</html>

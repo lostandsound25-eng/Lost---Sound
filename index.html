@@ -1,77 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lost & Sound | Custom Travel Planning</title>
-  <meta name="description" content="Travel the world without burnout, overwhelm, or luxury price tags. Custom trips for couples who want comfort, culture, and adventure.">
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <nav class="navbar">
     <div class="container">
-      <a href="index.html" class="logo">Lost & Sound</a>
+      <a href="index.html" class="logo">
+        <svg height="50" viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+          <text x="0" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56" fill="var(--color-golden)">L</text>
+          <g transform="translate(45, 10)">
+            <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" stroke-width="4"/>
+            <path d="M 22 10 Q 34 30 22 50 Q 10 30 22 10" fill="none" stroke="var(--color-golden)" stroke-width="3"/>
+            <line x1="2" y1="30" x2="42" y2="30" stroke="var(--color-golden)" stroke-width="3"/>
+            <line x1="22" y1="10" x2="22" y2="50" stroke="var(--color-golden)" stroke-width="3"/>
+          </g>
+          <text x="100" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56" fill="var(--color-golden)">ST</text>
+          <text x="180" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56" fill="var(--color-orange)">&amp;</text>
+          <text x="235" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56" fill="var(--color-golden)">S</text>
+          <g transform="translate(280, 10)">
+            <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" stroke-width="4"/>
+            <circle cx="22" cy="30" r="4" fill="var(--color-golden)"/>
+            <path d="M 22 14 L 26 30 L 22 46 L 18 30 Z" fill="none" stroke="var(--color-golden)" stroke-width="2"/>
+          </g>
+          <text x="330" y="55" font-family="var(--font-heading)" font-weight="900" font-size="56" fill="var(--color-golden)">UND</text>
+        </svg>
+      </a>
       <div class="nav-links">
-        <a href="index.html">Home</a>
-        <a href="itineraries.html">Free Itineraries</a>
+        <a href="index.html" style="color: var(--color-orange);">Home</a>
+        <a href="itineraries.html">Destinations</a>
         <a href="services.html">Services</a>
-        <a href="about.html">About</a>
-        <a href="#" class="btn btn-primary" style="padding: 8px 20px;">Book a Call</a>
+        <a href="about.html">Our Story</a>
+        <a href="#" class="btn btn-primary" style="padding: 12px 24px; margin-left: 12px;">Start Planning</a>
       </div>
     </div>
   </nav>
 
   <header class="hero">
-    <img src="assets/hero.png" alt="Couple walking in a lush natural landscape" class="hero-bg">
-    <div class="container">
-      <h1>Travel the world without burnout, overwhelm, or luxury price tags.</h1>
-      <p>Custom trips for couples who want comfort, culture, and adventure—without spending months planning.</p>
-      <div class="hero-btns">
-        <a href="services.html" class="btn btn-primary">Plan My Trip</a>
-        <a href="itineraries.html" class="btn btn-outline">Browse Free Itineraries</a>
+    <div class="container hero-split">
+      <div class="hero-text">
+        <h1>Lost in the world,<br>Sound in the journey.</h1>
+        <p>Travel the world without burning out or breaking the bank.</p>
+        <div class="hero-btns">
+          <a href="services.html" class="btn btn-primary">Start Planning</a>
+          <a href="itineraries.html" class="btn btn-outline">Explore Destinations</a>
+        </div>
+      </div>
+      <div class="hero-visuals">
+        <img src="assets/hero.png" alt="Couple traveling" class="blob-shape-1">
+        <img src="assets/asia.png" alt="Temple" class="blob-shape-2">
       </div>
     </div>
   </header>
 
   <section class="social-proof">
-    <div class="container">
-      <p>Trusted by travelers from the US & Europe</p>
-    </div>
+    <p>Trusted by weary planners looking for a better way to travel</p>
   </section>
 
   <section class="container" style="padding: 100px 24px;">
     <div class="split-section">
       <div class="split-content">
-        <h2>Most people travel wrong.</h2>
-        <p class="mb-4">It doesn't have to be exhausting to see the world. We believe in replacing chaos with comfort.</p>
-        
-        <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">The Old Way</h3>
-        <ul class="split-list pain-points mb-4">
-          <li>Overpacked itineraries</li>
-          <li>Cheap stays that drain your energy</li>
-          <li>Tourist traps and crowded buses</li>
-        </ul>
+        <h2>We plan, you simply pack and enjoy.</h2>
+        <p class="mb-4" style="font-size: 1.2rem;">It doesn't have to be exhausting to see the world. We believe in
+          replacing chaos with comfort. Say goodbye to 3 AM bus rides and 40-tab planning sessions.</p>
 
-        <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">The Lost & Sound Way</h3>
-        <ul class="split-list solutions">
-          <li>Comfortable private stays</li>
-          <li>Thoughtful pacing with room to breathe</li>
-          <li>Authentic, unforgettable experiences</li>
-        </ul>
+        <div style="background: white; padding: 32px; border-radius: var(--radius-card); box-shadow: var(--shadow);">
+          <h3 style="font-size: 1.4rem; margin-bottom: 1rem; color: var(--color-purple);">The Lost & Sound Vibe</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+            <li style="display: flex; gap: 12px; font-weight: 500;">
+              <span style="color: var(--color-jungle);">✦</span> Comfortable private boutique stays
+            </li>
+            <li style="display: flex; gap: 12px; font-weight: 500;">
+              <span style="color: var(--color-teal);">✦</span> Thoughtful pacing with room to breathe
+            </li>
+            <li style="display: flex; gap: 12px; font-weight: 500;">
+              <span style="color: var(--color-orange);">✦</span> Authentic, unforgettable experiences
+            </li>
+          </ul>
+        </div>
       </div>
       <div>
-        <img src="assets/ireland.png" alt="Dramatic Irish Coastline" class="image-rounded" style="height: 500px;">
+        <img src="assets/ireland.png" alt="Dramatic Irish Coastline" class="organic-image">
       </div>
     </div>
   </section>
 
-  <section style="background-color: var(--color-sand);">
-    <div class="container" style="padding: 100px 24px;">
+  <section style="background-color: var(--color-golden); border-radius: 80px 80px 0 0; padding: 120px 0;">
+    <div class="container">
       <div class="text-center mb-5">
-        <h2>Free Itineraries</h2>
-        <p>Tried, tested, and designed for balance.</p>
+        <h2 style="font-size: 3.5rem;">Where to next?</h2>
+        <p style="font-size: 1.2rem; font-weight: 500;">Tried, tested, and perfectly paced itineraries.</p>
       </div>
-      
+
       <div class="cards-grid">
         <div class="card">
           <div class="card-img-container">
@@ -79,8 +104,7 @@
           </div>
           <div class="card-content">
             <h3>Southeast Asia</h3>
-            <p>2, 4, or 8 weeks of culture, nature, and incredible food.</p>
-            <a href="itinerary.html" class="btn btn-secondary">View Itinerary</a>
+            <p>Culture, nature, and incredible food, without the backpacker dorms.</p>
           </div>
         </div>
 
@@ -90,8 +114,7 @@
           </div>
           <div class="card-content">
             <h3>Ireland</h3>
-            <p>1, 2, or 4 weeks exploring dramatic coasts and cozy pubs.</p>
-            <a href="itinerary.html" class="btn btn-secondary">View Itinerary</a>
+            <p>Dramatic coasts, cozy pubs, and the ultimate scenic road trip.</p>
           </div>
         </div>
 
@@ -102,78 +125,34 @@
           <div class="card-content">
             <h3>Greece & Utah</h3>
             <p>Perfect pacing for European coastlines and American deserts.</p>
-            <a href="itinerary.html" class="btn btn-secondary">View Itinerary</a>
           </div>
         </div>
+      </div>
+
+      <div class="text-center" style="margin-top: 60px;">
+        <a href="itineraries.html" class="btn btn-outline" style="background: white;">View All Trips</a>
       </div>
     </div>
   </section>
 
   <section class="conversion-section">
-    <div class="container">
-      <h2>Want us to plan this for you?</h2>
-      <p>We tailor these trips to your dates, budget, and travel style.</p>
-      <a href="#" class="btn btn-primary">Book a Free 15-Min Call</a>
-    </div>
-  </section>
-
-  <section class="container" style="padding: 100px 24px;">
-    <div class="text-center mb-5">
-      <h2>How It Works</h2>
-      <p>We handle the heavy lifting, you handle the packing.</p>
-    </div>
-    
-    <div class="steps-grid">
-      <div class="step">
-        <div class="step-number">1</div>
-        <h3>Book a call</h3>
-        <p>We'll discuss your travel dreams, style, and what you want out of this trip.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <h3>We design your trip</h3>
-        <p>You get a fully customized itinerary with handpicked stays and pacing.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <h3>You travel stress-free</h3>
-        <p>Show up with confidence knowing everything is handled for you.</p>
-      </div>
-    </div>
-  </section>
-
-  <section style="background-color: var(--color-offwhite); padding: 100px 24px;">
-    <div class="container">
-      <div class="split-section" style="gap: 40px;">
-        <div>
-          <img src="assets/founders.png" alt="Lost and Sound Founders" class="image-rounded">
-        </div>
-        <div>
-          <h2 class="mb-3">We’re not travel agents.</h2>
-          <p class="mb-4" style="font-size: 1.1rem;">We’re travelers who learned how to do this well, and now we help others do the same. We know what it's like to want the adventure without the hostel dorms, and the comfort without the luxury resort prices.</p>
-          <a href="about.html" class="btn btn-secondary">Our Story</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="conversion-section" style="background-color: var(--color-sand); color: var(--color-green);">
-    <div class="container">
-      <h2 style="color: var(--color-green);">You don’t have to wait years to see the world.</h2>
-      <a href="services.html" class="btn btn-primary" style="margin-top: 2rem;">Plan My Trip</a>
-    </div>
+    <h2>Want us to plan this for you?</h2>
+    <p>We tailor these trips to your dates, budget, and travel style.</p>
+    <a href="#" class="btn btn-primary" style="background: var(--color-purple); color: white;">Book a Free 15-Min
+      Call</a>
   </section>
 
   <footer>
     <div class="container">
       <div class="footer-links">
         <a href="index.html">Home</a>
-        <a href="itineraries.html">Itineraries</a>
+        <a href="itineraries.html">Destinations</a>
         <a href="services.html">Services</a>
-        <a href="about.html">About</a>
+        <a href="about.html">Our Story</a>
       </div>
-      <p style="opacity: 0.6; font-size: 0.9rem;">&copy; 2026 Lost & Sound. All rights reserved.</p>
+      <p style="opacity: 0.8;">&copy; 2026 Lost & Sound. Travel the world without burning out.</p>
     </div>
   </footer>
 </body>
+
 </html>
