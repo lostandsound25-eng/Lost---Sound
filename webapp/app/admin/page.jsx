@@ -30,11 +30,17 @@ export default function AdminPortal() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) setError(error.message);
+    
+    if (error) {
+      setError(error.message);
+    } else if (data.session?.user?.email !== 'lostandsound25@gmail.com') {
+      await supabase.auth.signOut();
+      setError('Unauthorized email address.');
+    }
     setLoading(false);
   };
 
