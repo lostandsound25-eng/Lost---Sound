@@ -10,6 +10,7 @@ export const metadata = {
 }
 
 import Link from 'next/link'
+import KeepInTouchForm from '../components/KeepInTouchForm'
 
 export default function RootLayout({ children }) {
   return (
@@ -67,10 +68,7 @@ export default function RootLayout({ children }) {
             <div style={{ maxWidth: '400px', margin: '0 auto 3rem auto', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: 'var(--radius-card)' }}>
               <h4 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.2rem' }}>Keep in Touch</h4>
               <p style={{ opacity: 0.9, marginBottom: '1rem', fontSize: '0.9rem' }}>Drop your email to get our Nomad Tracker and a free itinerary right to your inbox!</p>
-              <form style={{ display: 'flex', gap: '8px' }}>
-                <input type="email" placeholder="Your email address" style={{ flex: 1, padding: '12px 16px', borderRadius: '30px', border: 'none', outline: 'none' }} required />
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }}>Subscribe</button>
-              </form>
+              <KeepInTouchForm />
             </div>
 
             <p style={{ opacity: 0.8 }}>&copy; 2026 Lost & Sound. Travel the world without burning out.</p>
