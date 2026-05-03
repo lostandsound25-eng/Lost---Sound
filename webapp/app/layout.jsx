@@ -18,7 +18,7 @@ export default function RootLayout({ children }) {
         <nav className="navbar">
           <div className="container">
             <Link href="/" className="logo">
-              <img src="/assets/logo.svg" alt="Lost & Sound" style={{ height: '90px', width: 'auto', display: 'block' }} />
+              <img src="/assets/logo.svg" alt="Lost & Sound" style={{ height: '130px', width: 'auto', display: 'block' }} />
             </Link>
             
             <div className="nav-links">
