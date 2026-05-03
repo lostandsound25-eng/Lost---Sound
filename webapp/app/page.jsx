@@ -31,7 +31,7 @@ export default function Home() {
             <Link href="/" style={{ color: 'var(--color-orange)' }}>Home</Link>
             <Link href="/itineraries">Destinations</Link>
             <Link href="/services">Services</Link>
-            <Link href="/stories">Travel Stories</Link>
+            <Link href="/blog">Travel Stories</Link>
             <button className="btn btn-primary" style={{ padding: '12px 24px', marginLeft: '12px' }}>Start Planning</button>
           </div>
         </div>
