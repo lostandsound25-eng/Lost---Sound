@@ -9,11 +9,90 @@ export const metadata = {
   description: 'Travel the world without burning out or breaking the bank.',
 }
 
+import Link from 'next/link'
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable}`}>
+        <nav className="navbar">
+          <div className="container">
+            <Link href="/" className="logo">
+              <svg height="50" viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                <text x="0" y="55" fontFamily="var(--font-heading)" fontWeight="900" fontSize="56" fill="var(--color-golden)">L</text>
+                <g transform="translate(45, 10)">
+                  <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" strokeWidth="4"/>
+                  <path d="M 22 10 Q 34 30 22 50 Q 10 30 22 10" fill="none" stroke="var(--color-golden)" strokeWidth="3"/>
+                  <line x1="2" y1="30" x2="42" y2="30" stroke="var(--color-golden)" strokeWidth="3"/>
+                  <line x1="22" y1="10" x2="22" y2="50" stroke="var(--color-golden)" strokeWidth="3"/>
+                </g>
+                <text x="100" y="55" fontFamily="var(--font-heading)" fontWeight="900" fontSize="56" fill="var(--color-golden)">ST</text>
+                <text x="180" y="55" fontFamily="var(--font-heading)" fontWeight="900" fontSize="56" fill="var(--color-orange)">&amp;</text>
+                <text x="235" y="55" fontFamily="var(--font-heading)" fontWeight="900" fontSize="56" fill="var(--color-golden)">S</text>
+                <g transform="translate(280, 10)">
+                  <circle cx="22" cy="30" r="20" fill="none" stroke="var(--color-golden)" strokeWidth="4"/>
+                  <circle cx="22" cy="30" r="4" fill="var(--color-golden)"/>
+                  <path d="M 22 14 L 26 30 L 22 46 L 18 30 Z" fill="none" stroke="var(--color-golden)" strokeWidth="2"/>
+                </g>
+                <text x="330" y="55" fontFamily="var(--font-heading)" fontWeight="900" fontSize="56" fill="var(--color-golden)">UND</text>
+              </svg>
+            </Link>
+            
+            <div className="nav-links">
+              <Link href="/itineraries">Itineraries</Link>
+              <div style={{ position: 'relative', display: 'inline-block' }} className="dropdown">
+                <span style={{ cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 600, color: 'var(--color-purple)' }}>Travel Tricks ▾</span>
+                {/* Dropdown menu will be built out fully later */}
+              </div>
+              <Link href="/blog">Blog</Link>
+              <Link href="/about">About Us</Link>
+              <Link href="/work-with-us">Work With Us</Link>
+              <Link href="/start-planning" className="btn btn-primary" style={{ padding: '10px 20px', marginLeft: '12px' }}>Start Planning</Link>
+              
+              <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', alignItems: 'center' }}>
+                <a href="#" aria-label="Instagram">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                </a>
+                <a href="#" aria-label="TikTok">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </nav>
+
         {children}
+
+        <footer>
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '2rem' }}>
+              <a href="#" aria-label="Instagram">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              </a>
+              <a href="#" aria-label="TikTok">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+              </a>
+            </div>
+            <div className="footer-links">
+              <Link href="/">Home</Link>
+              <Link href="/itineraries">Itineraries</Link>
+              <Link href="/blog">Blog</Link>
+              <Link href="/about">About Us</Link>
+              <Link href="/work-with-us">Work With Us</Link>
+            </div>
+            
+            <div style={{ maxWidth: '400px', margin: '0 auto 3rem auto', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: 'var(--radius-card)' }}>
+              <h4 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.2rem' }}>Keep in Touch</h4>
+              <p style={{ opacity: 0.9, marginBottom: '1rem', fontSize: '0.9rem' }}>Drop your email to get our Nomad Tracker and a free itinerary right to your inbox!</p>
+              <form style={{ display: 'flex', gap: '8px' }}>
+                <input type="email" placeholder="Your email address" style={{ flex: 1, padding: '12px 16px', borderRadius: '30px', border: 'none', outline: 'none' }} required />
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }}>Subscribe</button>
+              </form>
+            </div>
+
+            <p style={{ opacity: 0.8 }}>&copy; 2026 Lost & Sound. Travel the world without burning out.</p>
+          </div>
+        </footer>
       </body>
     </html>
   )
