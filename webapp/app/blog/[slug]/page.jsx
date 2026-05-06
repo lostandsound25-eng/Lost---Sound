@@ -4,7 +4,7 @@ async function getPost(slug) {
   try {
     const res = await fetch(
       `https://public-api.wordpress.com/wp/v2/sites/lostandsoundtravel.wordpress.com/posts?slug=${slug}&_embed`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 60 } }
     );
     const data = await res.json();
     return data[0];

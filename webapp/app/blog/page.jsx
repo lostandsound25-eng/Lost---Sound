@@ -5,7 +5,7 @@ async function getPosts() {
   try {
     const res = await fetch(
       'https://public-api.wordpress.com/wp/v2/sites/lostandsoundtravel.wordpress.com/posts?_embed',
-      { next: { revalidate: 3600 } } // Refresh every hour
+      { next: { revalidate: 60 } } // Refresh every minute while building
     );
     
     if (!res.ok) return [];
