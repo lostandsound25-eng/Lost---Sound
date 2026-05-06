@@ -1,6 +1,6 @@
+'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-export const dynamic = 'force-dynamic';
 
 // Helper to find the first image in HTML content if featured image is missing
 function getFirstImageFromContent(htmlContent) {
@@ -8,24 +8,34 @@ function getFirstImageFromContent(htmlContent) {
   return match ? match[1] : null;
 }
 
-async function getPosts() {
-  try {
-    const res = await fetch(
-      'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts',
-      { next: { revalidate: 60 } }
-    );
-    
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.posts || [];
-  } catch (error) {
-    console.error('Error fetching WordPress posts:', error);
-    return [];
-  }
-}
+export default function BlogPage() {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-export default async function BlogPage() {
-  const posts = await getPosts();
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const res = await fetch(
+          'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts'
+        );
+        
+        if (!res.ok) {
+          throw new Error(`WordPress API responded with status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        setPosts(data.posts || []);
+      } catch (err) {
+        console.error('Error fetching WordPress posts:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPosts();
+  }, []);
 
   return (
     <main style={{ backgroundColor: 'var(--color-cream)', minHeight: '100vh' }}>
@@ -48,7 +58,11 @@ export default async function BlogPage() {
 
       {/* Blog Grid */}
       <section className="container" style={{ padding: '0 24px 100px 24px' }}>
-        {posts.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '100px' }}>
+            <h3 style={{ color: 'var(--color-purple)' }}>Loading our stories...</h3>
+          </div>
+        ) : posts.length === 0 ? (
           <div style={{ 
             textAlign: 'center', 
             padding: '100px 20px', 
@@ -66,7 +80,6 @@ export default async function BlogPage() {
             gap: '40px' 
           }}>
             {posts.map((post) => {
-              // Smart Image Detection: V1.1 API uses 'featured_image'
               const featuredImage = post.featured_image 
                 || getFirstImageFromContent(post.content)
                 || '/assets/hero.png';

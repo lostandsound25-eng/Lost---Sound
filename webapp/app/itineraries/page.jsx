@@ -1,16 +1,6 @@
-import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
 
-// Optional: Revalidate this page every 60 seconds or on-demand
-export const dynamic = 'force-dynamic';
-
-export default async function ItinerariesPage() {
-  const { data: itineraries, error } = await supabase
-    .from('itineraries')
-    .select('title, slug, destination, duration_days, description, hero_image_url')
-    .eq('is_published', true)
-    .order('created_at', { ascending: false });
-
+export default function ItinerariesPage() {
   return (
     <main>
       <section className="container" style={{ padding: '80px 24px' }}>
@@ -21,39 +11,9 @@ export default async function ItinerariesPage() {
           </p>
         </div>
 
-        {error && (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
-            <p>Error loading itineraries. Please try again later.</p>
-          </div>
-        )}
-
-        {itineraries && itineraries.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: '#FAFAFA', borderRadius: '16px' }}>
-            <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)', marginBottom: '1rem' }}>Check back soon!</h3>
-            <p style={{ color: '#666' }}>We are currently building out our collection of free itineraries.</p>
-          </div>
-        )}
-
-        <div className="cards-grid">
-          {itineraries?.map((itinerary) => (
-            <div className="card" key={itinerary.slug}>
-              <div className="card-img-container">
-                {/* Fallback to placeholder if no image URL is provided yet */}
-                <img 
-                  src={itinerary.hero_image_url || '/assets/hero.png'} 
-                  alt={itinerary.destination} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </div>
-              <div className="card-content">
-                <h3 style={{ color: 'var(--color-purple)' }}>{itinerary.title}</h3>
-                <p>{itinerary.description}</p>
-                <Link href={`/itineraries/${itinerary.slug}`} className="btn btn-secondary" style={{ display: 'inline-block', marginTop: '1rem' }}>
-                  View Itinerary
-                </Link>
-              </div>
-            </div>
-          ))}
+        <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: '#FAFAFA', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)', marginBottom: '1rem' }}>Check back soon!</h3>
+          <p style={{ color: '#666' }}>We are currently migrating our itineraries to WordPress. Stay tuned!</p>
         </div>
       </section>
 

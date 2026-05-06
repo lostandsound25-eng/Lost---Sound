@@ -1,40 +1,19 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
 
 export default function KeepInTouchForm() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle'); // idle, loading, success, error
+  const [status, setStatus] = useState('idle'); // idle, loading, success
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setStatus('loading');
     
-    try {
-      if (!supabase) {
-        console.warn('Supabase is not configured. Please add environment variables to Vercel.');
-        setStatus('error');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('leads')
-        .insert([{ email }]);
-
-      if (error) {
-        if (error.code === '23505') { // Postgres unique violation code
-          setStatus('success'); // Already subscribed
-        } else {
-          throw error;
-        }
-      } else {
-        setStatus('success');
-      }
+    // For now, we'll just simulate a success message since we are disregarding Supabase
+    setTimeout(() => {
+      setStatus('success');
       setEmail('');
-    } catch (error) {
-      console.error('Error submitting email:', error);
-      setStatus('error');
-    }
+    }, 1000);
   };
 
   if (status === 'success') {
@@ -66,9 +45,6 @@ export default function KeepInTouchForm() {
           {status === 'loading' ? 'Sending...' : 'Subscribe'}
         </button>
       </div>
-      {status === 'error' && (
-        <p className="text-[#F2AE30] text-sm mt-1 text-center">Oops! Something went wrong. Please try again.</p>
-      )}
     </form>
   );
 }
