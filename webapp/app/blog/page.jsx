@@ -1,25 +1,27 @@
 import Link from 'next/link';
 
-// This function fetches posts from your WordPress site
-async function getPosts() {
-  try {
-    const res = await fetch(
-      'https://lostandsoundtravel.wpcomstaging.com/wp-json/wp/v2/posts?_embed',
-      { next: { revalidate: 60 } } // Refresh every minute while building
-    );
-    
-    if (!res.ok) return [];
-    return res.json();
-  } catch (error) {
-    console.error('Error fetching WordPress posts:', error);
-    return [];
-  }
-}
+export const dynamic = 'force-dynamic';
 
 // Helper to find the first image in HTML content if featured image is missing
 function getFirstImageFromContent(htmlContent) {
   const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
   return match ? match[1] : null;
+}
+
+async function getPosts() {
+  try {
+    const res = await fetch(
+      'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts',
+      { next: { revalidate: 60 } }
+    );
+    
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.posts || [];
+  } catch (error) {
+    console.error('Error fetching WordPress posts:', error);
+    return [];
+  }
 }
 
 export default async function BlogPage() {
@@ -64,13 +66,13 @@ export default async function BlogPage() {
             gap: '40px' 
           }}>
             {posts.map((post) => {
-              // Smart Image Detection for cards
-              const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url 
-                || getFirstImageFromContent(post.content.rendered)
+              // Smart Image Detection: V1.1 API uses 'featured_image'
+              const featuredImage = post.featured_image 
+                || getFirstImageFromContent(post.content)
                 || '/assets/hero.png';
               
               return (
-                <article key={post.id} className="magazine-card" style={{ 
+                <article key={post.ID} className="magazine-card" style={{ 
                   backgroundColor: 'white', 
                   borderRadius: '20px', 
                   overflow: 'hidden',
@@ -82,7 +84,7 @@ export default async function BlogPage() {
                   <Link href={`/blog/${post.slug}`} style={{ display: 'block', height: '250px', overflow: 'hidden' }}>
                     <img 
                       src={featuredImage} 
-                      alt={post.title.rendered}
+                      alt={post.title}
                       style={{ 
                         width: '100%', 
                         height: '100%', 
@@ -114,14 +116,14 @@ export default async function BlogPage() {
                     }}>
                       <Link 
                         href={`/blog/${post.slug}`}
-                        dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+                        dangerouslySetInnerHTML={{ __html: post.title }}
                         style={{ textDecoration: 'none', color: 'inherit' }}
                       />
                     </h2>
                     
                     <div 
                       style={{ color: '#666', lineHeight: '1.6', marginBottom: '20px' }}
-                      dangerouslySetInnerHTML={{ __html: post.excerpt.rendered }}
+                      dangerouslySetInnerHTML={{ __html: post.excerpt }}
                     />
                     
                     <div style={{ marginTop: 'auto' }}>

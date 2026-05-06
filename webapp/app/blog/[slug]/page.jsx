@@ -4,9 +4,9 @@ export const dynamic = 'force-dynamic';
 
 async function getPost(slug) {
   try {
-    // We encode the slug in case it has spaces or special characters
+    // Using the ultra-stable V1.1 Global API
     const res = await fetch(
-      `https://lostandsoundtravel.wpcomstaging.com/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`,
+      `https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts/slug:${encodeURIComponent(slug)}`,
       { next: { revalidate: 60 } }
     );
     
@@ -15,13 +15,7 @@ async function getPost(slug) {
       return null;
     }
 
-    const data = await res.json();
-    
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0];
-    }
-    
-    return null;
+    return await res.json();
   } catch (error) {
     console.error('Error fetching WordPress post:', error);
     return null;
@@ -48,12 +42,9 @@ export default async function BlogPost({ params }) {
     );
   }
 
-  // Smart Image Detection:
-  // 1. Check Featured Media
-  // 2. Check first image in content
-  // 3. Fallback to default hero
-  const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url 
-    || getFirstImageFromContent(post.content.rendered)
+  // Smart Image Detection for V1.1 structure
+  const featuredImage = post.featured_image 
+    || getFirstImageFromContent(post.content)
     || '/assets/hero.png';
 
   return (
@@ -77,7 +68,7 @@ export default async function BlogPost({ params }) {
           
           <h1 
             style={{ fontSize: '3.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)', lineHeight: '1.1' }}
-            dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+            dangerouslySetInnerHTML={{ __html: post.title }}
           />
           
           <div style={{ marginTop: '20px', fontWeight: 600, color: '#666' }}>
@@ -90,7 +81,7 @@ export default async function BlogPost({ params }) {
       <div className="container" style={{ maxWidth: '1100px', padding: '0 24px' }}>
         <img 
           src={featuredImage} 
-          alt={post.title.rendered} 
+          alt={post.title} 
           style={{ 
             width: '100%', 
             height: '600px', 
@@ -122,7 +113,7 @@ export default async function BlogPost({ params }) {
         <div 
           className="blog-content"
           style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#333' }}
-          dangerouslySetInnerHTML={{ __html: post.content.rendered }}
+          dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
         {/* Stay22 Ad Placeholder - Middle/Bottom */}
