@@ -4,7 +4,7 @@ import Link from 'next/link';
 async function getPosts() {
   try {
     const res = await fetch(
-      'https://public-api.wordpress.com/wp/v2/sites/lostandsoundtravel.wordpress.com/posts?_embed',
+      'https://lostandsoundtravel.wpcomstaging.com/wp-json/wp/v2/posts?_embed',
       { next: { revalidate: 60 } } // Refresh every minute while building
     );
     
