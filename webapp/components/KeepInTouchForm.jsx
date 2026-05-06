@@ -11,6 +11,12 @@ export default function KeepInTouchForm() {
     setStatus('loading');
     
     try {
+      if (!supabase) {
+        console.warn('Supabase is not configured. Please add environment variables to Vercel.');
+        setStatus('error');
+        return;
+      }
+
       const { error } = await supabase
         .from('leads')
         .insert([{ email }]);
