@@ -23,14 +23,10 @@ export default function RootLayout({ children }) {
             </Link>
             
             <div className="nav-links">
-              <Link href="/itineraries">Itineraries</Link>
-              <div style={{ position: 'relative', display: 'inline-block' }} className="dropdown">
-                <span style={{ cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 600, color: 'var(--color-purple)' }}>Travel Tricks ▾</span>
-                {/* Dropdown menu will be built out fully later */}
-              </div>
-              <Link href="/blog">Blog</Link>
-              <Link href="/about">About Us</Link>
-              <Link href="/work-with-us">Work With Us</Link>
+              <Link href="/">Home</Link>
+              <Link href="/itineraries">Destinations</Link>
+              <Link href="/services">Services</Link>
+              <Link href="/about">Our Story</Link>
               <Link href="/start-planning" className="btn btn-primary" style={{ padding: '10px 20px', marginLeft: '12px' }}>Start Planning</Link>
               
               <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', alignItems: 'center' }}>
@@ -59,10 +55,9 @@ export default function RootLayout({ children }) {
             </div>
             <div className="footer-links">
               <Link href="/">Home</Link>
-              <Link href="/itineraries">Itineraries</Link>
-              <Link href="/blog">Blog</Link>
-              <Link href="/about">About Us</Link>
-              <Link href="/work-with-us">Work With Us</Link>
+              <Link href="/itineraries">Destinations</Link>
+              <Link href="/services">Services</Link>
+              <Link href="/about">Our Story</Link>
             </div>
             
             <div style={{ maxWidth: '400px', margin: '0 auto 3rem auto', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: 'var(--radius-card)' }}>
