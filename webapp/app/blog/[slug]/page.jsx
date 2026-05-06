@@ -6,10 +6,23 @@ async function getPost(slug) {
       `https://public-api.wordpress.com/wp/v2/sites/lostandsoundtravel.wordpress.com/posts?slug=${slug}&_embed`,
       { next: { revalidate: 60 } }
     );
+    
+    if (!res.ok) {
+      console.error(`WordPress API responded with status: ${res.status}`);
+      return null;
+    }
+
     const data = await res.json();
-    return data[0];
+    
+    // WordPress returns an array of posts matching the slug
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0];
+    }
+    
+    console.warn(`No post found for slug: ${slug}`);
+    return null;
   } catch (error) {
-    console.error('Error fetching post:', error);
+    console.error('Error fetching WordPress post:', error);
     return null;
   }
 }
