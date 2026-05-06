@@ -2,8 +2,9 @@ import Link from 'next/link';
 
 async function getPost(slug) {
   try {
+    // We encode the slug in case it has spaces or special characters
     const res = await fetch(
-      `https://lostandsoundtravel.wpcomstaging.com/wp-json/wp/v2/posts?slug=${slug}&_embed`,
+      `https://lostandsoundtravel.wpcomstaging.com/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`,
       { next: { revalidate: 60 } }
     );
     
@@ -14,17 +15,21 @@ async function getPost(slug) {
 
     const data = await res.json();
     
-    // WordPress returns an array of posts matching the slug
     if (Array.isArray(data) && data.length > 0) {
       return data[0];
     }
     
-    console.warn(`No post found for slug: ${slug}`);
     return null;
   } catch (error) {
     console.error('Error fetching WordPress post:', error);
     return null;
   }
+}
+
+// Helper to find the first image in HTML content if featured image is missing
+function getFirstImageFromContent(htmlContent) {
+  const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
+  return match ? match[1] : null;
 }
 
 export default async function BlogPost({ params }) {
@@ -33,13 +38,20 @@ export default async function BlogPost({ params }) {
   if (!post) {
     return (
       <div className="container" style={{ padding: '200px 24px', textAlign: 'center' }}>
-        <h1>Post not found</h1>
-        <Link href="/blog">Back to Stories</Link>
+        <h1>Story Not Found</h1>
+        <p>We couldn't find the story you're looking for. It might still be syncing!</p>
+        <Link href="/blog" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Back to Stories</Link>
       </div>
     );
   }
 
-  const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '/assets/hero.png';
+  // Smart Image Detection:
+  // 1. Check Featured Media
+  // 2. Check first image in content
+  // 3. Fallback to default hero
+  const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url 
+    || getFirstImageFromContent(post.content.rendered)
+    || '/assets/hero.png';
 
   return (
     <article style={{ backgroundColor: 'white', minHeight: '100vh' }}>

@@ -16,6 +16,12 @@ async function getPosts() {
   }
 }
 
+// Helper to find the first image in HTML content if featured image is missing
+function getFirstImageFromContent(htmlContent) {
+  const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
+  return match ? match[1] : null;
+}
+
 export default async function BlogPage() {
   const posts = await getPosts();
 
@@ -58,7 +64,10 @@ export default async function BlogPage() {
             gap: '40px' 
           }}>
             {posts.map((post) => {
-              const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '/assets/hero.png';
+              // Smart Image Detection for cards
+              const featuredImage = post._embedded?.['wp:featuredmedia']?.[0]?.source_url 
+                || getFirstImageFromContent(post.content.rendered)
+                || '/assets/hero.png';
               
               return (
                 <article key={post.id} className="magazine-card" style={{ 
