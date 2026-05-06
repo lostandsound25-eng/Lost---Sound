@@ -25,8 +25,9 @@ export default function RootLayout({ children }) {
             <div className="nav-links">
               <Link href="/">Home</Link>
               <Link href="/itineraries">Destinations</Link>
-              <Link href="/services">Services</Link>
+              <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
+              <Link href="/work-with-us">Work With Us</Link>
               <Link href="/start-planning" className="btn btn-primary" style={{ padding: '10px 20px', marginLeft: '12px' }}>Start Planning</Link>
               
               <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', alignItems: 'center' }}>
@@ -56,8 +57,9 @@ export default function RootLayout({ children }) {
             <div className="footer-links">
               <Link href="/">Home</Link>
               <Link href="/itineraries">Destinations</Link>
-              <Link href="/services">Services</Link>
+              <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
+              <Link href="/work-with-us">Work With Us</Link>
             </div>
             
             <div style={{ maxWidth: '400px', margin: '0 auto 3rem auto', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: 'var(--radius-card)' }}>
