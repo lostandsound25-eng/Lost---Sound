@@ -1,48 +1,63 @@
+'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
+export default function BlogPost({ params }) {
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-async function getPost(slug) {
-  try {
-    // Using the ultra-stable V1.1 Global API
-    const res = await fetch(
-      `https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts/slug:${encodeURIComponent(slug)}`,
-      { next: { revalidate: 60 } }
-    );
-    
-    if (!res.ok) {
-      console.error(`WordPress API responded with status: ${res.status}`);
-      return null;
+  useEffect(() => {
+    async function fetchPost() {
+      try {
+        const res = await fetch(
+          `https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts/slug:${encodeURIComponent(params.slug)}`
+        );
+        
+        if (!res.ok) {
+          throw new Error(`WordPress API responded with status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        setPost(data);
+      } catch (err) {
+        console.error('Error fetching WordPress post:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    return await res.json();
-  } catch (error) {
-    console.error('Error fetching WordPress post:', error);
-    return null;
+    if (params.slug) {
+      fetchPost();
+    }
+  }, [params.slug]);
+
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: '200px 24px', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--color-purple)', fontFamily: 'var(--font-heading)' }}>Loading Story...</h2>
+      </div>
+    );
   }
-}
 
-// Helper to find the first image in HTML content if featured image is missing
-function getFirstImageFromContent(htmlContent) {
-  const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
-  return match ? match[1] : null;
-}
-
-export default async function BlogPost({ params }) {
-  const post = await getPost(params.slug);
-
-  if (!post) {
+  if (error || !post) {
     return (
       <div className="container" style={{ padding: '200px 24px', textAlign: 'center' }}>
         <h1>Story Not Found</h1>
-        <p>We couldn't find the story with the slug: <strong>{params.slug}</strong></p>
-        <p>It might still be syncing or the title might have changed!</p>
+        <p>We couldn't find the story: <strong>{params.slug}</strong></p>
+        <p style={{ opacity: 0.6, fontSize: '0.9rem', marginTop: '1rem' }}>Debug: {error || 'No post returned'}</p>
         <Link href="/blog" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Back to Stories</Link>
       </div>
     );
   }
 
-  // Smart Image Detection for V1.1 structure
+  // Smart Image Detection
+  function getFirstImageFromContent(htmlContent) {
+    const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
+    return match ? match[1] : null;
+  }
+
   const featuredImage = post.featured_image 
     || getFirstImageFromContent(post.content)
     || '/assets/hero.png';
