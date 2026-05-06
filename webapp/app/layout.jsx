@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
             </Link>
             
             <div className="nav-links">
-              <Link href="/">Home</Link>
+              <Link href="/blog">Blog</Link>
               <Link href="/itineraries">Destinations</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
@@ -55,7 +55,7 @@ export default function RootLayout({ children }) {
               </a>
             </div>
             <div className="footer-links">
-              <Link href="/">Home</Link>
+              <Link href="/blog">Blog</Link>
               <Link href="/itineraries">Destinations</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
