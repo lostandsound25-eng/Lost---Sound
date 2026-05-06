@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 async function getPost(slug) {
   try {
     // We encode the slug in case it has spaces or special characters
@@ -39,7 +41,8 @@ export default async function BlogPost({ params }) {
     return (
       <div className="container" style={{ padding: '200px 24px', textAlign: 'center' }}>
         <h1>Story Not Found</h1>
-        <p>We couldn't find the story you're looking for. It might still be syncing!</p>
+        <p>We couldn't find the story with the slug: <strong>{params.slug}</strong></p>
+        <p>It might still be syncing or the title might have changed!</p>
         <Link href="/blog" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Back to Stories</Link>
       </div>
     );
