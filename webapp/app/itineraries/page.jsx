@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
 
 // Optional: Revalidate this page every 60 seconds or on-demand
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function ItinerariesPage() {
   const { data: itineraries, error } = await supabase

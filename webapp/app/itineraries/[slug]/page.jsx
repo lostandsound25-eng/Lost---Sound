@@ -2,12 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-export const revalidate = 60;
-
-export async function generateStaticParams() {
-  const { data: itineraries } = await supabase.from('itineraries').select('slug').eq('is_published', true);
-  return itineraries?.map((itin) => ({ slug: itin.slug })) || [];
-}
+export const dynamic = 'force-dynamic';
 
 export default async function ItineraryDetail({ params }) {
   const { slug } = params;
