@@ -1,4 +1,5 @@
 import './globals.css'
+// Triggering a fresh build for the hero updates
 import { Inter, Outfit } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
