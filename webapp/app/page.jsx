@@ -69,31 +69,31 @@ export default function Home() {
           <div className="cards-grid">
             <div className="card">
               <div className="card-img-container">
-                <img src="/assets/asia.png" alt="Southeast Asia Temple" />
+                <img src="/assets/hj-cottonwood.jpg" alt="Vegas to Denver Road Trip" />
               </div>
               <div className="card-content">
-                <h3>Southeast Asia</h3>
-                <p>Culture, nature, and incredible food, without the backpacker dorms.</p>
+                <h3>Vegas to Denver</h3>
+                <p>7 Days of red rocks, national parks, and epic mountain passes.</p>
               </div>
             </div>
 
             <div className="card">
               <div className="card-img-container">
-                <img src="/assets/ireland.png" alt="Ireland Coast" />
+                <img src="/assets/ireland.png" alt="Ireland North Coast" />
               </div>
               <div className="card-content">
-                <h3>Ireland</h3>
-                <p>Dramatic coasts, cozy pubs, and the ultimate scenic road trip.</p>
+                <h3>Ireland's North Coast</h3>
+                <p>7 Days along the Wild Atlantic Way and the Giant's Causeway.</p>
               </div>
             </div>
 
             <div className="card">
               <div className="card-img-container">
-                <img src="/assets/hero.png" alt="Greece" />
+                <img src="/assets/rice-terraces.jpg" alt="Thailand Adventure" />
               </div>
               <div className="card-content">
-                <h3>Greece & Utah</h3>
-                <p>Perfect pacing for European coastlines and American deserts.</p>
+                <h3>Thailand Immersive</h3>
+                <p>3 Weeks from Bangkok's energy to the tranquil islands of the South.</p>
               </div>
             </div>
           </div>
