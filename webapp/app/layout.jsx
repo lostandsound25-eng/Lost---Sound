@@ -27,7 +27,7 @@ export default function RootLayout({ children }) {
             
             <div className="nav-links">
               <Link href="/blog">Blog</Link>
-              <Link href="/itineraries">Destinations</Link>
+              <Link href="/itineraries">Itineraries</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
               <Link href="/work-with-us">Work With Us</Link>
