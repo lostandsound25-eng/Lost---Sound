@@ -7,11 +7,16 @@ export default function Home() {
         <div className="container hero-split">
           <div className="hero-text">
             <h1 style={{ fontSize: '5rem', lineHeight: '1.05', marginBottom: '2rem' }}>
-              Lost in the world,<br/>
-              <span style={{ color: 'var(--color-purple)' }}>Sound in the journey.</span>
+              Sharing our journey,<br />
+              <span style={{ color: 'var(--color-purple)' }}>to simplify yours.</span>
             </h1>
             <p style={{ fontSize: '1.3rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.6, maxWidth: '600px' }}>
-              Travel the world without burning out or breaking the bank. We plan, you simply pack and enjoy. Say goodbye to 40-tab planning sessions and hello to perfectly paced boutique experiences.
+              This site is everything we wish we knew, all in one place. <br />
+              Explore our blog for tips, recommendations, and honest insights. <br />
+              Use our tried-and-true free itineraries to take the guesswork out of planning your trip. <br />
+              Or, if you would rather not do the planning yourself, we can do it for you. <br />
+              Book your free 15-minute call with us to discuss your next trip.
+
             </p>
             <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
