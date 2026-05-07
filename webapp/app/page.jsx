@@ -30,8 +30,8 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-visuals">
-            <img src="/assets/H%26J_Cottonwood_pass.jpg" alt="Couple traveling" className="blob-shape-1" />
-            <img src="/assets/rice%20terraces%20ha%20giang.jpg" alt="Temple" className="blob-shape-2" />
+            <img src="/assets/hj-cottonwood.jpg" alt="Couple traveling" className="blob-shape-1" />
+            <img src="/assets/rice-terraces.jpg" alt="Temple" className="blob-shape-2" />
           </div>
         </div>
       </header>
