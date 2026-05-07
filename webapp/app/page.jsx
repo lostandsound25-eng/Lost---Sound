@@ -3,16 +3,19 @@ import Link from 'next/link'
 export default function Home() {
   return (
     <>
-      <header className="hero" style={{ paddingTop: '60px', paddingBottom: '60px' }}>
+      <header className="hero">
         <div className="container hero-split">
           <div className="hero-text">
-            <h1 style={{ fontSize: '4.5rem' }}>Lost in the world,<br/>Sound in the journey.</h1>
-            <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', color: 'var(--color-text)', lineHeight: 1.6 }}>
-              Travel the world without burning out or breaking the bank. We plan, you simply pack and enjoy. Say goodbye to 3 AM bus rides and 40-tab planning sessions, and say hello to comfortable boutique stays and authentic experiences.
+            <h1 style={{ fontSize: '5rem', lineHeight: '1.05', marginBottom: '2rem' }}>
+              Lost in the world,<br/>
+              <span style={{ color: 'var(--color-purple)' }}>Sound in the journey.</span>
+            </h1>
+            <p style={{ fontSize: '1.3rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.6, maxWidth: '600px' }}>
+              Travel the world without burning out or breaking the bank. We plan, you simply pack and enjoy. Say goodbye to 40-tab planning sessions and hello to perfectly paced boutique experiences.
             </p>
-            <div className="hero-btns" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
-              <Link href="/itineraries" className="btn btn-outline">Explore Destinations</Link>
+              <Link href="/itineraries" className="btn btn-secondary">Explore Destinations</Link>
             </div>
           </div>
           <div className="hero-visuals">

@@ -10,6 +10,7 @@ export const metadata = {
 }
 
 import Link from 'next/link'
+import Logo from '../components/Logo'
 import KeepInTouchForm from '../components/KeepInTouchForm'
 
 export default function RootLayout({ children }) {
@@ -19,7 +20,7 @@ export default function RootLayout({ children }) {
         <nav className="navbar">
           <div className="container">
             <Link href="/" className="logo">
-              <img src="/assets/logo.svg" alt="Lost & Sound" style={{ height: '130px', width: 'auto', display: 'block' }} />
+              <Logo />
             </Link>
             
             <div className="nav-links">
