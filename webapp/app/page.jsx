@@ -10,13 +10,17 @@ export default function Home() {
               Sharing our journey,<br />
               <span style={{ color: 'var(--color-purple)' }}>to simplify yours.</span>
             </h1>
-            <p style={{ fontSize: '1.3rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.6, maxWidth: '600px' }}>
-              This site is everything we wish we knew, all in one place. <br />
-              Explore our blog for tips, recommendations, and honest insights. <br />
-              Use our tried-and-true free itineraries to take the guesswork out of planning your trip. <br />
-              Or, if you would rather not do the planning yourself, we can do it for you. <br />
-              Book your free 15-minute call with us to discuss your next trip.
-
+            <h2 style={{ 
+              fontSize: '2rem', 
+              fontFamily: 'var(--font-heading)', 
+              color: 'var(--color-golden)', 
+              marginBottom: '1rem',
+              fontWeight: 600
+            }}>
+              This site is everything we wish we knew, all in one place.
+            </h2>
+            <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.6, maxWidth: '650px' }}>
+              Explore our blog for tips, recommendations, and honest insights. Use our tried-and-true free itineraries to take the guesswork out of planning your trip. Or, if you would rather not do the planning yourself, we can do it with you. Book your free 15-minute call with us to discuss your next trip.
             </p>
             <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
@@ -24,8 +28,8 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-visuals">
-            <img src="/assets/hero.png" alt="Couple traveling" className="blob-shape-1" />
-            <img src="/assets/asia.png" alt="Temple" className="blob-shape-2" />
+            <img src="/assets/H&J_Cottonwood_pass.jpg" alt="Couple traveling" className="blob-shape-1" />
+            <img src="/assets/rice terraces ha giang.jpg" alt="Temple" className="blob-shape-2" />
           </div>
         </div>
       </header>
