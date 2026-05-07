@@ -7,10 +7,12 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: 
 export const metadata = {
   title: 'Lost & Sound | Custom Travel Planning',
   description: 'Travel the world without burning out or breaking the bank.',
+  icons: {
+    icon: '/assets/logo.svg',
+  },
 }
 
 import Link from 'next/link'
-import Logo from '../components/Logo'
 import KeepInTouchForm from '../components/KeepInTouchForm'
 
 export default function RootLayout({ children }) {
@@ -20,7 +22,7 @@ export default function RootLayout({ children }) {
         <nav className="navbar">
           <div className="container">
             <Link href="/" className="logo">
-              <Logo />
+              <img src="/assets/logo.svg" alt="Lost & Sound" style={{ height: '50px', width: 'auto', display: 'block' }} />
             </Link>
             
             <div className="nav-links">
