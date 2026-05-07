@@ -54,7 +54,7 @@ export default function Home() {
             </div>
           </div>
           <div>
-            <img src="/assets/ireland.png" alt="Who we are" className="organic-image" style={{ height: '450px' }} />
+            <img src="/assets/hj-colorado-foliage.jpg" alt="Who we are" className="organic-image" style={{ height: '450px' }} />
           </div>
         </div>
       </section>
