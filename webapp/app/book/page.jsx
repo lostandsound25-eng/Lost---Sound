@@ -1,5 +1,11 @@
 'use client';
-import { BookerEmbed } from "@calcom/atoms";
+import dynamic from 'next/dynamic';
+
+// Use dynamic import with ssr: false to prevent build errors
+const BookerEmbed = dynamic(
+  () => import('@calcom/atoms').then((mod) => mod.BookerEmbed),
+  { ssr: false }
+);
 
 export default function BookPage() {
   return (
