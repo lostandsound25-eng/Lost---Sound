@@ -1,16 +1,9 @@
 'use client';
-import dynamic from 'next/dynamic';
-
-// Use dynamic import with ssr: false to prevent build errors
-const BookerEmbed = dynamic(
-  () => import('@calcom/atoms').then((mod) => mod.BookerEmbed),
-  { ssr: false }
-);
 
 export default function BookPage() {
   return (
     <main style={{ padding: '120px 0 80px', backgroundColor: '#fff' }}>
-      <div className="container" style={{ maxWidth: '900px' }}>
+      <div className="container" style={{ maxWidth: '1000px' }}>
         <div className="text-center mb-5">
           <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Book Your Discovery Call</h1>
           <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>
@@ -23,22 +16,20 @@ export default function BookPage() {
           borderRadius: '40px', 
           padding: '20px',
           boxShadow: '0 10px 40px rgba(0,0,0,0.05)',
-          minHeight: '600px',
+          minHeight: '700px',
           overflow: 'hidden'
         }}>
-          <BookerEmbed
-            eventSlug="15min"
-            username="lostandsound.jpg"
-            view="month_view"
-            customClassNames={{
-              bookerContainer: "border-none",
-            }}
-          />
+          {/* Bulletproof Iframe Embed for Cal.com */}
+          <iframe 
+            src="https://cal.com/lostandsound.jpg/15min?embed=true" 
+            style={{ width: '100%', height: '700px', border: 'none', borderRadius: '20px' }}
+            title="Book a Discovery Call"
+          ></iframe>
         </div>
 
         <div className="text-center mt-5">
           <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>
-            Powered by Cal.com & Lost & Sound
+            Securely powered by Cal.com & Lost & Sound
           </p>
         </div>
       </div>
