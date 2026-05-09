@@ -17,6 +17,7 @@ export default function StartPlanning() {
         "7-day delivery"
       ],
       cta: "Get Your Outline",
+      link: "/questionnaire",
       color: "var(--color-golden)"
     },
     {
@@ -33,6 +34,7 @@ export default function StartPlanning() {
         "Direct support during planning"
       ],
       cta: "Start Planning",
+      link: "/questionnaire",
       color: "var(--color-purple)",
       popular: true
     },
@@ -50,6 +52,7 @@ export default function StartPlanning() {
         "Best for complex/group trips"
       ],
       cta: "Enquire Now",
+      link: "https://cal.com/lostandsound.jpg/15min",
       color: "var(--color-orange)"
     }
   ];
@@ -124,17 +127,31 @@ export default function StartPlanning() {
                 ))}
               </ul>
 
-              <Link href="/contact" className="btn" style={{ 
-                backgroundColor: tier.color, 
-                color: 'white', 
-                textAlign: 'center',
-                padding: '16px',
-                borderRadius: '50px',
-                fontWeight: 700,
-                textDecoration: 'none'
-              }}>
-                {tier.cta}
-              </Link>
+              {tier.link.startsWith('http') ? (
+                <a href={tier.link} target="_blank" rel="noopener noreferrer" className="btn" style={{ 
+                  backgroundColor: tier.color, 
+                  color: 'white', 
+                  textAlign: 'center',
+                  padding: '16px',
+                  borderRadius: '50px',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}>
+                  {tier.cta}
+                </a>
+              ) : (
+                <Link href={tier.link} className="btn" style={{ 
+                  backgroundColor: tier.color, 
+                  color: 'white', 
+                  textAlign: 'center',
+                  padding: '16px',
+                  borderRadius: '50px',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}>
+                  {tier.cta}
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -142,7 +159,7 @@ export default function StartPlanning() {
         <section style={{ marginTop: '100px', backgroundColor: '#F9F6ED', borderRadius: '40px', padding: '60px', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '1rem' }}>Not sure which one is right?</h2>
           <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>Book a free 15-minute discovery call and we'll help you decide.</p>
-          <Link href="/contact" className="btn btn-outline">Schedule Discovery Call</Link>
+          <a href="https://cal.com/lostandsound.jpg/15min" target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ display: 'inline-block' }}>Schedule Discovery Call</a>
         </section>
       </div>
     </main>
