@@ -5,15 +5,30 @@ export default function KeepInTouchForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle, loading, success
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('loading');
     
-    // For now, we'll just simulate a success message since we are disregarding Supabase
-    setTimeout(() => {
-      setStatus('success');
-      setEmail('');
-    }, 1000);
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setStatus('success');
+        setEmail('');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Something went wrong. Please try again.');
+        setStatus('idle');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Could not connect to the server. Please try again.');
+      setStatus('idle');
+    }
   };
 
   if (status === 'success') {
