@@ -52,7 +52,7 @@ export default function StartPlanning() {
         "Best for complex/group trips"
       ],
       cta: "Enquire Now",
-      link: "https://cal.com/lostandsound.jpg/15min",
+      link: "/book",
       color: "var(--color-orange)"
     }
   ];
@@ -159,7 +159,7 @@ export default function StartPlanning() {
         <section style={{ marginTop: '100px', backgroundColor: '#F9F6ED', borderRadius: '40px', padding: '60px', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '1rem' }}>Not sure which one is right?</h2>
           <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>Book a free 15-minute discovery call and we'll help you decide.</p>
-          <a href="https://cal.com/lostandsound.jpg/15min" target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ display: 'inline-block' }}>Schedule Discovery Call</a>
+          <Link href="/book" className="btn btn-outline" style={{ display: 'inline-block' }}>Schedule Discovery Call</Link>
         </section>
       </div>
     </main>
