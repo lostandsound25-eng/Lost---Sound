@@ -60,9 +60,9 @@ export default function RootLayout({ children }) {
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
               </a>
             </div>
-            <div className="footer-links">
+            <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '3rem' }}>
               <Link href="/blog">Blog</Link>
-              <Link href="/itineraries">Destinations</Link>
+              <Link href="/itineraries">Itineraries</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
               <Link href="/work-with-us">Work With Us</Link>
