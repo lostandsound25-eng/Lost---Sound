@@ -1,6 +1,7 @@
 import './globals.css'
 // Triggering a fresh build for the hero updates
 import { Inter, Outfit } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '600', '800', '900'] })
@@ -75,6 +76,7 @@ export default function RootLayout({ children }) {
             <p style={{ opacity: 0.8 }}>&copy; 2026 Lost & Sound. Travel the world without burning out.</p>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   )
