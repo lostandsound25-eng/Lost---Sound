@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '600', '800', '900'] })
 
 export const metadata = {
-  title: 'Lost & Sound | Custom Travel Planning',
+  title: 'Lost & Sound | Travel Tips, Blog, and Custom Trips',
   description: 'Travel the world without burning out or breaking the bank.',
   icons: {
     icon: '/assets/logo.svg',
@@ -37,10 +37,10 @@ export default function RootLayout({ children }) {
               <Link href="/start-planning" className="btn btn-primary" style={{ padding: '10px 20px', marginLeft: '12px' }}>Start Planning</Link>
               
               <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', alignItems: 'center' }}>
-                <a href="#" aria-label="Instagram">
+                <a href="https://www.instagram.com/lostandsoundtravel" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
                 </a>
-                <a href="#" aria-label="TikTok">
+                <a href="https://www.tiktok.com/@lostandsoundtravel" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
                 </a>
               </div>
@@ -53,10 +53,10 @@ export default function RootLayout({ children }) {
         <footer>
           <div className="container">
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '2rem' }}>
-              <a href="#" aria-label="Instagram">
+              <a href="https://www.instagram.com/lostandsoundtravel" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
               </a>
-              <a href="#" aria-label="TikTok">
+              <a href="https://www.tiktok.com/@lostandsoundtravel" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
               </a>
             </div>
