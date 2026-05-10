@@ -116,13 +116,14 @@ export default function StartPlanning() {
                 {tier.features.map((feature, fIdx) => (
                   <li key={fIdx} style={{ 
                     display: 'flex', 
-                    alignItems: 'center', 
+                    alignItems: 'flex-start', 
                     gap: '12px', 
-                    marginBottom: '12px',
-                    fontSize: '1rem'
+                    marginBottom: '14px',
+                    fontSize: '1rem',
+                    lineHeight: 1.4
                   }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tier.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    {feature}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tier.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span style={{ opacity: 0.9 }}>{feature}</span>
                   </li>
                 ))}
               </ul>
