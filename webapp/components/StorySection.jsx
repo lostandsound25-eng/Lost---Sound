@@ -25,39 +25,48 @@ export default function StorySection({ isExcerpt = false }) {
 
   return (
     <section id="our-story" style={{ padding: isExcerpt ? '60px 0' : '80px 0', backgroundColor: '#F9F6ED' }}>
-      <div className="container" style={{ maxWidth: '750px' }}>
+      <div className="container" style={{ maxWidth: '800px' }}>
         
-        <h2 style={{ fontSize: '2.5rem', textAlign: 'center', marginBottom: '40px', fontFamily: 'var(--font-heading)' }}>Our Story</h2>
+        <h2 style={{ fontSize: '2.5rem', textAlign: 'left', marginBottom: '40px', fontFamily: 'var(--font-heading)' }}>Our Story</h2>
 
-        <div style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#444', display: 'grid', gap: '20px' }}>
-          <p>We are Julie 🇮🇪 and Harry 🇺🇸.</p>
-          <p>We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies.</p>
+        <div style={{ fontSize: '1.05rem', lineHeight: '1.7', color: '#444' }}>
           
-          {/* Middle Image - Scaled down for compactness */}
-          <div style={{ margin: '30px 0', borderRadius: '30px', overflow: 'hidden', boxShadow: '0 15px 40px rgba(0,0,0,0.08)', maxWidth: '100%' }}>
+          {/* THE ORGANIC BLOB IMAGE - Floating right with text wrap */}
+          <div style={{ 
+            float: 'right', 
+            width: '320px', 
+            height: '380px', 
+            marginLeft: '30px', 
+            marginBottom: '20px',
+            shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+            clipPath: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+            position: 'relative'
+          }}>
             <Image 
               src="/julie_harry_together_1778512016530.png" 
               alt="Julie and Harry" 
-              width={750} 
-              height={500} 
-              layout="responsive"
+              layout="fill"
               objectFit="cover"
             />
           </div>
 
-          <p>In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.</p>
+          <p style={{ marginBottom: '20px' }}>We are Julie 🇮🇪 and Harry 🇺🇸.</p>
+          <p style={{ marginBottom: '20px' }}>We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies.</p>
+          <p style={{ marginBottom: '20px' }}>In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.</p>
           
           {!isExcerpt ? (
             <>
-              <p>The more we talked about Plan B, the more we realized it was the plan we actually wanted all along.</p>
-              <p>So when our lease ended in 2025, we decided to quit our jobs and set off on a one-year world journey.</p>
-              <p>We spent almost a full year preparing — saving money, planning a rough route, selling our things, and slowly untangling the logistics of the life we were leaving behind.</p>
-              <p>In August 2025, we started in Ireland and began moving east, with the goal of eventually making it all the way to Australia.</p>
-              <p>Lost & Sound started as a way to keep friends and family updated along the way. But somewhere on the road, we realized this style of travel — slow, flexible, and local — was something special, and a lot more accessible than we ever thought.</p>
-              <p>Now, Lost & Sound is our way of sharing what we learn and encouraging others to take the leap, and start on the journey of your lifetime.</p>
-              <p>This site, its content, and resources are all designed to make travel feel a little more doable, and a lot more meaningful.</p>
+              <p style={{ marginBottom: '20px' }}>The more we talked about Plan B, the more we realized it was the plan we actually wanted all along.</p>
+              <p style={{ marginBottom: '20px' }}>So when our lease ended in 2025, we decided to quit our jobs and set off on a one-year world journey.</p>
+              <p style={{ marginBottom: '20px' }}>We spent almost a full year preparing — saving money, planning a rough route, selling our things, and slowly untangling the logistics of the life we were leaving behind.</p>
+              <p style={{ marginBottom: '20px' }}>In August 2025, we started in Ireland and began moving east, with the goal of eventually making it all the way to Australia.</p>
+              <p style={{ marginBottom: '20px' }}>Lost & Sound started as a way to keep friends and family updated along the way. But somewhere on the road, we realized this style of travel — slow, flexible, and local — was something special, and a lot more accessible than we ever thought.</p>
+              <p style={{ marginBottom: '20px' }}>Now, Lost & Sound is our way of sharing what we learn and encouraging others to take the leap, and start on the journey of your lifetime.</p>
+              <p style={{ marginBottom: '20px' }}>This site, its content, and resources are all designed to make travel feel a little more doable, and a lot more meaningful.</p>
+              <p style={{ marginBottom: '20px' }}>If you have questions, want advice, or just want to say hi, feel free to reach out via email, social media, or the contact link on the site.</p>
               
-              <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '30px' }}>
+              <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '30px', clear: 'both' }}>
                 <p style={{ fontWeight: 800, fontSize: '1.2rem' }}>Cheers and safe travels,</p>
                 <p style={{ fontSize: '1.2rem', fontFamily: 'var(--font-heading)' }}>Julie & Harry</p>
               </div>
@@ -68,21 +77,11 @@ export default function StorySection({ isExcerpt = false }) {
                 </p>
               </div>
 
-              {/* PLAYER CARDS - More compact height */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '60px' }}>
-                <div 
-                  onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')}
-                  style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px' }}
-                >
+                {/* PLAYER CARDS */}
+                <div onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px' }}>
                   <Image src="/julie_player_card_1778512032240.png" alt="Julie" layout="fill" objectFit="cover" />
-                  <div style={{ 
-                    position: 'absolute', bottom: 0, left: 0, right: 0, top: 0,
-                    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px',
-                    transition: 'all 0.4s ease',
-                    transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)',
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(8px)'
-                  }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.julie.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
                       <p><strong>Fav Color:</strong> {stats.julie.color}</p>
@@ -90,22 +89,11 @@ export default function StorySection({ isExcerpt = false }) {
                       <p><strong>Vibe:</strong> {stats.julie.vibe}</p>
                     </div>
                   </div>
-                  {!activeCard && <div style={{ position: 'absolute', bottom: '15px', left: '15px', color: 'white', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase' }}>Stats →</div>}
                 </div>
 
-                <div 
-                  onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')}
-                  style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px' }}
-                >
+                <div onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px' }}>
                   <Image src="/harry_player_card_1778512044767.png" alt="Harry" layout="fill" objectFit="cover" />
-                  <div style={{ 
-                    position: 'absolute', bottom: 0, left: 0, right: 0, top: 0,
-                    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px',
-                    transition: 'all 0.4s ease',
-                    transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)',
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(8px)'
-                  }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.harry.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
                       <p><strong>Fav Color:</strong> {stats.harry.color}</p>
@@ -113,12 +101,11 @@ export default function StorySection({ isExcerpt = false }) {
                       <p><strong>Vibe:</strong> {stats.harry.vibe}</p>
                     </div>
                   </div>
-                  {!activeCard && <div style={{ position: 'absolute', bottom: '15px', left: '15px', color: 'white', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase' }}>Stats →</div>}
                 </div>
               </div>
             </>
           ) : (
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <div style={{ textAlign: 'left', marginTop: '20px', clear: 'both' }}>
               <Link href="/about" className="btn btn-primary" style={{ padding: '10px 25px', fontSize: '0.9rem' }}>Read Full Story</Link>
             </div>
           )}
