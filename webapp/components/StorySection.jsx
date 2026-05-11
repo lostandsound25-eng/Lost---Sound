@@ -54,7 +54,7 @@ export default function StorySection({ isExcerpt = false }) {
             position: 'relative'
           }}>
             <Image 
-              src="/assets/H&J_Royal_Gorge.jpg" 
+              src="/assets/HJ_Royal_Gorge.jpg" 
               alt="Julie and Harry at Royal Gorge" 
               layout="fill"
               objectFit="cover"
