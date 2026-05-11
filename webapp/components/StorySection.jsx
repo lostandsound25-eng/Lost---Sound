@@ -129,7 +129,7 @@ export default function StorySection({ isExcerpt = false }) {
               </p>
               <div style={{ textAlign: 'left', marginTop: '30px', clear: 'both' }}>
                 <Link href="/about" className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  Venture Forth
+                  Venture Forth <span style={{ marginLeft: '8px', fontSize: '1.2rem' }}>→</span>
                 </Link>
               </div>
             </div>
