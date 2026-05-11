@@ -25,8 +25,14 @@ export default function StorySection({ isExcerpt = false }) {
     return () => clearInterval(timer);
   }, [journeyPhotos.length]);
 
-  const handlePhotoClick = () => {
+  const handleNext = (e) => {
+    e?.stopPropagation();
     setPhotoIndex((prev) => (prev + 1) % journeyPhotos.length);
+  };
+
+  const handlePrev = (e) => {
+    e?.stopPropagation();
+    setPhotoIndex((prev) => (prev - 1 + journeyPhotos.length) % journeyPhotos.length);
   };
 
   const stats = {
@@ -62,40 +68,54 @@ export default function StorySection({ isExcerpt = false }) {
 
         <div style={{ fontSize: '1.05rem', lineHeight: '1.7', color: '#444' }}>
           
-          {/* INTERACTIVE CAROUSEL IMAGE */}
-          <div 
-            onClick={handlePhotoClick}
-            style={{ 
-              float: 'right', 
-              width: '340px', 
-              height: '400px', 
-              marginLeft: '30px', 
-              marginBottom: '20px',
-              shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
-              clipPath: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-              position: 'relative',
-              cursor: 'pointer',
-              overflow: 'hidden'
-            }}
-          >
-            {journeyPhotos.map((photo, idx) => (
-              <div key={photo} style={{ 
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                opacity: idx === photoIndex ? 1 : 0,
-                transition: 'opacity 1.5s ease-in-out',
-                zIndex: idx === photoIndex ? 1 : 0
-              }}>
-                <Image 
-                  src={photo} 
-                  alt="Journey photo" 
-                  layout="fill"
-                  objectFit="cover"
-                />
-              </div>
-            ))}
-            <div style={{ position: 'absolute', bottom: '15px', right: '15px', color: 'white', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.6, zIndex: 10 }}>
-              Click to Skip →
+          {/* THE CAROUSEL IMAGE SYSTEM */}
+          <div style={{ float: 'right', marginLeft: '30px', marginBottom: '20px', textAlign: 'center' }}>
+            <div 
+              style={{ 
+                width: '340px', 
+                height: '400px', 
+                shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+                clipPath: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {journeyPhotos.map((photo, idx) => (
+                <div key={photo} style={{ 
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  opacity: idx === photoIndex ? 1 : 0,
+                  transition: 'opacity 1.5s ease-in-out',
+                  zIndex: idx === photoIndex ? 1 : 0
+                }}>
+                  <Image 
+                    src={photo} 
+                    alt="Journey photo" 
+                    layout="fill"
+                    objectFit="cover"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* NAVIGATION ARROWS */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
+              <button 
+                onClick={handlePrev}
+                style={{ background: 'white', border: 'none', width: '35px', height: '35px', borderRadius: '50%', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--color-purple)', transition: 'all 0.2s ease' }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                ‹
+              </button>
+              <button 
+                onClick={handleNext}
+                style={{ background: 'white', border: 'none', width: '35px', height: '35px', borderRadius: '50%', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: 'var(--color-purple)', transition: 'all 0.2s ease' }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                ›
+              </button>
             </div>
           </div>
 
