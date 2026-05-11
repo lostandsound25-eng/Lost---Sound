@@ -25,29 +25,26 @@ export default function StorySection({ isExcerpt = false }) {
 
   return (
     <section id="our-story" style={{ 
-      padding: isExcerpt ? '40px 0' : '60px 0', 
+      padding: isExcerpt ? '20px 0 60px' : '30px 0 80px', 
       backgroundColor: '#F9F6ED',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* BACKGROUND ACCENT BLOBS to kill white space */}
+      {/* VIBRANT BACKGROUND BLOBS */}
       <div style={{ 
-        position: 'absolute', top: '-10%', left: '-10%', width: '50%', height: '50%', 
-        background: 'radial-gradient(circle, rgba(144, 98, 114, 0.05) 0%, transparent 70%)',
+        position: 'absolute', top: '-15%', left: '-15%', width: '60%', height: '60%', 
+        background: 'radial-gradient(circle, rgba(144, 98, 114, 0.12) 0%, transparent 60%)',
         zIndex: 0, pointerEvents: 'none'
       }}></div>
       <div style={{ 
-        position: 'absolute', bottom: '10%', right: '-5%', width: '40%', height: '40%', 
-        background: 'radial-gradient(circle, rgba(242, 174, 48, 0.05) 0%, transparent 70%)',
+        position: 'absolute', bottom: '-10%', right: '-10%', width: '50%', height: '50%', 
+        background: 'radial-gradient(circle, rgba(242, 174, 48, 0.1) 0%, transparent 60%)',
         zIndex: 0, pointerEvents: 'none'
       }}></div>
 
       <div className="container" style={{ maxWidth: '800px', position: 'relative', zIndex: 1 }}>
         
-        <div style={{ textAlign: 'left', marginBottom: '40px' }}>
-          <div style={{ display: 'inline-block', padding: '4px 12px', backgroundColor: 'rgba(144, 98, 114, 0.1)', color: 'var(--color-purple)', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px' }}>
-            The Journey
-          </div>
+        <div style={{ textAlign: 'left', marginBottom: '30px' }}>
           <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>Our Story</h2>
         </div>
 
@@ -73,8 +70,12 @@ export default function StorySection({ isExcerpt = false }) {
             />
           </div>
 
+          <p style={{ marginBottom: '20px', fontWeight: 600, fontSize: '1.2rem', color: 'var(--color-purple)' }}>
+            Howdy! We are Julie 🇮🇪 and Harry 🇺🇸
+          </p>
+          
           <p style={{ marginBottom: '15px' }}>
-            Howdy! We are Julie 🇮🇪 and Harry 🇺🇸 We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies. In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.
+            We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies. In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.
           </p>
           
           {!isExcerpt ? (
