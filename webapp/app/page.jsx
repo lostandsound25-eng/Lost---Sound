@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import StorySection from '@/components/StorySection'
 
 export default function Home() {
   return (
@@ -40,24 +41,7 @@ export default function Home() {
         <p>Trusted by weary planners looking for a better way to travel</p>
       </section>
 
-      <section className="container" style={{ padding: '80px 24px' }}>
-        <div className="split-section">
-          <div className="split-content">
-            <h2>Who are we?</h2>
-            <p className="mb-4" style={{ fontSize: '1.2rem' }}>
-              We're a couple of travelers who realized that seeing the world shouldn't feel like a chore. After years of navigating the chaotic middle-ground between budget backpacking and luxury tours, we created Lost & Sound to help others find that perfect balance of adventure and comfort.
-            </p>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <Link href="/about" style={{ fontWeight: 600, color: 'var(--color-orange)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Read our full story <span style={{ fontSize: '1.2rem' }}>→</span>
-              </Link>
-            </div>
-          </div>
-          <div>
-            <img src="/assets/hj-colorado-foliage.jpg" alt="Who we are" className="organic-image" style={{ height: '450px' }} />
-          </div>
-        </div>
-      </section>
+      <StorySection />
 
       <section style={{ backgroundColor: 'var(--color-golden)', borderRadius: '80px 80px 0 0', padding: '120px 0' }}>
         <div className="container">
