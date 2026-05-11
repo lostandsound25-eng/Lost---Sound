@@ -144,8 +144,24 @@ export default function TripPlanner() {
                     {trip.destination}
                   </p>
                 </div>
-                <div style={{ color: 'var(--color-purple)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if(confirm('Delete this trip?')) {
+                        const updated = trips.filter(t => t.id !== trip.id);
+                        setTrips(updated);
+                        localStorage.setItem('ls_trips', JSON.stringify(updated));
+                      }
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    Delete
+                  </button>
+                  <div style={{ color: 'var(--color-purple)' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </div>
                 </div>
               </div>
             </Link>

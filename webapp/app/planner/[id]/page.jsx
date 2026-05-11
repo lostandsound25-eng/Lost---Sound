@@ -18,19 +18,29 @@ export default function TripDetail() {
       if (found) {
         // If no days generated yet, generate them based on start/end dates
         if ((!found.days || found.days.length === 0) && found.startDate && found.endDate) {
-          const days = eachDayOfInterval({
-            start: parseISO(found.startDate),
-            end: parseISO(found.endDate)
-          }).map((date, idx) => ({
-            id: idx,
-            date: format(date, 'yyyy-MM-dd'),
-            anchors: [],
-            logistics: [],
-            flex: []
-          }));
-          found.days = days;
+          try {
+            const days = eachDayOfInterval({
+              start: parseISO(found.startDate),
+              end: parseISO(found.endDate)
+            }).map((date, idx) => ({
+              id: idx,
+              date: format(date, 'yyyy-MM-dd'),
+              anchors: [],
+              logistics: [],
+              flex: []
+            }));
+            found.days = days;
+          } catch (err) {
+            console.error("Invalid dates in trip", err);
+            window.location.href = '/planner';
+          }
+        } else if (!found.startDate || !found.endDate) {
+          // If it's a legacy trip without dates, we can't show the calendar
+          window.location.href = '/planner';
         }
         setTrip(found);
+      } else {
+        window.location.href = '/planner';
       }
     }
   }, [id]);
