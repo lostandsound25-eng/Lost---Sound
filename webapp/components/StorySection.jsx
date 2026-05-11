@@ -6,6 +6,8 @@ import Link from 'next/link';
 export default function StorySection({ isExcerpt = false }) {
   const [activeCard, setActiveCard] = useState(null);
 
+  const Brand = () => <span style={{ color: 'var(--color-purple)', fontWeight: 800 }}>Lost & Sound</span>;
+
   const stats = {
     julie: {
       name: 'Julie 🇮🇪',
@@ -27,22 +29,9 @@ export default function StorySection({ isExcerpt = false }) {
     <section id="our-story" style={{ 
       padding: isExcerpt ? '20px 0 60px' : '30px 0 80px', 
       backgroundColor: '#F9F6ED',
-      position: 'relative',
-      overflow: 'hidden'
+      position: 'relative'
     }}>
-      {/* VIBRANT BACKGROUND BLOBS */}
-      <div style={{ 
-        position: 'absolute', top: '-15%', left: '-15%', width: '60%', height: '60%', 
-        background: 'radial-gradient(circle, rgba(144, 98, 114, 0.12) 0%, transparent 60%)',
-        zIndex: 0, pointerEvents: 'none'
-      }}></div>
-      <div style={{ 
-        position: 'absolute', bottom: '-10%', right: '-10%', width: '50%', height: '50%', 
-        background: 'radial-gradient(circle, rgba(242, 174, 48, 0.1) 0%, transparent 60%)',
-        zIndex: 0, pointerEvents: 'none'
-      }}></div>
-
-      <div className="container" style={{ maxWidth: '800px', position: 'relative', zIndex: 1 }}>
+      <div className="container" style={{ maxWidth: '800px' }}>
         
         <div style={{ textAlign: 'left', marginBottom: '30px' }}>
           <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>Our Story</h2>
@@ -84,20 +73,22 @@ export default function StorySection({ isExcerpt = false }) {
                 The more we talked about Plan B, the more we realized it was the plan we actually wanted all along. So when our lease ended in 2025, we decided to quit our jobs and set off on a one-year world journey. We spent almost a full year preparing — saving money, planning a rough route, selling our things, and slowly untangling the logistics of the life we were leaving behind.
               </p>
               <p style={{ marginBottom: '15px' }}>
-                In August 2025, we started in Ireland and began moving east, with the goal of eventually making it all the way to Australia. Lost & Sound started as a way to keep friends and family updated along the way. But somewhere on the road, we realized this style of travel — slow, flexible, and local — was something special, and a lot more accessible than we ever thought.
+                In August 2025, we started in Ireland and began moving east, with the goal of eventually making it all the way to Australia. <Brand /> started as a way to keep friends and family updated along the way. But somewhere on the road, we realized this style of travel — slow, flexible, and local — was something special, and a lot more accessible than we ever thought.
               </p>
               <p style={{ marginBottom: '15px' }}>
-                Now, Lost & Sound is our way of sharing what we learn and encouraging others to take the leap, and start on the journey of your lifetime. This site, its content, and resources are all designed to make travel feel a little more doable, and a lot more meaningful. If you have questions, want advice, or just want to say hi, feel free to reach out via email, social media, or the contact link on the site.
+                Now, <Brand /> is our way of sharing what we learn and encouraging others to take the leap, and start on the journey of your lifetime. This site, its content, and resources are all designed to make travel feel a little more doable, and a lot more meaningful. If you have questions, want advice, or just want to say hi, feel free to reach out via email, social media, or the contact link on the site.
               </p>
               
-              <div style={{ marginTop: '30px', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '30px', clear: 'both' }}>
-                <p style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '5px' }}>Cheers and safe travels,</p>
-                <p style={{ fontSize: '1.2rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Julie & Harry</p>
+              <div style={{ marginTop: '30px' }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '5px' }}>Cheers and safe travels,</p>
+                <p style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-purple)' }}>Julie & Harry</p>
               </div>
 
-              <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '25px', marginTop: '30px', borderLeft: '4px solid var(--color-purple)', fontSize: '0.95rem', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
+              <div style={{ marginTop: '40px', fontSize: '0.95rem' }}>
                 <p style={{ margin: 0, fontStyle: 'italic', opacity: 0.8 }}>
-                  <strong>P.S.</strong> The one piece of advice we hear over and over again on our travels is: “Keep going.” A phrase that applies well to travels, but also anything in life. And this page is an example of that.
+                  <strong>P.S.</strong> The one piece of advice we hear over and over again on our travels is: “Keep going.” A phrase that applies well to travels, but also anything in life. 
+                  <br />
+                  And this site is an example of that.
                 </p>
               </div>
 
