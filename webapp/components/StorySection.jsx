@@ -34,16 +34,18 @@ export default function StorySection({ isExcerpt = false }) {
       <div className="container" style={{ maxWidth: '800px' }}>
         
         <div style={{ textAlign: 'left', marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>Our Story</h2>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>
+            {isExcerpt ? 'Our Journey' : 'Our Story'}
+          </h2>
         </div>
 
-        <div style={{ fontSize: '1.05rem', lineHeight: '1.65', color: '#444' }}>
+        <div style={{ fontSize: '1.05rem', lineHeight: '1.7', color: '#444' }}>
           
-          {/* THE ORGANIC BLOB IMAGE */}
+          {/* THE ORGANIC BLOB IMAGE - Now using the Royal Gorge Photo */}
           <div style={{ 
             float: 'right', 
-            width: '320px', 
-            height: '380px', 
+            width: '340px', 
+            height: '400px', 
             marginLeft: '30px', 
             marginBottom: '20px',
             shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
@@ -52,23 +54,36 @@ export default function StorySection({ isExcerpt = false }) {
             position: 'relative'
           }}>
             <Image 
-              src="/julie_harry_together_1778512016530.png" 
-              alt="Julie and Harry" 
+              src="/assets/H&J_Royal_Gorge.jpg" 
+              alt="Julie and Harry at Royal Gorge" 
               layout="fill"
               objectFit="cover"
             />
           </div>
 
-          <p style={{ marginBottom: '20px', fontWeight: 600, fontSize: '1.2rem', color: 'var(--color-purple)' }}>
-            Howdy! We are Julie 🇮🇪 and Harry 🇺🇸
-          </p>
-          
-          <p style={{ marginBottom: '15px' }}>
-            We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies. In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.
-          </p>
-          
-          {!isExcerpt ? (
+          {isExcerpt ? (
+            <div style={{ fontSize: '1.15rem' }}>
+              <p style={{ marginBottom: '20px' }}>
+                We are Julie and Harry, and together we are <span style={{ color: 'var(--color-orange)', fontWeight: 800, fontStyle: 'italic' }}>Lost</span> in the world, <span style={{ color: 'var(--color-purple)', fontWeight: 800 }}>& Sound</span> in our journey. 
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                When we met, we had no clue that our paths crossing would lead us to where we are today, but they did and we couldn't be more happy about it. The story of <Brand /> is one that started with us asking the question "How?" and has blossomed as we have learned to ask the question "Why?"
+              </p>
+              <div style={{ textAlign: 'left', marginTop: '30px', clear: 'both' }}>
+                <Link href="/about" className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  Venture Forth
+                </Link>
+              </div>
+            </div>
+          ) : (
             <>
+              <p style={{ marginBottom: '20px', fontWeight: 600, fontSize: '1.2rem', color: 'var(--color-purple)' }}>
+                Howdy! We are Julie 🇮🇪 and Harry 🇺🇸
+              </p>
+              
+              <p style={{ marginBottom: '15px' }}>
+                We met in grad school in the U.S. and lived together just outside Chicago before later moving to Denver, at the foot of the Rockies. In 2025, Julie’s visa in the U.S. was coming to an end, so we started thinking about a Plan B — slow traveling the world, something we had each always dreamed about independently.
+              </p>
               <p style={{ marginBottom: '15px' }}>
                 The more we talked about Plan B, the more we realized it was the plan we actually wanted all along. So when our lease ended in 2025, we decided to quit our jobs and set off on a one-year world journey. We spent almost a full year preparing — saving money, planning a rough route, selling our things, and slowly untangling the logistics of the life we were leaving behind.
               </p>
@@ -92,10 +107,10 @@ export default function StorySection({ isExcerpt = false }) {
                 </p>
               </div>
 
-              {/* PLAYER CARDS */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '60px' }}>
+                {/* PLAYER CARDS */}
                 <div onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-                  <Image src="/julie_player_card_1778512032240.png" alt="Julie" layout="fill" objectFit="cover" />
+                  <Image src="/webapp/public/julie_player_card_1778512032240.png" alt="Julie" layout="fill" objectFit="cover" />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.julie.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
@@ -107,7 +122,7 @@ export default function StorySection({ isExcerpt = false }) {
                 </div>
 
                 <div onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-                  <Image src="/harry_player_card_1778512044767.png" alt="Harry" layout="fill" objectFit="cover" />
+                  <Image src="/webapp/public/harry_player_card_1778512044767.png" alt="Harry" layout="fill" objectFit="cover" />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.harry.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
@@ -119,10 +134,6 @@ export default function StorySection({ isExcerpt = false }) {
                 </div>
               </div>
             </>
-          ) : (
-            <div style={{ textAlign: 'left', marginTop: '30px', clear: 'both' }}>
-              <Link href="/about" className="btn btn-primary" style={{ padding: '10px 25px', fontSize: '0.9rem' }}>Read Full Story</Link>
-            </div>
           )}
         </div>
       </div>
