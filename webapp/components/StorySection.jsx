@@ -54,8 +54,8 @@ export default function StorySection({ isExcerpt = false }) {
             position: 'relative'
           }}>
             <Image 
-              src="/assets/HJ_Royal_Gorge.jpg" 
-              alt="Julie and Harry at Royal Gorge" 
+              src="/assets/hj-colorado-foliage.jpg" 
+              alt="Julie and Harry in the Colorado Foliage" 
               layout="fill"
               objectFit="cover"
             />
