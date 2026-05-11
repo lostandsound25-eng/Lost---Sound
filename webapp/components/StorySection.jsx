@@ -1,12 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 export default function StorySection({ isExcerpt = false }) {
   const [activeCard, setActiveCard] = useState(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   const Brand = () => <span style={{ color: 'var(--color-purple)', fontWeight: 800 }}>Lost & Sound</span>;
+
+  const journeyPhotos = [
+    '/assets/hj-colorado-foliage.jpg',
+    '/assets/HJ_Maroon_Bells.jpg',
+    '/assets/HJ_Karintoohil.jpg',
+    '/assets/HJ_sunset_silhouette.jpg',
+    '/assets/HJ_Pakse_Loop.jpg'
+  ];
+
+  // Rotation logic: every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhotoIndex((prev) => (prev + 1) % journeyPhotos.length);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [journeyPhotos.length]);
+
+  const handlePhotoClick = () => {
+    setPhotoIndex((prev) => (prev + 1) % journeyPhotos.length);
+  };
 
   const stats = {
     julie: {
@@ -41,24 +62,41 @@ export default function StorySection({ isExcerpt = false }) {
 
         <div style={{ fontSize: '1.05rem', lineHeight: '1.7', color: '#444' }}>
           
-          {/* THE ORGANIC BLOB IMAGE */}
-          <div style={{ 
-            float: 'right', 
-            width: '340px', 
-            height: '400px', 
-            marginLeft: '30px', 
-            marginBottom: '20px',
-            shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
-            clipPath: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            position: 'relative'
-          }}>
-            <Image 
-              src="/assets/hj-colorado-foliage.jpg" 
-              alt="Julie and Harry in the Colorado Foliage" 
-              layout="fill"
-              objectFit="cover"
-            />
+          {/* INTERACTIVE CAROUSEL IMAGE */}
+          <div 
+            onClick={handlePhotoClick}
+            style={{ 
+              float: 'right', 
+              width: '340px', 
+              height: '400px', 
+              marginLeft: '30px', 
+              marginBottom: '20px',
+              shapeOutside: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+              clipPath: 'inset(0% 0% 0% 0% round 60% 40% 30% 70% / 60% 30% 70% 40%)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+              position: 'relative',
+              cursor: 'pointer',
+              overflow: 'hidden'
+            }}
+          >
+            {journeyPhotos.map((photo, idx) => (
+              <div key={photo} style={{ 
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                opacity: idx === photoIndex ? 1 : 0,
+                transition: 'opacity 1.5s ease-in-out',
+                zIndex: idx === photoIndex ? 1 : 0
+              }}>
+                <Image 
+                  src={photo} 
+                  alt="Journey photo" 
+                  layout="fill"
+                  objectFit="cover"
+                />
+              </div>
+            ))}
+            <div style={{ position: 'absolute', bottom: '15px', right: '15px', color: 'white', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.6, zIndex: 10 }}>
+              Click to Skip →
+            </div>
           </div>
 
           {isExcerpt ? (
@@ -122,7 +160,7 @@ export default function StorySection({ isExcerpt = false }) {
                 </div>
 
                 <div onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-                  <Image src="/harry_player_card_1778512044767.png" alt="Harry" layout="fill" objectFit="cover" />
+                  <Image src="/assets/Harry_Albania.jpg" alt="Harry" layout="fill" objectFit="cover" />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.harry.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
