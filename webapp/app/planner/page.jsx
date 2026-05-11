@@ -14,13 +14,15 @@ export default function TripPlanner() {
     if (saved) setTrips(JSON.parse(saved));
   }, []);
 
-  const createTrip = () => {
+  const createTrip = (startDate, endDate) => {
     if (!newTripName || !newTripDestination) return;
     
     const newTrip = {
       id: Date.now(),
       name: newTripName,
       destination: newTripDestination,
+      startDate,
+      endDate,
       createdAt: new Date().toISOString(),
       days: [] // We'll add logic to generate day cards later
     };
@@ -79,8 +81,22 @@ export default function TripPlanner() {
                 onChange={(e) => setNewTripDestination(e.target.value)}
                 style={{ width: '100%', padding: '16px 24px', borderRadius: '20px', border: '1px solid #eee', fontSize: '1.1rem' }}
               />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600 }}>Start Date</label>
+                  <input type="date" id="start-date" style={{ width: '100%', padding: '12px 20px', borderRadius: '15px', border: '1px solid #eee' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600 }}>End Date</label>
+                  <input type="date" id="end-date" style={{ width: '100%', padding: '12px 20px', borderRadius: '15px', border: '1px solid #eee' }} />
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                <button onClick={createTrip} className="btn btn-primary">Start Planning</button>
+                <button onClick={() => {
+                  const start = document.getElementById('start-date').value;
+                  const end = document.getElementById('end-date').value;
+                  createTrip(start, end);
+                }} className="btn btn-primary">Start Planning</button>
                 <button onClick={() => setIsCreating(false)} className="btn btn-outline" style={{ border: 'none' }}>Cancel</button>
               </div>
             </div>
