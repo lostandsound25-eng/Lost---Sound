@@ -41,7 +41,7 @@ export default function Home() {
         <p>Trusted by weary planners looking for a better way to travel</p>
       </section>
 
-      <StorySection />
+      <StorySection isExcerpt={true} />
 
       <section style={{ backgroundColor: 'var(--color-golden)', borderRadius: '80px 80px 0 0', padding: '120px 0' }}>
         <div className="container">
