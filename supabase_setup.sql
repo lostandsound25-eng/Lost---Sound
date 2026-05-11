@@ -69,3 +69,25 @@ USING (bucket_id = 'itinerary-images' AND auth.role() = 'authenticated');
 CREATE POLICY "Admins can delete images" 
 ON storage.objects FOR DELETE 
 USING (bucket_id = 'itinerary-images' AND auth.role() = 'authenticated');
+
+-- 5. Create the 'expenses' table for Nomad Tracker
+CREATE TABLE public.expenses (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  date date DEFAULT current_date NOT NULL,
+  amount decimal(12,2) NOT NULL,
+  category text NOT NULL,
+  subcategories text[], -- Array of subcategories
+  note text,
+  raw_input text,
+  user_id uuid REFERENCES auth.users(id) -- Optional: for authenticated users
+);
+
+-- Enable RLS on expenses
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+
+-- Allow public to manage expenses for now (or restrict to auth users later)
+CREATE POLICY "Anyone can manage expenses" 
+ON public.expenses FOR ALL 
+USING (true)
+WITH CHECK (true);
