@@ -97,6 +97,21 @@ export default function TripDetail() {
             Dashboard
           </Link>
           <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              onClick={() => {
+                if(confirm('Are you sure you want to delete this entire trip?')) {
+                  const saved = localStorage.getItem('ls_trips');
+                  const allTrips = JSON.parse(saved);
+                  const updated = allTrips.filter(t => t.id.toString() !== id);
+                  localStorage.setItem('ls_trips', JSON.stringify(updated));
+                  window.location.href = '/planner';
+                }
+              }}
+              className="btn btn-outline" 
+              style={{ borderRadius: '50px', color: '#ff4d4d', borderColor: '#ff4d4d' }}
+            >
+              Delete Trip
+            </button>
             <button onClick={printPDF} className="btn btn-outline" style={{ borderRadius: '50px' }}>Save as PDF</button>
             <button className="btn btn-outline" style={{ borderRadius: '50px' }}>Export to Calendar</button>
           </div>
