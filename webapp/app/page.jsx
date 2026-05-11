@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import StorySection from '@/components/StorySection'
+import StorySection from '../components/StorySection'
 
 export default function Home() {
   return (
