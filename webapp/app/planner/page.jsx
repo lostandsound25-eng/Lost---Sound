@@ -140,9 +140,19 @@ export default function TripPlanner() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ fontSize: '1.8rem', marginBottom: '4px' }}>{trip.name}</h3>
-                  <p style={{ opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.8rem', fontWeight: 700 }}>
-                    {trip.destination}
-                  </p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <p style={{ opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.8rem', fontWeight: 700 }}>
+                      {trip.destination}
+                    </p>
+                    {trip.startDate && (
+                      <>
+                        <span style={{ opacity: 0.2 }}>•</span>
+                        <p style={{ opacity: 0.5, fontSize: '0.8rem', fontWeight: 600 }}>
+                          {trip.startDate} — {trip.endDate}
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                   <button 
