@@ -1,44 +1,44 @@
-import Link from 'next/link'
-import StorySection from '../components/StorySection'
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import StorySection from '../components/StorySection';
+import KeepInTouchForm from '../components/KeepInTouchForm';
 
 export default function Home() {
+  const [showTrackerModal, setShowTrackerModal] = useState(false);
+  const router = useRouter();
+
+  const handleTrackerSuccess = () => {
+    // Small delay for user to see success message, then redirect
+    setTimeout(() => {
+      router.push('/tracker');
+    }, 1500);
+  };
+
   return (
-    <>
-      <header className="hero">
+    <main>
+      <section className="hero">
         <div className="container hero-split">
           <div className="hero-text">
-            <h1 style={{ fontSize: '5rem', lineHeight: '1.05', marginBottom: '2rem' }}>
-              Sharing our journey,<br />
-              <span style={{ color: 'var(--color-purple)' }}>to simplify yours.</span>
-            </h1>
-            <h2 style={{ 
-              fontSize: '2rem', 
-              fontFamily: 'var(--font-heading)', 
-              color: 'var(--color-golden)', 
-              marginBottom: '1rem',
-              fontWeight: 600
-            }}>
-              This site is everything we wish we knew, all in one place.
-            </h2>
-            <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
-              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Use our tried-and-true free <Link href="/itineraries" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>itineraries</Link> to take the guesswork out of planning your trip. 
-              <br /><br />
-              Or, if you would rather not do the planning yourself, we can do it with you. Book your free 15-minute call with us to discuss your next trip.
-            </p>
-            <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
-              <Link href="/itineraries" className="btn btn-secondary">Itineraries</Link>
+            <h1 style={{ lineHeight: 1 }}>Lost <br/>& Sound</h1>
+            <p>Travel the world without burning out or breaking the bank.</p>
+            <div className="hero-btns">
+              <Link href="/itineraries" className="btn btn-primary">Plan a Trip</Link>
+              <Link href="/blog" className="btn btn-secondary">Read the Blog</Link>
             </div>
           </div>
           <div className="hero-visuals">
-            <img src="/assets/hj-cottonwood.jpg" alt="Couple traveling" className="blob-shape-1" />
-            <img src="/assets/rice-terraces.jpg" alt="Temple" className="blob-shape-2" />
+            <img src="/assets/hj-colorado-foliage.jpg" alt="Julie and Harry in Colorado" className="blob-shape-1" />
+            <img src="/assets/ireland.png" alt="Exploring Ireland" className="blob-shape-2" />
           </div>
         </div>
-      </header>
+      </section>
 
       <section className="social-proof">
-        <p>Trusted by weary planners looking for a better way to travel</p>
+        <div className="container">
+          <p>20,000+ MILES TRAVELED • 4 CONTINENTS • 1 MISSION</p>
+        </div>
       </section>
 
       <StorySection isExcerpt={true} />
@@ -55,16 +55,22 @@ export default function Home() {
             gridTemplateColumns: '1fr 1fr',
             gap: '60px',
             alignItems: 'center',
-            boxShadow: '0 30px 60px rgba(133, 58, 81, 0.15)'
+            boxShadow: '0 30px 60px rgba(133, 58, 81, 0.15)',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
             <div>
               <h2 style={{ color: 'var(--color-golden)', fontSize: '3rem', marginBottom: '1.5rem' }}>The Nomad Tracker</h2>
               <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.9 }}>
-                The one piece of advice we have for anyone on the road is to keep going. We built this tool to help you do just that—track your budget locally, privately, and for free.
+                The one piece of advice we have for anyone on the road is to keep going. Log your spend, track your budget, and keep your journey sound.
               </p>
-              <Link href="/tracker" className="btn btn-primary" style={{ backgroundColor: 'var(--color-golden)', color: 'var(--color-purple)', padding: '16px 40px' }}>
-                Try the Tracker →
-              </Link>
+              <button 
+                onClick={() => setShowTrackerModal(true)}
+                className="btn btn-primary" 
+                style={{ backgroundColor: 'var(--color-golden)', color: 'var(--color-purple)', padding: '16px 40px', border: 'none' }}
+              >
+                Get Free Access →
+              </button>
             </div>
             <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '30px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)' }}>
               {/* SNEAK PEEK UI */}
@@ -85,6 +91,44 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* LEAD CAPTURE MODAL */}
+      {showTrackerModal && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(133, 58, 81, 0.9)', 
+          backdropFilter: 'blur(10px)',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '50px 40px', 
+            borderRadius: '40px', 
+            maxWidth: '500px', 
+            width: '100%',
+            position: 'relative',
+            textAlign: 'center'
+          }}>
+            <button 
+              onClick={() => setShowTrackerModal(false)}
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--color-purple)' }}
+            >
+              ✕
+            </button>
+            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🧭</div>
+            <h2 style={{ fontSize: '2.2rem', color: 'var(--color-purple)', marginBottom: '15px' }}>Unlock the Tracker</h2>
+            <p style={{ marginBottom: '30px', opacity: 0.8, fontSize: '1.1rem' }}>
+              Enter your email to unlock the Nomad Tracker. We'll also send you a quick guide on how to best use it on the road!
+            </p>
+            <KeepInTouchForm onSuccess={handleTrackerSuccess} />
+          </div>
+        </div>
+      )}
 
       <section style={{ backgroundColor: 'var(--color-golden)', borderRadius: '80px 80px 0 0', padding: '120px 0' }}>
         <div className="container">
@@ -109,33 +153,38 @@ export default function Home() {
                 <img src="/assets/ireland.png" alt="Ireland North Coast" />
               </div>
               <div className="card-content">
-                <h3>Ireland's North Coast</h3>
-                <p>7 Days along the Wild Atlantic Way and the Giant's Causeway.</p>
+                <h3>Ireland's North</h3>
+                <p>Coastal cliffs, ancient causeways, and legendary pubs.</p>
               </div>
             </div>
 
             <div className="card">
               <div className="card-img-container">
-                <img src="/assets/rice-terraces.jpg" alt="Thailand Adventure" />
+                <img src="/assets/pakse_loop.jpg" alt="Laos Pakse Loop" />
               </div>
               <div className="card-content">
-                <h3>Thailand Immersive</h3>
-                <p>3 Weeks from Bangkok's energy to the tranquil islands of the South.</p>
+                <h3>The Pakse Loop</h3>
+                <p>3 Days, 2 wheels, and countless waterfalls in Southern Laos.</p>
               </div>
             </div>
           </div>
 
-          <div className="text-center" style={{ marginTop: '60px' }}>
-            <Link href="/itineraries" className="btn btn-outline" style={{ background: 'white' }}>View All Trips</Link>
+          <div className="text-center mt-5">
+            <Link href="/itineraries" className="btn btn-outline">Explore All Itineraries</Link>
           </div>
         </div>
       </section>
 
       <section className="conversion-section">
-        <h2>Want us to plan this for you?</h2>
-        <p>We tailor these trips to your dates, budget, and travel style.</p>
-        <Link href="/start-planning" className="btn btn-primary" style={{ background: 'var(--color-purple)', color: 'white' }}>Book a Free 15-Min Call</Link>
+        <div className="container">
+          <h2 style={{ color: 'var(--color-purple)' }}>Let's Venture Forth.</h2>
+          <p>Ready to start planning your next journey? We're here to help you get lost (and stay sound).</p>
+          <div className="hero-btns" style={{ justifyContent: 'center' }}>
+            <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
+            <Link href="/work-with-us" className="btn btn-outline">Work with Us</Link>
+          </div>
+        </div>
       </section>
-    </>
-  )
+    </main>
+  );
 }

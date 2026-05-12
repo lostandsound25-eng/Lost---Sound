@@ -2,13 +2,11 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { parseExpense, getCategoryEmoji } from '../../utils/trackerParser';
-import KeepInTouchForm from '../../components/KeepInTouchForm';
 
 export default function NomadTracker() {
   const [expenses, setExpenses] = useState([]);
   const [input, setInput] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const inputRef = useRef(null);
 
   // Initialize and load from LocalStorage
@@ -18,12 +16,6 @@ export default function NomadTracker() {
     if (saved) {
       setExpenses(JSON.parse(saved));
     }
-    
-    // Check if user is already "subscribed" locally
-    const subStatus = localStorage.getItem('ls_is_subscribed');
-    if (subStatus === 'true') {
-      setIsSubscribed(true);
-    }
   }, []);
 
   // Save to LocalStorage whenever expenses change
@@ -32,11 +24,6 @@ export default function NomadTracker() {
       localStorage.setItem('ls_nomad_expenses', JSON.stringify(expenses));
     }
   }, [expenses, mounted]);
-
-  const handleSubscribeSuccess = () => {
-    setIsSubscribed(true);
-    localStorage.setItem('ls_is_subscribed', 'true');
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -69,57 +56,6 @@ export default function NomadTracker() {
 
   if (!mounted) return null;
 
-  // --- GATED VIEW (Lead Magnet) ---
-  if (!isSubscribed) {
-    return (
-      <main style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
-        <div className="container" style={{ maxWidth: '500px', textAlign: 'center' }}>
-          
-          <Link href="/" style={{ opacity: 0.6, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-purple)', marginBottom: '40px', display: 'inline-block' }}>
-            ← Back Home
-          </Link>
-
-          <div style={{ backgroundColor: 'white', padding: '50px 40px', borderRadius: '40px', boxShadow: '0 30px 60px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.02)' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🧭</div>
-            <h1 style={{ fontSize: '2.5rem', color: 'var(--color-purple)', marginBottom: '15px' }}>The Nomad Tracker</h1>
-            <p style={{ fontSize: '1.1rem', marginBottom: '35px', opacity: 0.8, lineHeight: '1.6' }}>
-              Join our community of world travelers to unlock the tracker and keep your budget as sound as your journey.
-            </p>
-
-            {/* SNEAK PEEK PREVIEW */}
-            <div style={{ 
-              backgroundColor: 'var(--color-bg)', 
-              borderRadius: '25px', 
-              padding: '20px', 
-              marginBottom: '40px', 
-              opacity: 0.5, 
-              pointerEvents: 'none',
-              transform: 'scale(0.9)',
-              border: '1px dashed var(--color-purple)'
-            }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span>🍔 Lunch</span>
-                  <strong>$15.00</strong>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🛵 Tuktuk</span>
-                  <strong>$5.50</strong>
-               </div>
-               <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>TOTAL TODAY</span>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>$20.50</div>
-               </div>
-            </div>
-
-            <KeepInTouchForm onSuccess={handleSubscribeSuccess} />
-            <p style={{ fontSize: '0.8rem', marginTop: '20px', opacity: 0.5 }}>It's free, private, and always will be.</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // --- FULL TRACKER VIEW ---
   return (
     <main style={{ 
       minHeight: '100vh', 
