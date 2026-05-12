@@ -43,6 +43,49 @@ export default function Home() {
 
       <StorySection isExcerpt={true} />
 
+      {/* NOMAD TRACKER SPOTLIGHT */}
+      <section style={{ backgroundColor: 'var(--color-bg)', padding: '80px 0' }}>
+        <div className="container">
+          <div style={{ 
+            backgroundColor: 'var(--color-purple)', 
+            borderRadius: 'var(--radius-card)', 
+            padding: '60px 40px',
+            color: 'white',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '60px',
+            alignItems: 'center',
+            boxShadow: '0 30px 60px rgba(133, 58, 81, 0.15)'
+          }}>
+            <div>
+              <h2 style={{ color: 'var(--color-golden)', fontSize: '3rem', marginBottom: '1.5rem' }}>The Nomad Tracker</h2>
+              <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.9 }}>
+                The one piece of advice we have for anyone on the road is to keep going. We built this tool to help you do just that—track your budget locally, privately, and for free.
+              </p>
+              <Link href="/tracker" className="btn btn-primary" style={{ backgroundColor: 'var(--color-golden)', color: 'var(--color-purple)', padding: '16px 40px' }}>
+                Try the Tracker →
+              </Link>
+            </div>
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '30px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {/* SNEAK PEEK UI */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <span style={{ fontSize: '1.5rem' }}>🥗</span>
+                <span style={{ fontWeight: 800 }}>$15.50</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <span style={{ fontSize: '1.5rem' }}>🚕</span>
+                <span style={{ fontWeight: 800 }}>$5.00</span>
+              </div>
+              <div style={{ height: '2px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '20px 0' }}></div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ opacity: 0.6, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '2px' }}>Total Today</p>
+                <p style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-golden)', margin: 0 }}>$20.50</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section style={{ backgroundColor: 'var(--color-golden)', borderRadius: '80px 80px 0 0', padding: '120px 0' }}>
         <div className="container">
           <div className="text-center mb-5">
