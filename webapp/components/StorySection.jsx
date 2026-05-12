@@ -130,7 +130,7 @@ export default function StorySection({ isExcerpt = false }) {
               <p style={{ marginBottom: '20px' }}>
                 Our journey from Ireland to Australia was our answer to that question. We have slowly traveled over 20,000 miles and counting, met all different walks of life, and gained perspective on how people outside of our home countries make decisions and approach each day. This one piece of advice has been offered to us time and time again:
               </p>
-              <p style={{ marginBottom: '20px', fontWeight: 800, color: 'var(--color-purple)', fontSize: '1.4rem', textAlign: 'left', paddingLeft: '20px', borderLeft: '3px solid var(--color-orange)' }}>
+              <p style={{ marginBottom: '20px', fontWeight: 700, color: 'var(--color-purple)', fontSize: '2.4rem', textAlign: 'left', paddingLeft: '20px', borderLeft: '3px solid var(--color-orange)', fontFamily: 'var(--font-hand)', lineHeight: '1.2' }}>
                 “Keep going.”
               </p>
               <p style={{ marginBottom: '20px' }}>
