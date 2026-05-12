@@ -110,57 +110,11 @@ export default function BlogPostPage({ params }) {
 
       {/* Article Body */}
       <div className="container" style={{ maxWidth: '800px', padding: '80px 24px' }}>
-        
-        {/* Mediavine Ad Placeholder - Top */}
-        <div style={{ 
-          margin: '0 auto 40px auto', 
-          textAlign: 'center', 
-          padding: '20px', 
-          backgroundColor: '#F9F9F9', 
-          borderRadius: '12px',
-          border: '1px dashed #ddd',
-          fontSize: '0.8rem',
-          color: '#999'
-        }}>
-          MEDIAVINE AD SLOT (TOP)
-        </div>
-
         <div 
           className="blog-content"
           style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#333' }}
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
-
-        {/* Stay22 Ad Placeholder - Middle/Bottom */}
-        <div style={{ 
-          margin: '60px 0', 
-          padding: '40px', 
-          backgroundColor: 'var(--color-cream)', 
-          borderRadius: '24px',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-purple)', marginBottom: '1rem' }}>
-            Book Your Stay
-          </h3>
-          <p style={{ marginBottom: '1.5rem' }}>Find the best boutique hotels for this trip.</p>
-          <div style={{ height: '150px', border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            STAY22 WIDGET PLACEHOLDER
-          </div>
-        </div>
-
-        {/* Mediavine Ad Placeholder - Bottom */}
-        <div style={{ 
-          margin: '40px auto 0 auto', 
-          textAlign: 'center', 
-          padding: '20px', 
-          backgroundColor: '#F9F9F9', 
-          borderRadius: '12px',
-          border: '1px dashed #ddd',
-          fontSize: '0.8rem',
-          color: '#999'
-        }}>
-          MEDIAVINE AD SLOT (BOTTOM)
-        </div>
       </div>
 
       {/* Footer CTA */}

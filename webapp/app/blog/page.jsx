@@ -48,10 +48,10 @@ export default function BlogPage() {
             color: 'var(--color-purple)',
             marginBottom: '1rem' 
           }}>
-            Our Stories
+            Blog
           </h1>
           <p style={{ fontSize: '1.25rem', color: '#555', maxWidth: '700px', margin: '0 auto' }}>
-            Travel inspiration, gear reviews, and the occasional deep dive into the world of Lost & Sound.
+            Travel inspiration, guides, and good eats.
           </p>
         </div>
       </section>
