@@ -7,7 +7,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 80);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -28,12 +28,12 @@ export default function Navbar() {
           <Link href="/work-with-us" className="desktop-only">Work</Link>
           <Link href="/start-planning" className="btn btn-primary nav-cta">Plan</Link>
           
-          <div className="nav-socials desktop-only">
+          <div className="nav-socials">
             <a href="https://www.instagram.com/lost_and_sound.jpg/" target="_blank" rel="noopener noreferrer">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
             </a>
             <a href="https://www.tiktok.com/@lostandsound.jpg?_r=1&_t=ZS-96DtrMvLXi1" target="_blank" rel="noopener noreferrer">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
             </a>
           </div>
         </div>
@@ -46,11 +46,12 @@ export default function Navbar() {
           z-index: 1000;
           padding: 24px 0;
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          background-color: transparent;
         }
 
         .navbar.scrolled {
           padding: 12px 0;
-          background: rgba(249, 246, 237, 0.85);
+          background: rgba(249, 246, 237, 0.9);
           backdrop-filter: blur(12px);
           box-shadow: 0 4px 30px rgba(0,0,0,0.05);
         }
@@ -62,21 +63,21 @@ export default function Navbar() {
         }
 
         .logo img {
-          height: 100px;
+          height: 120px; /* Restored Desktop Height */
           width: auto;
           transition: all 0.4s ease;
         }
 
         .navbar.scrolled .logo img {
-          height: 60px;
+          height: 70px;
         }
 
         .nav-links {
           display: flex;
-          gap: 24px;
+          gap: 36px; /* Restored Desktop Gap */
           align-items: center;
           background: white;
-          padding: 8px 12px 8px 24px;
+          padding: 10px 14px 10px 40px;
           border-radius: 500px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.03);
           transition: all 0.4s ease;
@@ -84,7 +85,7 @@ export default function Navbar() {
 
         .nav-links a {
           font-family: var(--font-heading);
-          font-size: 0.95rem;
+          font-size: 1.05rem;
           font-weight: 700;
           color: var(--color-purple);
           white-space: nowrap;
@@ -95,14 +96,14 @@ export default function Navbar() {
         }
 
         .nav-cta {
-          padding: 8px 16px !important;
-          font-size: 0.9rem !important;
+          padding: 10px 24px !important;
+          font-size: 1rem !important;
         }
 
         .nav-socials {
           display: flex;
           gap: 12px;
-          padding-left: 12px;
+          padding-left: 16px;
           border-left: 1px solid #eee;
           color: var(--color-purple);
         }
@@ -118,18 +119,18 @@ export default function Navbar() {
           }
 
           .logo img {
-            height: 60px;
+            height: 70px;
           }
 
           .navbar.scrolled .logo img {
-            height: 50px;
+            height: 60px;
           }
 
           .nav-links {
-            gap: 12px;
-            padding: 6px 10px 6px 15px;
+            gap: 16px;
+            padding: 6px 12px 6px 20px;
             overflow-x: auto;
-            max-width: calc(100vw - 80px); /* Leave room for logo */
+            max-width: calc(100vw - 90px);
             -webkit-overflow-scrolling: touch;
           }
 
@@ -138,11 +139,16 @@ export default function Navbar() {
           }
 
           .nav-links a {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
           }
 
           .desktop-only {
             display: none;
+          }
+
+          .nav-socials {
+            padding-left: 12px;
+            gap: 8px;
           }
         }
       `}</style>

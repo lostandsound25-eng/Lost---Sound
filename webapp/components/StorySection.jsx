@@ -181,7 +181,7 @@ export default function StorySection({ isExcerpt = false }) {
               {/* PLAYER CARDS */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '60px' }}>
                 <div onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-                  <Image src="/assets/Julie_Causeway.jpg" alt="Julie" layout="fill" objectFit="cover" />
+                  <Image src="/assets/julie_causeway_clean.jpg" alt="Julie" layout="fill" objectFit="cover" />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
                     <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.julie.name}</h3>
                     <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
