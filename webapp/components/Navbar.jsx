@@ -45,7 +45,7 @@ export default function Navbar() {
           position: sticky;
           top: 0;
           z-index: 1000;
-          padding: 24px 0;
+          padding: 12px 0;
           background-color: transparent;
           transition: background 0.3s ease;
         }
@@ -53,6 +53,7 @@ export default function Navbar() {
         .navbar.scrolled {
           background-color: rgba(249, 246, 237, 0.95);
           backdrop-filter: blur(10px);
+          padding: 8px 0;
         }
 
         .container {
@@ -65,9 +66,13 @@ export default function Navbar() {
         }
 
         .logo img {
-          height: 120px;
+          height: 70px;
           width: auto;
           display: block;
+        }
+
+        .navbar.scrolled .logo img {
+          height: 55px;
         }
 
         .nav-links {
