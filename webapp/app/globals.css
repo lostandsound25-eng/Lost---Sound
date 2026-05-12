@@ -182,25 +182,20 @@ section {
   top: 0;
   background-color: transparent;
   z-index: 1000;
-  padding: 10px 0 !important;
-  transition: all 0.3s ease;
+  padding: 24px 0;
 }
 
-.navbar.scrolled {
-  background-color: rgba(249, 246, 237, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 6px 0 !important;
+.navbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.logo img {
-  height: 60px !important;
-  width: auto !important;
-  display: block;
-  transition: all 0.3s ease;
-}
-
-.navbar.scrolled .logo img {
-  height: 45px !important;
+.logo {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--color-orange);
 }
 
 .nav-links {
@@ -208,7 +203,7 @@ section {
   gap: 36px;
   align-items: center;
   background: white;
-  padding: 8px 12px 8px 30px;
+  padding: 8px 12px 8px 36px;
   border-radius: var(--radius-bubble);
   box-shadow: 0 4px 20px rgba(0,0,0,0.03);
 }
@@ -451,35 +446,31 @@ footer {
   h2 { font-size: 2.2rem !important; }
   
   .navbar {
-    padding: 6px 0 !important;
+    padding: 12px 0;
   }
 
   .navbar .container {
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    padding: 0 12px !important;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .logo img {
-    height: 45px !important;
-    margin: 0 !important;
+    height: 80px !important; /* Scale down for mobile */
+    margin: 0 auto;
   }
 
   .nav-links {
-    width: auto !important;
-    flex: 1 !important;
-    padding: 6px 12px !important;
-    gap: 12px !important;
-    justify-content: flex-start !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    max-width: calc(100vw - 75px) !important;
+    width: 100%;
+    padding: 10px;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
   }
 
   .nav-links a {
-    font-size: 0.8rem !important;
-    padding: 2px 4px !important;
+    font-size: 0.85rem;
+    padding: 4px 8px;
   }
 
   .hero {
