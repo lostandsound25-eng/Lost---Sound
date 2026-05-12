@@ -137,7 +137,7 @@ export default function StorySection({ isExcerpt = false }) {
                 <Brand /> is us taking that advice to heart, and sharing it with you. 
               </p>
               <p style={{ marginBottom: '30px' }}>
-                Read more about us and our journey at <Link href="/about" style={{ color: 'var(--color-orange)', fontWeight: 700, textDecoration: 'underline' }}>“Our Story”</Link> or click the link below. 
+                Read more about us and our journey at <Link href="/about" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>“Our Story”</Link> or click the link below. 
               </p>
               
               <div style={{ textAlign: 'left', clear: 'both' }}>
