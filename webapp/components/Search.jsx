@@ -6,6 +6,25 @@ export default function Search() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
+  const [allPosts, setAllPosts] = useState([]);
+
+  // Pre-fetch posts when component mounts for lightning-fast search
+  useEffect(() => {
+    async function fetchAllPosts() {
+      try {
+        const res = await fetch(
+          'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts?number=100'
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAllPosts(data.posts || []);
+        }
+      } catch (err) {
+        console.error('Search fetch error:', err);
+      }
+    }
+    fetchAllPosts();
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -15,19 +34,21 @@ export default function Search() {
     }
   }, [isOpen]);
 
-  // Simple local search logic for now
-  // In a real app, this would query Supabase or WordPress API
   const handleSearch = (e) => {
     const val = e.target.value;
     setQuery(val);
     
-    if (val.length > 2) {
-      // Mock results or eventually fetch from API
-      setResults([
-        { title: 'Exploring Ireland', type: 'Itinerary', url: '/itineraries' },
-        { title: 'Vegas to Denver', type: 'Itinerary', url: '/itineraries' },
-        { title: 'The Pakse Loop', type: 'Blog', url: '/blog' }
-      ].filter(item => item.title.toLowerCase().includes(val.toLowerCase())));
+    if (val.length > 1) {
+      const filtered = allPosts.filter(post => {
+        const searchContent = `${post.title} ${post.content} ${post.excerpt}`.toLowerCase();
+        return searchContent.includes(val.toLowerCase());
+      }).map(post => ({
+        title: post.title.replace(/<\/?[^>]+(>|$)/g, ""), // Clean HTML tags from titles
+        type: 'Story',
+        url: `/blog/${post.slug}`
+      })).slice(0, 8); // Limit to top 8 results for clean UI
+      
+      setResults(filtered);
     } else {
       setResults([]);
     }
@@ -61,7 +82,8 @@ export default function Search() {
           padding: '60px 20px',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          backdropFilter: 'blur(5px)'
         }}>
           <button 
             onClick={() => setIsOpen(false)}
@@ -71,23 +93,31 @@ export default function Search() {
           </button>
 
           <div style={{ width: '100%', maxWidth: '600px' }}>
-            <h2 style={{ fontSize: '2.5rem', marginBottom: '30px', textAlign: 'center' }}>What are you looking for?</h2>
-            <input 
-              type="text"
-              autoFocus
-              value={query}
-              onChange={handleSearch}
-              placeholder="Search trips, stories, and tricks..."
-              style={{ 
-                width: '100%', 
-                padding: '24px 30px', 
-                borderRadius: '40px', 
-                border: '2px solid var(--color-purple)', 
-                fontSize: '1.5rem',
-                outline: 'none',
-                fontFamily: 'var(--font-heading)'
-              }}
-            />
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '30px', textAlign: 'center', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)' }}>
+              What are you looking for?
+            </h2>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text"
+                autoFocus
+                value={query}
+                onChange={handleSearch}
+                placeholder="Search stories, trips, and tricks..."
+                style={{ 
+                  width: '100%', 
+                  padding: '24px 30px', 
+                  borderRadius: '40px', 
+                  border: '2px solid var(--color-purple)', 
+                  fontSize: '1.5rem',
+                  outline: 'none',
+                  fontFamily: 'var(--font-heading)',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+                }}
+              />
+              <div style={{ position: 'absolute', right: '30px', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </div>
+            </div>
 
             <div style={{ marginTop: '40px' }}>
               {results.length > 0 ? (
@@ -99,20 +129,43 @@ export default function Search() {
                     style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
-                      padding: '20px', 
-                      backgroundColor: 'var(--color-bg)', 
+                      padding: '20px 30px', 
+                      backgroundColor: 'white', 
                       borderRadius: '20px', 
-                      marginBottom: '10px',
+                      marginBottom: '12px',
                       textDecoration: 'none',
-                      color: 'var(--color-purple)'
+                      color: 'var(--color-purple)',
+                      border: '1px solid #eee',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)';
                     }}
                   >
-                    <span style={{ fontWeight: 700 }}>{res.title}</span>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.6, textTransform: 'uppercase' }}>{res.type}</span>
+                    <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{res.title}</span>
+                    <span style={{ 
+                      fontSize: '0.7rem', 
+                      opacity: 0.8, 
+                      textTransform: 'uppercase', 
+                      backgroundColor: 'var(--color-bg)', 
+                      padding: '4px 10px', 
+                      borderRadius: '10px',
+                      fontWeight: 800,
+                      letterSpacing: '1px',
+                      color: 'var(--color-orange)'
+                    }}>{res.type}</span>
                   </Link>
                 ))
-              ) : query.length > 2 ? (
-                <p style={{ textAlign: 'center', opacity: 0.6 }}>No results found for "{query}"</p>
+              ) : query.length > 1 ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                   <p style={{ opacity: 0.6, fontSize: '1.1rem' }}>No results found for "{query}"</p>
+                </div>
               ) : null}
             </div>
           </div>
