@@ -1,12 +1,14 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { parseExpense, getCategoryEmoji } from '@/utils/trackerParser';
+import { parseExpense, getCategoryEmoji } from '../../utils/trackerParser';
+import KeepInTouchForm from '../../components/KeepInTouchForm';
 
 export default function NomadTracker() {
   const [expenses, setExpenses] = useState([]);
   const [input, setInput] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const inputRef = useRef(null);
 
   // Initialize and load from LocalStorage
@@ -15,6 +17,12 @@ export default function NomadTracker() {
     const saved = localStorage.getItem('ls_nomad_expenses');
     if (saved) {
       setExpenses(JSON.parse(saved));
+    }
+    
+    // Check if user is already "subscribed" locally
+    const subStatus = localStorage.getItem('ls_is_subscribed');
+    if (subStatus === 'true') {
+      setIsSubscribed(true);
     }
   }, []);
 
@@ -25,6 +33,11 @@ export default function NomadTracker() {
     }
   }, [expenses, mounted]);
 
+  const handleSubscribeSuccess = () => {
+    setIsSubscribed(true);
+    localStorage.setItem('ls_is_subscribed', 'true');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -32,10 +45,7 @@ export default function NomadTracker() {
     const lastCategory = localStorage.getItem('ls_lastCategory') || 'other';
     const parsed = parseExpense(input, lastCategory);
 
-    if (!parsed) {
-      // Small shake animation or visual cue could go here
-      return;
-    }
+    if (!parsed) return;
 
     const newExpense = {
       id: Date.now().toString(),
@@ -46,8 +56,6 @@ export default function NomadTracker() {
     setExpenses([newExpense, ...expenses]);
     localStorage.setItem('ls_lastCategory', parsed.category);
     setInput('');
-    
-    // Keep focus for rapid entry
     inputRef.current?.focus();
   };
 
@@ -61,6 +69,57 @@ export default function NomadTracker() {
 
   if (!mounted) return null;
 
+  // --- GATED VIEW (Lead Magnet) ---
+  if (!isSubscribed) {
+    return (
+      <main style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+        <div className="container" style={{ maxWidth: '500px', textAlign: 'center' }}>
+          
+          <Link href="/" style={{ opacity: 0.6, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--color-purple)', marginBottom: '40px', display: 'inline-block' }}>
+            ← Back Home
+          </Link>
+
+          <div style={{ backgroundColor: 'white', padding: '50px 40px', borderRadius: '40px', boxShadow: '0 30px 60px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.02)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🧭</div>
+            <h1 style={{ fontSize: '2.5rem', color: 'var(--color-purple)', marginBottom: '15px' }}>The Nomad Tracker</h1>
+            <p style={{ fontSize: '1.1rem', marginBottom: '35px', opacity: 0.8, lineHeight: '1.6' }}>
+              Join our community of world travelers to unlock the tracker and keep your budget as sound as your journey.
+            </p>
+
+            {/* SNEAK PEEK PREVIEW */}
+            <div style={{ 
+              backgroundColor: 'var(--color-bg)', 
+              borderRadius: '25px', 
+              padding: '20px', 
+              marginBottom: '40px', 
+              opacity: 0.5, 
+              pointerEvents: 'none',
+              transform: 'scale(0.9)',
+              border: '1px dashed var(--color-purple)'
+            }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span>🍔 Lunch</span>
+                  <strong>$15.00</strong>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>🛵 Tuktuk</span>
+                  <strong>$5.50</strong>
+               </div>
+               <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>TOTAL TODAY</span>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>$20.50</div>
+               </div>
+            </div>
+
+            <KeepInTouchForm onSuccess={handleSubscribeSuccess} />
+            <p style={{ fontSize: '0.8rem', marginTop: '20px', opacity: 0.5 }}>It's free, private, and always will be.</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // --- FULL TRACKER VIEW ---
   return (
     <main style={{ 
       minHeight: '100vh', 
@@ -69,7 +128,6 @@ export default function NomadTracker() {
       paddingBottom: '100px'
     }}>
       
-      {/* HEADER SECTION */}
       <section style={{ 
         backgroundColor: 'var(--color-purple)', 
         color: 'white', 
@@ -91,7 +149,6 @@ export default function NomadTracker() {
         </div>
       </section>
 
-      {/* INPUT SECTION */}
       <section className="container" style={{ maxWidth: '600px', marginTop: '-40px' }}>
         <form onSubmit={handleSubmit} style={{ position: 'relative' }}>
           <input 
@@ -136,7 +193,6 @@ export default function NomadTracker() {
         </form>
       </section>
 
-      {/* RECENT ACTIVITY */}
       <section className="container" style={{ maxWidth: '600px', marginTop: '50px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '0 10px' }}>
           <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Recent Activity</h2>
@@ -201,7 +257,6 @@ export default function NomadTracker() {
         </div>
       </section>
 
-      {/* FOOTER TIP */}
       <footer style={{ marginTop: '60px', textAlign: 'center', padding: '0 24px' }}>
         <p style={{ 
           fontSize: '0.9rem', 
@@ -211,19 +266,9 @@ export default function NomadTracker() {
           lineHeight: '1.6',
           fontStyle: 'italic'
         }}>
-          "Keep going." — Data is stored locally on this device. Clear your browser cache to reset.
+          "Keep going." — Data is stored locally on this device.
         </p>
       </footer>
-
-      <style jsx>{`
-        .expense-card {
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .expense-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
-        }
-      `}</style>
     </main>
   );
 }

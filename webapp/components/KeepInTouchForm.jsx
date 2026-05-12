@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-export default function KeepInTouchForm() {
+export default function KeepInTouchForm({ onSuccess }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle, loading, success
 
@@ -19,6 +19,7 @@ export default function KeepInTouchForm() {
       if (response.ok) {
         setStatus('success');
         setEmail('');
+        if (onSuccess) onSuccess();
       } else {
         const error = await response.json();
         alert(error.error || 'Something went wrong. Please try again.');
