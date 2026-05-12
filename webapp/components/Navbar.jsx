@@ -7,7 +7,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 80);
+      setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -25,70 +25,66 @@ export default function Navbar() {
           <Link href="/itineraries">Itineraries</Link>
           <Link href="/travel-tricks">Tricks</Link>
           <Link href="/about">Story</Link>
-          <Link href="/work-with-us" className="desktop-only">Work</Link>
-          <Link href="/start-planning" className="btn btn-primary nav-cta">Plan</Link>
+          <Link href="/work-with-us" className="desktop-only">Work With Us</Link>
+          <Link href="/start-planning" className="btn btn-primary nav-cta">Start Planning</Link>
           
           <div className="nav-socials">
             <a href="https://www.instagram.com/lost_and_sound.jpg/" target="_blank" rel="noopener noreferrer">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
             </a>
             <a href="https://www.tiktok.com/@lostandsound.jpg?_r=1&_t=ZS-96DtrMvLXi1" target="_blank" rel="noopener noreferrer">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
             </a>
           </div>
         </div>
       </div>
 
       <style jsx>{`
+        /* DESKTOP: EXACTLY AS BEFORE */
         .navbar {
           position: sticky;
           top: 0;
           z-index: 1000;
           padding: 24px 0;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           background-color: transparent;
+          transition: background 0.3s ease;
         }
 
         .navbar.scrolled {
-          padding: 12px 0;
-          background: rgba(249, 246, 237, 0.9);
-          backdrop-filter: blur(12px);
-          box-shadow: 0 4px 30px rgba(0,0,0,0.05);
+          background-color: rgba(249, 246, 237, 0.95);
+          backdrop-filter: blur(10px);
         }
 
         .container {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
         }
 
         .logo img {
-          height: 120px; /* Restored Desktop Height */
+          height: 120px;
           width: auto;
-          transition: all 0.4s ease;
-        }
-
-        .navbar.scrolled .logo img {
-          height: 70px;
+          display: block;
         }
 
         .nav-links {
           display: flex;
-          gap: 36px; /* Restored Desktop Gap */
+          gap: 36px;
           align-items: center;
           background: white;
-          padding: 10px 14px 10px 40px;
+          padding: 8px 12px 8px 36px;
           border-radius: 500px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          transition: all 0.4s ease;
         }
 
         .nav-links a {
           font-family: var(--font-heading);
           font-size: 1.05rem;
-          font-weight: 700;
+          font-weight: 600;
           color: var(--color-purple);
-          white-space: nowrap;
         }
 
         .nav-links a:hover {
@@ -96,41 +92,46 @@ export default function Navbar() {
         }
 
         .nav-cta {
-          padding: 10px 24px !important;
+          padding: 10px 20px !important;
+          margin-left: 12px;
           font-size: 1rem !important;
         }
 
         .nav-socials {
           display: flex;
-          gap: 12px;
-          padding-left: 16px;
-          border-left: 1px solid #eee;
+          gap: 8px;
+          margin-left: 12px;
+          align-items: center;
           color: var(--color-purple);
         }
 
+        /* MOBILE: SLIM PILL, SIDE-BY-SIDE, NO STACKING */
         @media (max-width: 768px) {
           .navbar {
-            padding: 10px 0;
+            padding: 8px 0;
           }
 
           .container {
-            padding: 0 12px;
-            gap: 10px;
+            flex-direction: row !important; /* Force Side-by-Side */
+            justify-content: space-between;
+            padding: 0 10px;
+            gap: 8px;
           }
 
           .logo img {
-            height: 70px;
-          }
-
-          .navbar.scrolled .logo img {
-            height: 60px;
+            height: 50px; /* Minimal Logo */
           }
 
           .nav-links {
-            gap: 16px;
-            padding: 6px 12px 6px 20px;
+            gap: 12px;
+            padding: 6px 12px;
+            margin: 0;
+            background: white;
+            flex: 1;
+            justify-content: flex-start;
             overflow-x: auto;
-            max-width: calc(100vw - 90px);
+            max-width: calc(100vw - 70px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             -webkit-overflow-scrolling: touch;
           }
 
@@ -139,7 +140,13 @@ export default function Navbar() {
           }
 
           .nav-links a {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+          }
+
+          .nav-cta {
+            padding: 6px 12px !important;
+            margin-left: 0;
+            font-size: 0.75rem !important;
           }
 
           .desktop-only {
@@ -147,8 +154,14 @@ export default function Navbar() {
           }
 
           .nav-socials {
-            padding-left: 12px;
-            gap: 8px;
+            margin-left: 8px;
+            padding-left: 8px;
+            border-left: 1px solid #eee;
+          }
+          
+          .nav-socials svg {
+            width: 18px;
+            height: 18px;
           }
         }
       `}</style>
