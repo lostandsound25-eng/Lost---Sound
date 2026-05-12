@@ -120,14 +120,27 @@ export default function StorySection({ isExcerpt = false }) {
           </div>
 
           {isExcerpt ? (
-            <div style={{ fontSize: '1.15rem' }}>
+            <div style={{ fontSize: '1.1rem', lineHeight: '1.8' }}>
               <p style={{ marginBottom: '20px' }}>
-                We are Julie and Harry, and together we are <span style={{ color: 'var(--color-orange)', fontWeight: 800, fontStyle: 'italic' }}>Lost</span> in the world, <span style={{ color: 'var(--color-purple)', fontWeight: 800 }}>& Sound</span> in our journey. 
+                We are Julie and Harry, and together we are <span style={{ color: 'var(--color-orange)', fontWeight: 800, fontStyle: 'italic' }}>Lost</span> in the world, <span style={{ color: 'var(--color-purple)', fontWeight: 800 }}>& Sound</span> in the journey.
               </p>
               <p style={{ marginBottom: '20px' }}>
-                When we met, we had no clue that our paths crossing would lead us to where we are today, but they did and we couldn't be more happy about it. The story of <Brand /> is one that started with us asking the question "How?" and has blossomed as we have learned to ask the question "Why?"
+                We met in graduate school in the USA, and after a few seasons skiing the Rocky Mountains of Colorado - life forced a change on us. We started asking ourselves “What next?” 
               </p>
-              <div style={{ textAlign: 'left', marginTop: '30px', clear: 'both' }}>
+              <p style={{ marginBottom: '20px' }}>
+                Our journey from Ireland to Australia was our answer to that question. We have slowly traveled over 20,000 miles and counting, met all different walks of life, and gained perspective on how people outside of our home countries make decisions and approach each day. This one piece of advice has been offered to us time and time again:
+              </p>
+              <p style={{ marginBottom: '20px', fontWeight: 800, color: 'var(--color-purple)', fontSize: '1.4rem', textAlign: 'left', paddingLeft: '20px', borderLeft: '3px solid var(--color-orange)' }}>
+                “Keep going.”
+              </p>
+              <p style={{ marginBottom: '20px' }}>
+                <Brand /> is us taking that advice to heart, and sharing it with you. 
+              </p>
+              <p style={{ marginBottom: '30px' }}>
+                Read more about us and our journey at <Link href="/about" style={{ color: 'var(--color-orange)', fontWeight: 700, textDecoration: 'underline' }}>“Our Story”</Link> or click the link below. 
+              </p>
+              
+              <div style={{ textAlign: 'left', clear: 'both' }}>
                 <Link href="/about" className="btn btn-primary" style={{ padding: '12px 30px', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
                   Venture Forth <span style={{ marginLeft: '8px', fontSize: '1.2rem' }}>→</span>
                 </Link>
