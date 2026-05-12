@@ -451,30 +451,35 @@ footer {
   h2 { font-size: 2.2rem !important; }
   
   .navbar {
-    padding: 12px 0;
+    padding: 6px 0 !important;
   }
 
   .navbar .container {
-    padding: 0 12px;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 0 12px !important;
   }
 
   .logo img {
-    height: 80px !important; /* Scale down for mobile */
-    margin: 0 auto;
+    height: 45px !important;
+    margin: 0 !important;
   }
 
   .nav-links {
-    width: 100%;
-    padding: 10px;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-    font-size: 0.9rem;
+    width: auto !important;
+    flex: 1 !important;
+    padding: 6px 12px !important;
+    gap: 12px !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    max-width: calc(100vw - 75px) !important;
   }
 
   .nav-links a {
-    font-size: 0.85rem;
-    padding: 4px 8px;
+    font-size: 0.8rem !important;
+    padding: 2px 4px !important;
   }
 
   .hero {
