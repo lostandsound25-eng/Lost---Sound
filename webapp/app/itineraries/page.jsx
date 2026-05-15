@@ -1,31 +1,117 @@
+'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// Helper to find the first image in HTML content if featured image is missing
+function getFirstImageFromContent(htmlContent) {
+  const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
+  return match ? match[1] : null;
+}
+
 export default function ItinerariesPage() {
+  const [itineraries, setItineraries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchItineraries() {
+      try {
+        const res = await fetch(
+          'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts?category=itineraries'
+        );
+        
+        if (res.ok) {
+          const data = await res.json();
+          setItineraries(data.posts || []);
+        }
+      } catch (err) {
+        console.error('Error fetching itineraries:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchItineraries();
+  }, []);
+
   return (
-    <main>
-      <section className="container" style={{ padding: '80px 24px' }}>
+    <main style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
+      <section className="container" style={{ padding: '100px 24px 60px 24px', textAlign: 'center' }}>
         <div className="text-center mb-5">
-          <h1 style={{ fontSize: '3rem', marginBottom: '1rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Free Itineraries</h1>
-          <p style={{ fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto', color: '#666' }}>
-            Tested and perfected routes that balance adventure with comfort. Explore our favorite trips.
+          <h1 style={{ fontSize: '4rem', marginBottom: '1rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Free Itineraries</h1>
+          <p style={{ fontSize: '1.25rem', maxWidth: '700px', margin: '0 auto', color: '#555' }}>
+            Tried, tested, and perfectly paced routes that balance adventure with comfort.
           </p>
         </div>
 
-        <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: '#FAFAFA', borderRadius: '16px' }}>
-          <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)', marginBottom: '1rem' }}>Check back soon!</h3>
-          <p style={{ color: '#666' }}>We are currently migrating our itineraries to WordPress. Stay tuned!</p>
-        </div>
+        {loading ? (
+          <div style={{ padding: '100px' }}>
+            <h3 style={{ color: 'var(--color-purple)' }}>Curating your next adventure...</h3>
+          </div>
+        ) : itineraries.length === 0 ? (
+          <div style={{ padding: '100px 20px', backgroundColor: 'white', borderRadius: '30px', border: '1px dashed #ccc' }}>
+            <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)' }}>More Trips Coming Soon</h3>
+            <p style={{ marginTop: '1rem' }}>We're currently migrating our best routes. Check back in a few days!</p>
+          </div>
+        ) : (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+            gap: '40px',
+            marginTop: '40px'
+          }}>
+            {itineraries.map((trip) => {
+              const featuredImage = trip.featured_image 
+                || getFirstImageFromContent(trip.content)
+                || '/assets/hero.png';
+              
+              return (
+                <article key={trip.ID} className="card" style={{ 
+                  backgroundColor: 'white', 
+                  borderRadius: '24px', 
+                  overflow: 'hidden',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <Link href={`/blog/${trip.slug}`} style={{ display: 'block', height: '300px', overflow: 'hidden' }}>
+                    <img 
+                      src={featuredImage} 
+                      alt={trip.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </Link>
+                  <div style={{ padding: '30px', textAlign: 'left' }}>
+                    <h3 style={{ fontSize: '1.75rem', marginBottom: '15px', color: 'var(--color-purple)' }}>
+                      <Link 
+                        href={`/blog/${trip.slug}`}
+                        dangerouslySetInnerHTML={{ __html: trip.title }}
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      />
+                    </h3>
+                    <div 
+                      style={{ color: '#666', lineHeight: '1.6', marginBottom: '20px', fontSize: '1rem' }}
+                      dangerouslySetInnerHTML={{ __html: trip.excerpt }}
+                    />
+                    <Link href={`/blog/${trip.slug}`} className="btn btn-outline" style={{ fontSize: '0.9rem' }}>
+                      View Itinerary →
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      <section className="conversion-section" style={{ backgroundColor: 'var(--color-cream)', padding: '80px 24px', textAlign: 'center' }}>
-        <div className="container">
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)' }}>
-            Want us to plan this for you?
+      <section className="conversion-section" style={{ backgroundColor: 'var(--color-cream)', padding: '100px 24px', textAlign: 'center' }}>
+        <div className="container" style={{ maxWidth: '800px' }}>
+          <h2 style={{ fontSize: '3rem', marginBottom: '1.5rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)' }}>
+            Want a custom version of these trips?
           </h2>
-          <p style={{ fontSize: '1.2rem', marginBottom: '2rem', color: '#666' }}>
-            We tailor these trips to your dates, budget, and travel style.
+          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', color: '#555' }}>
+            We can tailor any of these routes to your specific dates, budget, and travel style.
           </p>
-          <Link href="/start-planning" className="btn btn-primary" style={{ padding: '16px 32px', fontSize: '1.1rem' }}>
+          <Link href="/start-planning" className="btn btn-primary" style={{ padding: '18px 40px', fontSize: '1.2rem' }}>
             Book a Free 15-Min Call
           </Link>
         </div>

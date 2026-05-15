@@ -42,11 +42,15 @@ export default function Search() {
       const filtered = allPosts.filter(post => {
         const searchContent = `${post.title} ${post.content} ${post.excerpt}`.toLowerCase();
         return searchContent.includes(val.toLowerCase());
-      }).map(post => ({
-        title: post.title.replace(/<\/?[^>]+(>|$)/g, ""), // Clean HTML tags from titles
-        type: 'Story',
-        url: `/blog/${post.slug}`
-      })).slice(0, 8); // Limit to top 8 results for clean UI
+      }).map(post => {
+        const categories = Object.keys(post.categories || {}).map(c => c.toLowerCase());
+        const isItinerary = categories.includes('itineraries');
+        return {
+          title: post.title.replace(/<\/?[^>]+(>|$)/g, ""),
+          type: isItinerary ? 'Itinerary' : 'Story',
+          url: `/blog/${post.slug}`
+        };
+      }).slice(0, 8); 
       
       setResults(filtered);
     } else {

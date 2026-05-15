@@ -25,7 +25,12 @@ export default function BlogPage() {
         }
 
         const data = await res.json();
-        setPosts(data.posts || []);
+        // Filter out itineraries from the main blog feed
+        const blogPosts = (data.posts || []).filter(post => {
+          const categories = Object.keys(post.categories || {}).map(c => c.toLowerCase());
+          return !categories.includes('itineraries');
+        });
+        setPosts(blogPosts);
       } catch (err) {
         console.error('Error fetching WordPress posts:', err);
         setError(err.message);
