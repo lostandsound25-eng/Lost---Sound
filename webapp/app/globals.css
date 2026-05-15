@@ -65,43 +65,60 @@ img {
 
 /* WordPress Content Styling */
 .blog-content img {
-  max-width: 100%;
-  height: auto !important; /* Prevents squishing */
-  border-radius: 20px;
-  margin: 2rem 0;
+  width: 100%;
+  height: auto !important;
+  max-height: 70vh; /* Prevent massive vertical images */
+  object-fit: cover;
+  border-radius: 24px;
+  margin: 2.5rem 0 0.5rem 0; /* Margin top, zero bottom to keep caption close */
+  display: block;
 }
 
-.blog-content p {
-  margin-bottom: 1.5rem;
+.blog-content figcaption, 
+.blog-content .wp-caption-text {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #888;
+  font-style: italic;
+  margin-bottom: 2.5rem;
+  padding: 0 20px;
+  line-height: 1.4;
+}
+
+.blog-content figure {
+  margin: 0;
+  padding: 0;
 }
 
 /* Alignments */
 .has-text-align-center { text-align: center; }
 .has-text-align-right { text-align: right; }
 .aligncenter { display: block; margin-left: auto; margin-right: auto; text-align: center; }
-.alignright { float: right; margin-left: 20px; }
-.alignleft { float: left; margin-right: 20px; }
+.alignright { float: right; margin-left: 20px; max-width: 50%; }
+.alignleft { float: left; margin-right: 20px; max-width: 50%; }
 
 /* WordPress Gallery */
 .wp-block-gallery {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
   list-style-type: none;
   padding: 0;
   margin: 3rem 0;
+  justify-content: center;
 }
 
 .wp-block-gallery .wp-block-image {
   flex: 1 1 300px;
-  margin: 0;
+  margin: 0 !important;
 }
 
 .wp-block-gallery img {
   width: 100%;
-  height: 350px;
+  height: 400px !important;
   object-fit: cover;
-  margin: 0;
+  margin: 0 !important;
+  border-radius: 16px;
 }
 
 .wp-block-columns {
