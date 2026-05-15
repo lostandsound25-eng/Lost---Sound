@@ -64,72 +64,77 @@ img {
 .mb-5 { margin-bottom: 3rem; }
 
 /* WordPress Content Styling */
+.blog-content h2, 
+.blog-content h3, 
+.blog-content h4 {
+  margin-top: 5.5rem !important; /* Massive breathing room */
+  margin-bottom: 2rem !important;
+  color: var(--color-purple);
+  font-family: var(--font-heading);
+  line-height: 1.1;
+}
+
+.blog-content p {
+  margin-bottom: 2.2rem;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  color: #333;
+}
+
 .blog-content img {
-  width: 100%;
+  width: 100% !important;
   height: auto !important;
-  max-height: 70vh; /* Prevent massive vertical images */
+  max-height: 75vh;
   object-fit: cover;
-  border-radius: 24px;
-  margin: 2.5rem 0 0.5rem 0; /* Margin top, zero bottom to keep caption close */
+  border-radius: 28px;
+  margin: 4rem 0 1rem 0 !important;
   display: block;
 }
 
 .blog-content figcaption, 
 .blog-content .wp-caption-text {
-  text-align: center;
-  font-size: 0.85rem;
-  color: #888;
-  font-style: italic;
-  margin-bottom: 2.5rem;
-  padding: 0 20px;
-  line-height: 1.4;
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  font-size: 0.9rem !important;
+  color: #888 !important;
+  font-style: italic !important;
+  margin-top: 1rem !important;
+  margin-bottom: 4rem !important;
+  padding: 0 40px !important;
+  clear: both !important;
 }
 
-.blog-content figure {
-  margin: 0;
-  padding: 0;
-}
-
-/* Alignments */
-.has-text-align-center { text-align: center; }
-.has-text-align-right { text-align: right; }
-.aligncenter { display: block; margin-left: auto; margin-right: auto; text-align: center; }
-.alignright { float: right; margin-left: 20px; max-width: 50%; }
-.alignleft { float: left; margin-right: 20px; max-width: 50%; }
-
-/* WordPress Gallery */
+/* WordPress Gallery - Aggressive Balance */
 .wp-block-gallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  list-style-type: none;
-  padding: 0;
-  margin: 3.5rem 0;
-  justify-content: center;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 20px !important;
+  list-style-type: none !important;
+  padding: 0 !important;
+  margin: 4.5rem 0 !important;
 }
 
-.wp-block-gallery .wp-block-image {
-  flex: 1 1 350px; /* Base size, allows growing */
+.wp-block-gallery .wp-block-image,
+.wp-block-gallery .blocks-gallery-item {
+  flex: 1 1 45% !important; /* Try to fit 2 per row */
   margin: 0 !important;
-  min-width: 300px;
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+/* The "Odd Man Out" rule - force last image to span 100% */
+.wp-block-gallery .wp-block-image:last-child:nth-child(odd),
+.wp-block-gallery .blocks-gallery-item:last-child:nth-child(odd) {
+  flex: 1 1 100% !important;
 }
 
 .wp-block-gallery img {
-  width: 100%;
-  height: 450px !important; /* Consistent height for the grid */
-  object-fit: cover;
+  width: 100% !important;
+  height: 500px !important;
+  object-fit: cover !important;
+  border-radius: 24px !important;
   margin: 0 !important;
-  border-radius: 20px;
-  transition: transform 0.4s ease;
-}
-
-/* Allow the last image(s) to stretch and maintain balance */
-.wp-block-gallery .wp-block-image:last-child:nth-child(odd) {
-  flex: 1 1 100%;
-}
-
-.wp-block-gallery img:hover {
-  transform: scale(1.02);
 }
 
 .wp-block-columns {
