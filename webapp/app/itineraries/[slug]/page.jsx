@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import LightboxWrapper from '../../../components/LightboxWrapper';
 
 // Enable ISR: Revalidate the post every 60 seconds
 export const revalidate = 60;
@@ -84,11 +85,7 @@ export default async function ItineraryDetailPage({ params }) {
 
       {/* Article Body */}
       <div className="container" style={{ maxWidth: '800px', padding: '80px 24px' }}>
-        <div 
-          className="blog-content"
-          style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#333' }}
-          dangerouslySetInnerHTML={{ __html: post.content }}
-        />
+        <LightboxWrapper html={post.content} />
       </div>
 
       {/* Footer CTA */}
