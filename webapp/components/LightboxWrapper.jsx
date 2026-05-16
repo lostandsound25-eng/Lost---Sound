@@ -7,6 +7,8 @@ export default function LightboxWrapper({ html }) {
   const handleImageClick = (e) => {
     // Check if clicked element is an image
     if (e.target.tagName === 'IMG') {
+      e.preventDefault(); // Prevent navigating if the image is wrapped in a link
+      e.stopPropagation(); // Stop event bubbling
       // WordPress sometimes puts the full resolution image in `data-large-file` or `data-orig-file`
       // We will try to use the highest res available, fallback to src
       const highResSrc = e.target.getAttribute('data-orig-file') || e.target.getAttribute('data-large-file') || e.target.src;
