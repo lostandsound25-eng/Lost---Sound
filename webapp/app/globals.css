@@ -104,19 +104,17 @@ img {
 }
 
 .blog-content p {
-  margin-bottom: 2.2rem;
+  margin-bottom: 1.5rem;
   font-size: 1.2rem;
   line-height: 1.8;
   color: #333;
 }
 
 .blog-content img {
-  width: 100% !important;
+  max-width: 100% !important;
   height: auto !important;
-  max-height: 75vh;
-  object-fit: cover;
-  border-radius: 28px;
-  margin: 4rem 0 1rem 0 !important;
+  border-radius: 12px;
+  margin: 1.5rem auto !important;
   display: block;
 }
 
@@ -128,20 +126,20 @@ img {
   font-size: 0.9rem !important;
   color: #888 !important;
   font-style: italic !important;
-  margin-top: 1rem !important;
-  margin-bottom: 4rem !important;
-  padding: 0 40px !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 2rem !important;
+  padding: 0 20px !important;
   clear: both !important;
 }
 
-/* WordPress Gallery - Aggressive Balance */
+/* WordPress Gallery */
 .wp-block-gallery {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 20px !important;
   list-style-type: none !important;
   padding: 0 !important;
-  margin: 4.5rem 0 !important;
+  margin: 2rem 0 !important;
 }
 
 .wp-block-gallery .wp-block-image,
@@ -160,9 +158,10 @@ img {
 
 .wp-block-gallery img {
   width: 100% !important;
-  height: 500px !important;
+  height: auto !important;
+  max-height: 500px !important;
   object-fit: cover !important;
-  border-radius: 24px !important;
+  border-radius: 12px !important;
   margin: 0 !important;
 }
 
@@ -224,14 +223,14 @@ img {
 
 /* Blockquotes */
 .blog-content blockquote {
-  margin: 4rem 0 !important;
-  padding: 2rem 3rem !important;
+  margin: 2rem 0 !important;
+  padding: 1.5rem 2rem !important;
   border-left: 5px solid var(--color-orange) !important;
   background-color: var(--color-bg) !important;
   font-style: italic !important;
-  font-size: 1.5rem !important;
+  font-size: 1.4rem !important;
   color: var(--color-purple) !important;
-  border-radius: 0 20px 20px 0 !important;
+  border-radius: 0 16px 16px 0 !important;
 }
 
 /* Links */
