@@ -5,6 +5,7 @@ import { GoogleAnalytics } from '@next/third-parties/google'
 import KeepInTouchForm from '../components/KeepInTouchForm'
 import Search from '../components/Search'
 import Link from 'next/link'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '600', '800', '900'] })
@@ -84,6 +85,19 @@ export default function RootLayout({ children }) {
         </footer>
         <Analytics />
         <GoogleAnalytics gaId="G-858PS2M57B" />
+        <Script id="stay22-script" strategy="afterInteractive">
+          {`
+            (function (s, t, a, y, twenty, two) {
+              s.Stay22 = s.Stay22 || {};
+              s.Stay22.params = { lmaID: '6a07e3f8eaad88fd98f397a9' };
+              twenty = t.createElement(a);
+              two = t.getElementsByTagName(a)[0];
+              twenty.async = 1;
+              twenty.src = y;
+              two.parentNode.insertBefore(twenty, two);
+            })(window, document, 'script', 'https://scripts.stay22.com/letmeallez.js');
+          `}
+        </Script>
       </body>
     </html>
   )
