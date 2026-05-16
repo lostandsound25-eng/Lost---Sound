@@ -134,35 +134,51 @@ img {
 
 /* WordPress Gallery */
 .wp-block-gallery {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 20px !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
   list-style-type: none !important;
   padding: 0 !important;
-  margin: 2rem 0 !important;
+  margin: 2.5rem 0 !important;
 }
 
 .wp-block-gallery .wp-block-image,
 .wp-block-gallery .blocks-gallery-item {
-  flex: 1 1 45% !important; /* Try to fit 2 per row */
   margin: 0 !important;
-  width: auto !important;
-  max-width: 100% !important;
-}
-
-/* The "Odd Man Out" rule - force last image to span 100% */
-.wp-block-gallery .wp-block-image:last-child:nth-child(odd),
-.wp-block-gallery .blocks-gallery-item:last-child:nth-child(odd) {
-  flex: 1 1 100% !important;
+  width: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  aspect-ratio: 3 / 4 !important; /* Forces landscape and portrait photos to be uniform */
 }
 
 .wp-block-gallery img {
   width: 100% !important;
-  height: auto !important;
-  max-height: 500px !important;
-  object-fit: cover !important;
-  border-radius: 12px !important;
+  height: 100% !important;
+  object-fit: cover !important; /* Crops uniformly without distorting */
+  border-radius: 0 !important;
   margin: 0 !important;
+}
+
+/* Gallery Caption Overlays */
+.wp-block-gallery .wp-block-image figcaption,
+.wp-block-gallery .blocks-gallery-item figcaption {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 40px 16px 16px !important; /* Extra top padding for the smooth gradient */
+  text-align: center !important;
+  font-size: 0.95rem !important;
+  color: white !important;
+  font-weight: 500 !important;
+  font-style: normal !important;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%) !important;
+  box-sizing: border-box !important;
+  z-index: 10 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
 }
 
 .wp-block-columns {
