@@ -210,6 +210,30 @@ img {
   color: var(--color-purple) !important;
 }
 
+/* Maps & Iframes (Google Maps, YouTube, etc.) */
+.blog-content iframe {
+  width: 100% !important;
+  aspect-ratio: 16 / 9;
+  border: none !important;
+  border-radius: 24px !important;
+  margin: 3rem 0 !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
+}
+
+/* Hide WordPress/Jetpack Map Fallback Links */
+.wp-block-jetpack-map {
+  margin: 3rem 0 !important;
+}
+
+.wp-block-jetpack-map ul {
+  display: none !important; /* Hides the list of links that shows when the map fails to load */
+}
+
+/* Ensure the Google Map doesn't show a sidebar if possible via CSS */
+iframe[src*="google.com/maps"] {
+  background-color: var(--color-bg);
+}
+
 @media (max-width: 768px) {
   .wp-block-columns {
     flex-direction: column;
