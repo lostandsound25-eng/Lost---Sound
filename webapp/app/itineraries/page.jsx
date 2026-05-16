@@ -67,7 +67,7 @@ export default async function ItinerariesPage() {
                   display: 'flex',
                   flexDirection: 'column'
                 }}>
-                  <Link href={`/blog/${trip.slug}`} style={{ display: 'block', height: '300px', overflow: 'hidden' }}>
+                  <Link href={`/itineraries/${trip.slug}`} style={{ display: 'block', height: '300px', overflow: 'hidden' }}>
                     <img 
                       src={featuredImage} 
                       alt={trip.title}
@@ -77,7 +77,7 @@ export default async function ItinerariesPage() {
                   <div style={{ padding: '30px', textAlign: 'left' }}>
                     <h3 style={{ fontSize: '1.75rem', marginBottom: '15px', color: 'var(--color-purple)' }}>
                       <Link 
-                        href={`/blog/${trip.slug}`}
+                        href={`/itineraries/${trip.slug}`}
                         dangerouslySetInnerHTML={{ __html: trip.title }}
                         style={{ textDecoration: 'none', color: 'inherit' }}
                       />
@@ -86,7 +86,7 @@ export default async function ItinerariesPage() {
                       style={{ color: '#666', lineHeight: '1.6', marginBottom: '20px', fontSize: '1rem' }}
                       dangerouslySetInnerHTML={{ __html: trip.excerpt }}
                     />
-                    <Link href={`/blog/${trip.slug}`} className="btn btn-outline" style={{ fontSize: '0.9rem' }}>
+                    <Link href={`/itineraries/${trip.slug}`} className="btn btn-outline" style={{ fontSize: '0.9rem' }}>
                       View Itinerary →
                     </Link>
                   </div>
