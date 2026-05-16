@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ThailandMap from '../../../components/ThailandMap';
 
 // Enable ISR: Revalidate the post every 60 seconds
 export const revalidate = 60;
@@ -89,15 +88,6 @@ export default async function ItineraryDetailPage({ params }) {
           style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#333' }}
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
-        
-        {/* Interactive Map Section */}
-        <div style={{ marginTop: '100px', borderTop: '1px solid #eee', paddingTop: '60px' }}>
-          <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>Visualizing the Route</h3>
-          <p style={{ textAlign: 'center', color: '#666', maxWidth: '600px', margin: '0 auto 40px auto' }}>
-            Hover over the points below to see the highlights of each stop on this Thai adventure.
-          </p>
-          <ThailandMap />
-        </div>
       </div>
 
       {/* Footer CTA */}
