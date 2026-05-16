@@ -36,7 +36,7 @@ export default async function ItineraryDetailPage({ params }) {
     || '/assets/hero.png';
 
   return (
-    <article style={{ backgroundColor: 'white', minHeight: '100vh' }}>
+    <article style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
       {/* Editorial Header */}
       <header style={{ 
         padding: '120px 24px 80px 24px', 

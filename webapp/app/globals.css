@@ -66,12 +66,41 @@ img {
 /* WordPress Content Styling */
 .blog-content h2, 
 .blog-content h3, 
-.blog-content h4 {
-  margin-top: 5.5rem !important; /* Massive breathing room */
-  margin-bottom: 2rem !important;
-  color: var(--color-purple);
+.blog-content h4,
+.blog-content h5,
+.blog-content h6 {
+  margin-top: 3rem !important;
+  margin-bottom: 1.5rem !important;
+  color: var(--color-golden);
   font-family: var(--font-heading);
-  line-height: 1.1;
+  line-height: 1.2;
+}
+
+.blog-content h2 { font-size: 2.5rem !important; }
+.blog-content h3 { font-size: 2rem !important; }
+.blog-content h4 { font-size: 1.6rem !important; }
+.blog-content h5 { font-size: 1.35rem !important; }
+.blog-content h6 { font-size: 1.2rem !important; }
+
+/* Support WordPress text alignments */
+.blog-content .has-text-align-center,
+.has-text-align-center {
+  text-align: center !important;
+}
+
+.blog-content .has-text-align-left,
+.has-text-align-left {
+  text-align: left !important;
+}
+
+.blog-content .has-text-align-right,
+.has-text-align-right {
+  text-align: right !important;
+}
+
+/* Ensure WordPress inline colors override default */
+.blog-content [class*="has-text-color"] {
+  color: currentColor !important;
 }
 
 .blog-content p {
