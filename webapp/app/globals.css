@@ -134,8 +134,8 @@ img {
 
 /* WordPress Gallery */
 .wp-block-gallery {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
   gap: 16px !important;
   list-style-type: none !important;
   padding: 0 !important;
@@ -144,8 +144,8 @@ img {
 
 .wp-block-gallery .wp-block-image,
 .wp-block-gallery .blocks-gallery-item {
+  flex: 1 1 250px !important; /* Grows to fill available space symmetrically */
   margin: 0 !important;
-  width: 100% !important;
   position: relative !important;
   overflow: hidden !important;
   border-radius: 12px !important;
@@ -184,8 +184,9 @@ img {
 /* Gallery-wide Caption */
 .wp-block-gallery > figcaption,
 .wp-block-gallery > .blocks-gallery-caption {
-  grid-column: 1 / -1 !important; /* Spans across all image columns */
+  flex: 1 1 100% !important; /* Spans full width on a new line */
   margin-top: 0.5rem !important;
+  text-align: center !important;
 }
 
 .wp-block-columns {
