@@ -4,24 +4,17 @@ import { useState, useEffect } from 'react';
 export default function LightboxWrapper({ html }) {
   const [lightboxImage, setLightboxImage] = useState(null);
 
-  useEffect(() => {
-    const handleImageClick = (e) => {
-      // Check if clicked element is an image
-      if (e.target.tagName === 'IMG') {
-        // WordPress sometimes puts the full resolution image in `data-large-file` or `data-orig-file`
-        // We will try to use the highest res available, fallback to src
-        const highResSrc = e.target.getAttribute('data-orig-file') || e.target.getAttribute('data-large-file') || e.target.src;
-        
-        // Prevent opening if the image is an icon or very small (optional), but for now we open all
-        setLightboxImage(highResSrc);
-      }
-    };
-
-    const container = document.querySelector('.blog-content-interactive');
-    if (container) {
-      container.addEventListener('click', handleImageClick);
+  const handleImageClick = (e) => {
+    // Check if clicked element is an image
+    if (e.target.tagName === 'IMG') {
+      // WordPress sometimes puts the full resolution image in `data-large-file` or `data-orig-file`
+      // We will try to use the highest res available, fallback to src
+      const highResSrc = e.target.getAttribute('data-orig-file') || e.target.getAttribute('data-large-file') || e.target.src;
+      setLightboxImage(highResSrc);
     }
+  };
 
+  useEffect(() => {
     // Add keyboard support for closing
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setLightboxImage(null);
@@ -29,7 +22,6 @@ export default function LightboxWrapper({ html }) {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      if (container) container.removeEventListener('click', handleImageClick);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -37,6 +29,7 @@ export default function LightboxWrapper({ html }) {
   return (
     <>
       <div 
+        onClick={handleImageClick}
         className="blog-content blog-content-interactive"
         style={{ fontSize: '1.2rem', lineHeight: '1.8', color: '#333' }}
         dangerouslySetInnerHTML={{ __html: html }}
