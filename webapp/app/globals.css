@@ -143,6 +143,73 @@ img {
   margin: 2rem 0;
 }
 
+/* Tables with Visible Lines */
+.blog-content table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 3rem 0 !important;
+  border: 1px solid #ddd !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background-color: white !important;
+}
+
+.blog-content th, 
+.blog-content td {
+  padding: 16px 24px !important;
+  border: 1px solid #eee !important;
+  text-align: left !important;
+  font-size: 1.1rem !important;
+}
+
+.blog-content th {
+  background-color: var(--color-bg) !important;
+  color: var(--color-purple) !important;
+  font-weight: 700 !important;
+  font-family: var(--font-heading) !important;
+}
+
+.blog-content tr:nth-child(even) {
+  background-color: #fafafa !important;
+}
+
+/* Lists */
+.blog-content ul, 
+.blog-content ol {
+  margin-bottom: 2.5rem !important;
+  padding-left: 1.5rem !important;
+}
+
+.blog-content li {
+  margin-bottom: 1rem !important;
+  font-size: 1.2rem !important;
+  line-height: 1.8 !important;
+  color: #333 !important;
+}
+
+/* Blockquotes */
+.blog-content blockquote {
+  margin: 4rem 0 !important;
+  padding: 2rem 3rem !important;
+  border-left: 5px solid var(--color-orange) !important;
+  background-color: var(--color-bg) !important;
+  font-style: italic !important;
+  font-size: 1.5rem !important;
+  color: var(--color-purple) !important;
+  border-radius: 0 20px 20px 0 !important;
+}
+
+/* Links */
+.blog-content a {
+  color: var(--color-orange) !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
+}
+
+.blog-content a:hover {
+  color: var(--color-purple) !important;
+}
+
 @media (max-width: 768px) {
   .wp-block-columns {
     flex-direction: column;
