@@ -1,6 +1,7 @@
-'use client';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
+// Enable ISR: Revalidate the page every 60 seconds
+export const revalidate = 60;
 
 // Helper to find the first image in HTML content if featured image is missing
 function getFirstImageFromContent(htmlContent) {
@@ -8,30 +9,27 @@ function getFirstImageFromContent(htmlContent) {
   return match ? match[1] : null;
 }
 
-export default function ItinerariesPage() {
-  const [itineraries, setItineraries] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchItineraries() {
-      try {
-        const res = await fetch(
-          'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts?category=itineraries'
-        );
-        
-        if (res.ok) {
-          const data = await res.json();
-          setItineraries(data.posts || []);
-        }
-      } catch (err) {
-        console.error('Error fetching itineraries:', err);
-      } finally {
-        setLoading(false);
-      }
+async function getItineraries() {
+  try {
+    const res = await fetch(
+      'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts?category=itineraries',
+      { next: { revalidate: 60 } }
+    );
+    
+    if (!res.ok) {
+      throw new Error(`WordPress API responded with status: ${res.status}`);
     }
 
-    fetchItineraries();
-  }, []);
+    const data = await res.json();
+    return data.posts || [];
+  } catch (err) {
+    console.error('Error fetching itineraries:', err);
+    return [];
+  }
+}
+
+export default async function ItinerariesPage() {
+  const itineraries = await getItineraries();
 
   return (
     <main style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
@@ -43,11 +41,7 @@ export default function ItinerariesPage() {
           </p>
         </div>
 
-        {loading ? (
-          <div style={{ padding: '100px' }}>
-            <h3 style={{ color: 'var(--color-purple)' }}>Curating your next adventure...</h3>
-          </div>
-        ) : itineraries.length === 0 ? (
+        {itineraries.length === 0 ? (
           <div style={{ padding: '100px 20px', backgroundColor: 'white', borderRadius: '30px', border: '1px dashed #ccc' }}>
             <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)' }}>More Trips Coming Soon</h3>
             <p style={{ marginTop: '1rem' }}>We're currently migrating our best routes. Check back in a few days!</p>
