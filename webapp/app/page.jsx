@@ -23,7 +23,7 @@ export default function Home() {
             <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
               Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Use our tried-and-true free <Link href="/routes" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>routes</Link> to take the guesswork out of planning your trip. 
               <br /><br />
-              Or, if you would rather not do the planning yourself, we can do it with you. Book your free 15-minute call with us to discuss your next trip.
+              Or, if you are feeling overwhelmed and want help structuring your journey sustainably, we offer 1-on-1 strategy calls to help you curate your own unforgettable route.
             </p>
             <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
@@ -88,10 +88,21 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="conversion-section">
-        <h2>Want us to plan this for you?</h2>
-        <p>We tailor these trips to your dates, budget, and travel style.</p>
-        <Link href="/start-planning" className="btn btn-primary" style={{ background: 'var(--color-purple)', color: 'white' }}>Book a Free 15-Min Call</Link>
+      <section className="conversion-section" style={{ backgroundColor: 'var(--color-purple)', padding: '100px 24px', textAlign: 'center', color: 'white' }}>
+        <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)', color: 'white' }}>
+            Want Help Building Your Own Route?
+          </h2>
+          <p style={{ fontSize: '1.25rem', marginBottom: '1.5rem', opacity: 0.9 }}>
+            Planning long-term travel can get overwhelming fast. If you need help structuring your trip sustainably, avoiding burnout, and making confident route decisions...
+          </p>
+          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', opacity: 0.9 }}>
+            …we offer custom strategy calls based on the exact systems we use to travel full-time.
+          </p>
+          <Link href="/start-planning" className="btn btn-primary" style={{ backgroundColor: 'white', color: 'var(--color-purple)', padding: '16px 32px', fontSize: '1.2rem' }}>
+            Learn More Here
+          </Link>
+        </div>
       </section>
     </>
   )

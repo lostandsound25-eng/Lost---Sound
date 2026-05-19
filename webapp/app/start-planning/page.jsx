@@ -2,165 +2,146 @@
 import Link from 'next/link';
 
 export default function StartPlanning() {
-  const tiers = [
+  const services = [
     {
-      name: "Custom Trip Outline",
-      price: "$20",
-      description: "Perfect for travelers who want direction without spending hours researching.",
+      name: "Travel Strategy Call",
+      price: "$50",
+      description: "Perfect if you're feeling overwhelmed and need expert guidance to confidently plan your own trip.",
       features: [
-        "Personalized high-level route",
-        "Destinations en route recommendations",
-        "Suggested trip pacing",
-        "Where to stay + must-do experiences",
-        "General transport guidance",
-        "Rough budget expectations",
-        "7-day delivery"
+        "45-minute 1-on-1 video call",
+        "Route feasibility & pacing check",
+        "Strategies to avoid travel burnout",
+        "Tips for traveling realistically as a couple",
+        "Guidance on balancing cost vs experience",
+        "Post-call strategy notes"
       ],
-      cta: "Get Your Outline",
+      cta: "Book a Strategy Call",
       link: "/questionnaire",
       color: "var(--color-golden)"
     },
     {
-      name: "Detailed Travel Planning",
-      price: "$50",
-      description: "Best for longer trips, first-time travelers, or anyone wanting a stress-free process.",
+      name: "Custom Route Coaching",
+      price: "$150",
+      description: "A collaborative deep-dive to help you build a sustainable, long-term travel system tailored to you.",
       features: [
-        "Detailed day-by-day route",
-        "Specific accommodation recommendations",
-        "Transport logistics + food/activity recs",
-        "Hidden gems + local tips",
-        "Planning call/video consultation",
-        "1 set of revisions based on feedback",
-        "Direct support during planning"
+        "Complete route planning framework",
+        "Deep-dive into decision-making filters",
+        "Structuring long-term travel sustainably",
+        "Budget mapping tools & matrices",
+        "Two 60-minute collaborative calls",
+        "Direct support while you finalize your route"
       ],
-      cta: "Start Planning",
+      cta: "Start Curating",
       link: "/questionnaire",
       color: "var(--color-purple)",
       popular: true
-    },
-    {
-      name: "Full Concierge Planning",
-      price: "Custom",
-      description: "Our most comprehensive package. We build your trip from start to finish.",
-      features: [
-        "Ongoing support throughout",
-        "Multiple planning calls",
-        "Flexible route revisions",
-        "Booking guidance + live travel support",
-        "Content/photo recommendations",
-        "Niche experiences tailored to you",
-        "Best for complex/group trips"
-      ],
-      cta: "Enquire Now",
-      link: "/book",
-      color: "var(--color-orange)"
     }
   ];
 
   return (
     <main style={{ padding: '120px 0 80px' }}>
       <div className="container">
-        <div className="text-center mb-5" style={{ maxWidth: '800px', margin: '0 auto 60px' }}>
-          <h1 style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>Start Planning Your Journey</h1>
-          <p style={{ fontSize: '1.3rem', color: 'var(--color-text)', opacity: 0.8 }}>
-            Whether you just need a nudge in the right direction or someone to handle every single detail, we've got you covered.
+        <div className="text-center mb-5" style={{ maxWidth: '900px', margin: '0 auto 80px' }}>
+          <h1 style={{ fontSize: '4rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)', lineHeight: 1.1 }}>
+            Travel Smarter, Not Harder.
+          </h1>
+          <p style={{ fontSize: '1.3rem', color: 'var(--color-text)', opacity: 0.9, lineHeight: 1.8, marginBottom: '2rem' }}>
+            We aren’t here to just build a generic itinerary for you. We are travel strategists, and our goal is to give you the systems, tools, and confidence to curate your own unforgettable routes.
+          </p>
+          <p style={{ fontSize: '1.2rem', color: 'var(--color-text)', opacity: 0.8, lineHeight: 1.8 }}>
+            Long-term travel isn't always roses and rainbows. It takes strategy to do it affordably and without burning out. We'll show you exactly how to do it.
           </p>
         </div>
 
         <div className="pricing-grid" style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-          gap: '30px',
-          alignItems: 'start'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
+          gap: '40px',
+          alignItems: 'start',
+          maxWidth: '900px',
+          margin: '0 auto'
         }}>
-          {tiers.map((tier, idx) => (
+          {services.map((service, idx) => (
             <div key={idx} style={{ 
               backgroundColor: 'white', 
               borderRadius: '30px', 
-              padding: '40px',
-              border: `2px solid ${tier.popular ? tier.color : '#eee'}`,
+              padding: '50px 40px',
+              border: `2px solid ${service.popular ? service.color : '#eee'}`,
               position: 'relative',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
               display: 'flex',
               flexDirection: 'column',
               height: '100%'
             }}>
-              {tier.popular && (
-                <div style={{ 
+              {service.popular && (
+               <div style={{ 
                   position: 'absolute', 
-                  top: '-15px', 
+                  top: '-16px', 
                   left: '50%', 
                   transform: 'translateX(-50%)', 
-                  backgroundColor: tier.color, 
+                  backgroundColor: service.color, 
                   color: 'white', 
-                  padding: '4px 20px', 
-                  borderRadius: '20px',
-                  fontSize: '0.8rem',
+                  padding: '6px 24px', 
+                  borderRadius: '30px',
+                  fontSize: '0.85rem',
                   fontWeight: 800,
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
                 }}>
                   Most Popular
                 </div>
               )}
               
-              <h3 style={{ fontSize: '1.8rem', color: tier.color, marginBottom: '0.5rem' }}>{tier.name}</h3>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-                {tier.price} <span style={{ fontSize: '1rem', fontWeight: 400, opacity: 0.6 }}>{tier.price !== 'Custom' ? '/ starting' : ''}</span>
+              <h3 style={{ fontSize: '2rem', color: service.color, marginBottom: '0.5rem', fontFamily: 'var(--font-heading)' }}>{service.name}</h3>
+              <div style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', color: 'var(--color-text)' }}>
+                {service.price}
               </div>
               
-              <p style={{ marginBottom: '2rem', fontSize: '1.05rem', lineHeight: 1.6, opacity: 0.9 }}>
-                {tier.description}
+              <p style={{ marginBottom: '2.5rem', fontSize: '1.1rem', lineHeight: 1.6, opacity: 0.8 }}>
+                {service.description}
               </p>
 
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', flex: 1 }}>
-                {tier.features.map((feature, fIdx) => (
+                {service.features.map((feature, fIdx) => (
                   <li key={fIdx} style={{ 
                     display: 'flex', 
                     alignItems: 'flex-start', 
                     gap: '12px', 
-                    marginBottom: '14px',
-                    fontSize: '1rem',
+                    marginBottom: '16px',
+                    fontSize: '1.05rem',
                     lineHeight: 1.4
                   }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={tier.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={service.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span style={{ opacity: 0.9 }}>{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              {tier.link.startsWith('http') ? (
-                <a href={tier.link} target="_blank" rel="noopener noreferrer" className="btn" style={{ 
-                  backgroundColor: tier.color, 
-                  color: 'white', 
-                  textAlign: 'center',
-                  padding: '16px',
-                  borderRadius: '50px',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}>
-                  {tier.cta}
-                </a>
-              ) : (
-                <Link href={tier.link} className="btn" style={{ 
-                  backgroundColor: tier.color, 
-                  color: 'white', 
-                  textAlign: 'center',
-                  padding: '16px',
-                  borderRadius: '50px',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}>
-                  {tier.cta}
-                </Link>
-              )}
+              <Link href={service.link} className="btn" style={{ 
+                backgroundColor: service.color, 
+                color: 'white', 
+                textAlign: 'center',
+                padding: '18px',
+                borderRadius: '50px',
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                textDecoration: 'none',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              }}>
+                {service.cta}
+              </Link>
             </div>
           ))}
         </div>
 
-        <section style={{ marginTop: '100px', backgroundColor: '#F9F6ED', borderRadius: '40px', padding: '60px', textAlign: 'center' }}>
-          <h2 style={{ marginBottom: '1rem' }}>Not sure which one is right?</h2>
-          <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>Book a free 15-minute discovery call and we'll help you decide.</p>
-          <Link href="/book" className="btn btn-outline" style={{ display: 'inline-block' }}>Schedule Discovery Call</Link>
+        <section style={{ marginTop: '100px', backgroundColor: 'var(--color-cream)', borderRadius: '40px', padding: '80px 40px', textAlign: 'center' }}>
+          <h2 style={{ marginBottom: '1.5rem', fontSize: '2.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Not sure where to start?</h2>
+          <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.8, maxWidth: '600px', margin: '0 auto 2.5rem' }}>
+            Book a free 15-minute discovery call. We'll chat about your travel dreams and see if our planning systems are a good fit for you.
+          </p>
+          <Link href="/book" className="btn btn-outline" style={{ display: 'inline-block', fontSize: '1.1rem', padding: '16px 32px', backgroundColor: 'white' }}>
+            Schedule Free Discovery Call
+          </Link>
         </section>
       </div>
     </main>
