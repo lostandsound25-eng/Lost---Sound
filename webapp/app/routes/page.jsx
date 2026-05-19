@@ -35,7 +35,7 @@ export default async function ItinerariesPage() {
     <main style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh' }}>
       <section className="container" style={{ padding: '100px 24px 60px 24px', textAlign: 'center' }}>
         <div className="text-center mb-5">
-          <h1 style={{ fontSize: '4rem', marginBottom: '1rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Free Itineraries</h1>
+          <h1 style={{ fontSize: '4rem', marginBottom: '1rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Routes</h1>
           <p style={{ fontSize: '1.25rem', maxWidth: '700px', margin: '0 auto', color: '#555' }}>
             Tried, tested, and perfectly paced routes that balance adventure with comfort.
           </p>
@@ -43,7 +43,7 @@ export default async function ItinerariesPage() {
 
         {itineraries.length === 0 ? (
           <div style={{ padding: '100px 20px', backgroundColor: 'white', borderRadius: '30px', border: '1px dashed #ccc' }}>
-            <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)' }}>More Trips Coming Soon</h3>
+            <h3 style={{ fontSize: '1.5rem', color: 'var(--color-purple)' }}>More Routes Coming Soon</h3>
             <p style={{ marginTop: '1rem' }}>We're currently migrating our best routes. Check back in a few days!</p>
           </div>
         ) : (
@@ -67,7 +67,7 @@ export default async function ItinerariesPage() {
                   display: 'flex',
                   flexDirection: 'column'
                 }}>
-                  <Link href={`/itineraries/${trip.slug}`} style={{ display: 'block', height: '300px', overflow: 'hidden' }}>
+                  <Link href={`/routes/${trip.slug}`} style={{ display: 'block', height: '300px', overflow: 'hidden' }}>
                     <img 
                       src={featuredImage} 
                       alt={trip.title}
@@ -77,7 +77,7 @@ export default async function ItinerariesPage() {
                   <div style={{ padding: '30px', textAlign: 'left' }}>
                     <h3 style={{ fontSize: '1.75rem', marginBottom: '15px', color: 'var(--color-purple)' }}>
                       <Link 
-                        href={`/itineraries/${trip.slug}`}
+                        href={`/routes/${trip.slug}`}
                         dangerouslySetInnerHTML={{ __html: trip.title }}
                         style={{ textDecoration: 'none', color: 'inherit' }}
                       />
@@ -86,8 +86,8 @@ export default async function ItinerariesPage() {
                       style={{ color: '#666', lineHeight: '1.6', marginBottom: '20px', fontSize: '1rem' }}
                       dangerouslySetInnerHTML={{ __html: trip.excerpt }}
                     />
-                    <Link href={`/itineraries/${trip.slug}`} className="btn btn-outline" style={{ fontSize: '0.9rem' }}>
-                      View Itinerary →
+                    <Link href={`/routes/${trip.slug}`} className="btn btn-outline" style={{ fontSize: '0.9rem' }}>
+                      View Route →
                     </Link>
                   </div>
                 </article>
@@ -97,16 +97,37 @@ export default async function ItinerariesPage() {
         )}
       </section>
 
-      <section className="conversion-section" style={{ backgroundColor: 'var(--color-cream)', padding: '100px 24px', textAlign: 'center' }}>
-        <div className="container" style={{ maxWidth: '800px' }}>
-          <h2 style={{ fontSize: '3rem', marginBottom: '1.5rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)' }}>
-            Want a custom version of these trips?
+      <section className="conversion-section" style={{ backgroundColor: 'var(--color-purple)', padding: '100px 24px', textAlign: 'center', color: 'white' }}>
+        <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)', color: 'white' }}>
+            Want Help Building Your Own Route?
           </h2>
-          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', color: '#555' }}>
-            We can tailor any of these routes to your specific dates, budget, and travel style.
+          <p style={{ fontSize: '1.25rem', marginBottom: '1rem', opacity: 0.9 }}>
+            Planning long-term travel can get overwhelming fast.
           </p>
-          <Link href="/start-planning" className="btn btn-primary" style={{ padding: '18px 40px', fontSize: '1.2rem' }}>
-            Book a Free 15-Min Call
+          <p style={{ fontSize: '1.25rem', marginBottom: '1rem', opacity: 0.9 }}>
+            If you want help building a realistic route based on your:
+          </p>
+          <ul style={{ 
+            listStyleType: 'disc', 
+            textAlign: 'left', 
+            display: 'inline-block', 
+            fontSize: '1.25rem', 
+            marginBottom: '2rem', 
+            opacity: 0.9,
+            paddingLeft: '20px'
+          }}>
+            <li>budget</li>
+            <li>pace</li>
+            <li>interests</li>
+            <li>timeline</li>
+            <li>comfort level</li>
+          </ul>
+          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', opacity: 0.9 }}>
+            …we now offer custom route planning + strategy calls based on the exact systems we’ve used while traveling full-time across Europe and Southeast Asia.
+          </p>
+          <Link href="/start-planning" className="btn btn-primary" style={{ backgroundColor: 'white', color: 'var(--color-purple)', padding: '16px 32px', fontSize: '1.2rem' }}>
+            Learn More Here
           </Link>
         </div>
       </section>

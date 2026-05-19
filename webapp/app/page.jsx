@@ -21,13 +21,13 @@ export default function Home() {
               This site is everything we wish we knew, all in one place.
             </h2>
             <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
-              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Use our tried-and-true free <Link href="/itineraries" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>itineraries</Link> to take the guesswork out of planning your trip. 
+              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Use our tried-and-true free <Link href="/routes" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>routes</Link> to take the guesswork out of planning your trip. 
               <br /><br />
               Or, if you would rather not do the planning yourself, we can do it with you. Book your free 15-minute call with us to discuss your next trip.
             </p>
             <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
-              <Link href="/itineraries" className="btn btn-secondary">Itineraries</Link>
+              <Link href="/routes" className="btn btn-secondary">Routes</Link>
             </div>
           </div>
           <div className="hero-visuals">
@@ -47,7 +47,7 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-5">
             <h2 style={{ fontSize: '3.5rem' }}>Where to next?</h2>
-            <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>Tried, tested, and perfectly paced itineraries.</p>
+            <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>Tried, tested, and perfectly paced routes.</p>
           </div>
 
           <div className="cards-grid">
@@ -83,7 +83,7 @@ export default function Home() {
           </div>
 
           <div className="text-center" style={{ marginTop: '60px' }}>
-            <Link href="/itineraries" className="btn btn-outline" style={{ background: 'white' }}>View All Trips</Link>
+            <Link href="/routes" className="btn btn-outline" style={{ background: 'white' }}>View All Routes</Link>
           </div>
         </div>
       </section>

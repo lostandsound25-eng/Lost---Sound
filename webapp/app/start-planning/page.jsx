@@ -8,7 +8,7 @@ export default function StartPlanning() {
       price: "$20",
       description: "Perfect for travelers who want direction without spending hours researching.",
       features: [
-        "Personalized high-level itinerary",
+        "Personalized high-level route",
         "Destinations en route recommendations",
         "Suggested trip pacing",
         "Where to stay + must-do experiences",
@@ -25,7 +25,7 @@ export default function StartPlanning() {
       price: "$50",
       description: "Best for longer trips, first-time travelers, or anyone wanting a stress-free process.",
       features: [
-        "Detailed day-by-day itinerary",
+        "Detailed day-by-day route",
         "Specific accommodation recommendations",
         "Transport logistics + food/activity recs",
         "Hidden gems + local tips",
@@ -45,7 +45,7 @@ export default function StartPlanning() {
       features: [
         "Ongoing support throughout",
         "Multiple planning calls",
-        "Flexible itinerary revisions",
+        "Flexible route revisions",
         "Booking guidance + live travel support",
         "Content/photo recommendations",
         "Niche experiences tailored to you",

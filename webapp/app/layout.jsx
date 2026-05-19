@@ -32,7 +32,7 @@ export default function RootLayout({ children }) {
             <div className="nav-links">
               <Search />
               <Link href="/blog">Blog</Link>
-              <Link href="/itineraries">Itineraries</Link>
+              <Link href="/routes">Routes</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
               <Link href="/start-planning" className="btn btn-primary" style={{ padding: '10px 20px', marginLeft: '12px' }}>Start Planning</Link>
@@ -69,14 +69,14 @@ export default function RootLayout({ children }) {
             </div>
             <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '3rem' }}>
               <Link href="/blog">Blog</Link>
-              <Link href="/itineraries">Itineraries</Link>
+              <Link href="/routes">Routes</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
             </div>
             
             <div style={{ maxWidth: '400px', margin: '0 auto 3rem auto', backgroundColor: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: 'var(--radius-card)' }}>
               <h4 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.2rem' }}>Keep in Touch</h4>
-              <p style={{ opacity: 0.9, marginBottom: '1rem', fontSize: '0.9rem' }}>Drop your email for travel itineraries right to your inbox!</p>
+              <p style={{ opacity: 0.9, marginBottom: '1rem', fontSize: '0.9rem' }}>Drop your email for travel routes right to your inbox!</p>
               <KeepInTouchForm />
             </div>
 

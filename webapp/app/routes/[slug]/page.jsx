@@ -24,7 +24,7 @@ async function getPost(slug) {
   }
 }
 
-export default async function ItineraryDetailPage({ params }) {
+export default async function RouteDetailPage({ params }) {
   const post = await getPost(params.slug);
 
   if (!post) {
@@ -45,14 +45,14 @@ export default async function ItineraryDetailPage({ params }) {
         backgroundColor: 'var(--color-bg)'
       }}>
         <div className="container" style={{ maxWidth: '900px' }}>
-          <Link href="/itineraries" style={{ 
+          <Link href="/routes" style={{ 
             color: 'var(--color-orange)', 
             fontWeight: 700, 
             textDecoration: 'none',
             display: 'block',
             marginBottom: '20px'
           }}>
-            ← Back to Itineraries
+            ← Back to Routes
           </Link>
           
           <h1 
@@ -90,15 +90,36 @@ export default async function ItineraryDetailPage({ params }) {
 
       {/* Footer CTA */}
       <section style={{ backgroundColor: 'var(--color-purple)', padding: '100px 24px', color: 'white', textAlign: 'center' }}>
-        <div className="container">
+        <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', fontFamily: 'var(--font-heading)', color: 'white' }}>
-            Love this itinerary?
+            Want Help Building Your Own Route?
           </h2>
-          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', opacity: 0.9 }}>
-            We can customize this exact route for your specific dates and budget.
+          <p style={{ fontSize: '1.25rem', marginBottom: '1rem', opacity: 0.9 }}>
+            Planning long-term travel can get overwhelming fast.
           </p>
-          <Link href="/start-planning" className="btn btn-primary" style={{ backgroundColor: 'white', color: 'var(--color-purple)', padding: '16px 32px' }}>
-            Book a Custom Planning Call
+          <p style={{ fontSize: '1.25rem', marginBottom: '1rem', opacity: 0.9 }}>
+            If you want help building a realistic route based on your:
+          </p>
+          <ul style={{ 
+            listStyleType: 'disc', 
+            textAlign: 'left', 
+            display: 'inline-block', 
+            fontSize: '1.25rem', 
+            marginBottom: '2rem', 
+            opacity: 0.9,
+            paddingLeft: '20px'
+          }}>
+            <li>budget</li>
+            <li>pace</li>
+            <li>interests</li>
+            <li>timeline</li>
+            <li>comfort level</li>
+          </ul>
+          <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', opacity: 0.9 }}>
+            …we now offer custom route planning + strategy calls based on the exact systems we’ve used while traveling full-time across Europe and Southeast Asia.
+          </p>
+          <Link href="/start-planning" className="btn btn-primary" style={{ backgroundColor: 'white', color: 'var(--color-purple)', padding: '16px 32px', fontSize: '1.2rem' }}>
+            Learn More Here
           </Link>
         </div>
       </section>

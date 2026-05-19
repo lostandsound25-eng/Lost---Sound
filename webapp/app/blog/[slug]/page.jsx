@@ -95,7 +95,7 @@ export default async function BlogPostPage({ params }) {
             Inspired by this story?
           </h2>
           <p style={{ fontSize: '1.25rem', marginBottom: '2.5rem', opacity: 0.9 }}>
-            We can help you turn this dream into a real itinerary.
+            We can help you turn this dream into a real route.
           </p>
           <Link href="/start-planning" className="btn btn-primary" style={{ backgroundColor: 'white', color: 'var(--color-purple)', padding: '16px 32px' }}>
             Start Planning My Trip
