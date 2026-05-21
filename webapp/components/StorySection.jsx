@@ -93,6 +93,7 @@ export default function StorySection({ isExcerpt = false }) {
                     alt="Journey photo" 
                     layout="fill"
                     objectFit="cover"
+                    unoptimized={true}
                   />
                 </div>
               ))}
