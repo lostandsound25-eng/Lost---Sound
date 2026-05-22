@@ -1,284 +1,1580 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../../lib/supabase';
 
-// Icons as minimal inline SVGs
-const MicIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>;
-const PlusIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const StarIcon = ({ filled }) => <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "#F59E0B" : "none"} stroke={filled ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>;
+// SVG Icons as minimal inline components
+const MicIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </svg>
+);
 
-// Categories Setup
-const CATEGORIES = ['Food & Drink', 'Transportation', 'Accommodation', 'Activities', 'Miscellaneous'];
+const PlusIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const StarIcon = ({ filled }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "#F59E0B" : "none"} stroke={filled ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
+// Constants
+const CATEGORIES = ["Accommodation", "Transportation", "Breakfast", "Lunch", "Dinner", "Misc/Other"];
+
 const CATEGORY_COLORS = {
-  'Food & Drink': '#F59E0B',
-  'Transportation': '#3B82F6',
-  'Accommodation': '#8B5CF6',
-  'Activities': '#10B981',
-  'Miscellaneous': '#6B7280'
+  Accommodation: "#853A51",
+  Transportation: "#81C3D7",
+  Breakfast: "#F2AE30",
+  Lunch: "#E86B32",
+  Dinner: "#E24E42",
+  "Misc/Other": "#6B7280"
 };
 
-// Simple Mock Currency Converter
-const RATES = { PHP: 0.017, THB: 0.027, EUR: 1.08, JPY: 0.0065, USD: 1 };
+const CATEGORY_EMOJIS = {
+  Accommodation: "🏨",
+  Transportation: "🛵",
+  Breakfast: "☕️",
+  Lunch: "🍔",
+  Dinner: "🍕",
+  "Misc/Other": "📦"
+};
+
+const DEFAULT_RATES = {
+  USD: 1.0,
+  EUR: 1.08,
+  THB: 0.027,
+  PHP: 0.017,
+  VND: 0.000039,
+  IDR: 0.000062,
+  CAD: 0.73,
+  MXN: 0.060,
+  AUD: 0.66
+};
+
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  HTML: '€', // fallback if needed
+  EUR: '€',
+  THB: '฿',
+  PHP: '₱',
+  JPY: '¥',
+  VND: '₫',
+  IDR: 'Rp',
+  CAD: 'CA$',
+  MXN: 'Mex$',
+  AUD: 'A$'
+};
+
+// Formatting & Conversion Helpers
+const formatMoney = (amount, currency) => {
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  return symbol.length > 1 ? `${symbol} ${amount.toFixed(2)}` : `${symbol}${amount.toFixed(2)}`;
+};
+
+const convertCurrency = (amount, fromCurrency, toCurrency, rates) => {
+  return (amount * (rates[fromCurrency] || 1)) / (rates[toCurrency] || 1);
+};
+
+const getDaysActive = (expenses) => {
+  if (expenses.length === 0) return 1;
+  const minTime = Math.min(...expenses.map(e => new Date(e.timestamp).getTime()));
+  const minDate = new Date(minTime);
+  const startDate = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+  const today = new Date();
+  const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.max(1, Math.round((endDate - startDate) / 86400000) + 1);
+};
 
 export default function TrackerApp() {
   const [expenses, setExpenses] = useState([]);
+  const [trip, setTrip] = useState({
+    name: "Southeast Asia 2026",
+    homeCurrency: "USD",
+    localCurrency: "PHP",
+    currentLocation: ""
+  });
+  const [rates, setRates] = useState(DEFAULT_RATES);
+  const [customCurrencies, setCustomCurrencies] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // 'voice' or 'manual'
-  
-  // Trip State (Mocked for V1)
-  const trip = { name: "Southeast Asia 2026", daysActive: 14, homeCurrency: 'USD', localCurrency: 'PHP' };
+  const [activeModal, setActiveModal] = useState(null); // 'manual', 'voice', 'subscribe'
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [pendingCloudSync, setPendingCloudSync] = useState(false);
 
+  // Load state from localStorage / cloud on mount
   useEffect(() => {
-    // Load offline data
-    const saved = localStorage.getItem('tracker_expenses');
-    if (saved) setExpenses(JSON.parse(saved));
-    setIsMounted(true);
+    const savedRates = localStorage.getItem("tracker_rates");
+    if (savedRates) setRates(JSON.parse(savedRates));
+
+    const savedCustom = localStorage.getItem("tracker_custom_currencies");
+    if (savedCustom) setCustomCurrencies(JSON.parse(savedCustom));
+
+    const savedTrip = localStorage.getItem("tracker_trip");
+    let parsedTrip = null;
+    if (savedTrip) setTrip((parsedTrip = JSON.parse(savedTrip)));
+
+    const savedExpenses = localStorage.getItem("tracker_expenses");
+    let parsedExpenses = [];
+    if (savedExpenses) setExpenses((parsedExpenses = JSON.parse(savedExpenses)));
+
+    // Fallback: Default to yesterday's / last expense's location if trip location not set
+    if (parsedTrip && !parsedTrip.currentLocation && parsedExpenses.length > 0) {
+      const lastExp = parsedExpenses.find((e) => e.location);
+      if (lastExp) {
+        setTrip((prev) => ({ ...prev, currentLocation: lastExp.location }));
+      }
+    }
+
+    const tripId = new URLSearchParams(window.location.search).get("trip");
+    const subscribed = localStorage.getItem("tracker_subscribed") === "true";
+    setIsSubscribed(subscribed);
+
+    if (tripId && supabase) {
+      loadTripFromCloud(tripId);
+      if (!subscribed) {
+        setActiveModal("subscribe");
+      }
+    } else {
+      setIsMounted(true);
+    }
+
+    if (navigator.onLine) {
+      fetchLatestRates();
+    }
   }, []);
 
-  // Save to local storage on change
+  // Save changes locally
   useEffect(() => {
     if (isMounted) {
-      localStorage.setItem('tracker_expenses', JSON.stringify(expenses));
+      localStorage.setItem("tracker_trip", JSON.stringify(trip));
+    }
+  }, [trip, isMounted]);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem("tracker_expenses", JSON.stringify(expenses));
     }
   }, [expenses, isMounted]);
 
-  const addExpense = (newExpense) => {
-    const expense = {
-      ...newExpense,
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      amountUSD: newExpense.amount * (RATES[newExpense.currency] || 1)
-    };
-    setExpenses(prev => [expense, ...prev]);
+  const fetchLatestRates = async () => {
+    try {
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      if (res.ok) {
+        const data = await res.json();
+        const updatedRates = {};
+        for (const [curr, val] of Object.entries(data.rates)) {
+          updatedRates[curr] = 1 / val;
+        }
+        setRates((prev) => {
+          const merged = { ...prev, ...updatedRates };
+          localStorage.setItem("tracker_rates", JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.error("Error fetching latest rates:", e);
+    }
+  };
+
+  const loadTripFromCloud = async (tripId) => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const { data: tripData, error: tripErr } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("id", tripId)
+        .single();
+      if (tripErr) throw tripErr;
+
+      const newTrip = {
+        id: tripData.id,
+        name: tripData.name,
+        homeCurrency: tripData.home_currency,
+        localCurrency: tripData.local_currency,
+        currentLocation: tripData.current_location || ""
+      };
+      setTrip(newTrip);
+
+      const { data: expensesData, error: expErr } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false });
+      if (expErr) throw expErr;
+
+      const mappedExpenses = expensesData.map((e) => ({
+        id: e.id,
+        timestamp: e.created_at || new Date().toISOString(),
+        amount: parseFloat(e.amount),
+        currency: e.currency,
+        category: e.category,
+        note: e.note || "",
+        worthIt: e.worth_it,
+        location: e.location || "",
+        tags: e.tags || []
+      }));
+      setExpenses(mappedExpenses);
+
+      localStorage.setItem("tracker_trip", JSON.stringify(newTrip));
+      localStorage.setItem("tracker_expenses", JSON.stringify(mappedExpenses));
+    } catch (e) {
+      console.error("Supabase sync failed, loading locally.", e);
+      setSyncError("Cloud connection error. Working offline.");
+    } finally {
+      setIsSyncing(false);
+      setIsMounted(true);
+    }
+  };
+
+  const enableCloudSync = async () => {
+    if (!supabase) {
+      alert("Supabase integration is not configured in this project.");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const { data: tripData, error: tripErr } = await supabase
+        .from("trips")
+        .insert({
+          name: trip.name,
+          home_currency: trip.homeCurrency,
+          local_currency: trip.localCurrency,
+          current_location: trip.currentLocation
+        })
+        .select()
+        .single();
+      if (tripErr) throw tripErr;
+
+      const updatedTrip = { ...trip, id: tripData.id };
+      setTrip(updatedTrip);
+
+      if (expenses.length > 0) {
+        const cloudExpenses = expenses.map((e) => ({
+          id: e.id,
+          created_at: e.timestamp,
+          amount: e.amount,
+          currency: e.currency,
+          category: e.category,
+          note: e.note,
+          worth_it: e.worthIt,
+          location: e.location,
+          tags: e.tags,
+          trip_id: tripData.id
+        }));
+        const { error: expErr } = await supabase.from("expenses").insert(cloudExpenses);
+        if (expErr) throw expErr;
+      }
+
+      const shareUrl = `${window.location.pathname}?trip=${tripData.id}`;
+      window.history.pushState({ path: shareUrl }, "", shareUrl);
+      alert("Cloud sync enabled! You can share this URL to co-edit in real-time.");
+    } catch (e) {
+      console.error("Failed to enable cloud sync:", e);
+      alert("Cloud sync failed. Make sure you are online.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const updateLocation = async (loc) => {
+    setTrip((prev) => ({ ...prev, currentLocation: loc }));
+    if (trip.id && supabase) {
+      try {
+        await supabase.from("trips").update({ current_location: loc }).eq("id", trip.id);
+      } catch (e) {
+        console.error("Failed to sync location to cloud:", e);
+      }
+    }
+  };
+
+  const updateHomeCurrency = async (curr) => {
+    setTrip((prev) => ({ ...prev, homeCurrency: curr }));
+    if (trip.id && supabase) {
+      try {
+        await supabase.from("trips").update({ home_currency: curr }).eq("id", trip.id);
+      } catch (e) {
+        console.error("Failed to sync home currency to cloud:", e);
+      }
+    }
+  };
+
+  const updateLocalCurrency = async (curr) => {
+    setTrip((prev) => ({ ...prev, localCurrency: curr }));
+    if (trip.id && supabase) {
+      try {
+        await supabase.from("trips").update({ local_currency: curr }).eq("id", trip.id);
+      } catch (e) {
+        console.error("Failed to sync local currency to cloud:", e);
+      }
+    }
+  };
+
+  const addCustomCurrency = (curr) => {
+    setCustomCurrencies((prev) => {
+      const merged = [...new Set([...prev, curr])];
+      localStorage.setItem("tracker_custom_currencies", JSON.stringify(merged));
+      return merged;
+    });
+  };
+
+  const saveExpense = async (expense) => {
+    if (expense.delete) {
+      setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+      if (trip.id && supabase) {
+        try {
+          await supabase.from("expenses").delete().eq("id", expense.id);
+        } catch (e) {
+          console.error("Cloud delete failed:", e);
+        }
+      }
+      setActiveModal(null);
+      setEditingExpense(null);
+      return;
+    }
+
+    if (expense.id) {
+      // Update
+      setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...expense } : e)));
+      if (trip.id && supabase) {
+        try {
+          await supabase
+            .from("expenses")
+            .update({
+              amount: expense.amount,
+              currency: expense.currency,
+              category: expense.category,
+              note: expense.note,
+              worth_it: expense.worthIt,
+              location: expense.location,
+              tags: expense.tags
+            })
+            .eq("id", expense.id);
+        } catch (e) {
+          console.error("Cloud edit update failed:", e);
+        }
+      }
+    } else {
+      // Insert
+      const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+      const newExpense = {
+        ...expense,
+        id: newId,
+        timestamp: new Date().toISOString()
+      };
+      setExpenses((prev) => [newExpense, ...prev]);
+
+      if (newExpense.location && !trip.currentLocation) {
+        updateLocation(newExpense.location);
+      }
+
+      if (trip.id && supabase) {
+        try {
+          await supabase.from("expenses").insert({
+            id: newExpense.id,
+            created_at: newExpense.timestamp,
+            amount: newExpense.amount,
+            currency: newExpense.currency,
+            category: newExpense.category,
+            note: newExpense.note,
+            worth_it: newExpense.worthIt,
+            location: newExpense.location,
+            tags: newExpense.tags,
+            trip_id: trip.id
+          });
+        } catch (e) {
+          console.error("Cloud insert failed:", e);
+        }
+      }
+    }
     setActiveModal(null);
+    setEditingExpense(null);
   };
 
-  const deleteExpense = (id) => {
-    setExpenses(prev => prev.filter(e => e.id !== id));
+  const deleteExpense = async (id) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    if (trip.id && supabase) {
+      try {
+        await supabase.from("expenses").delete().eq("id", id);
+      } catch (e) {
+        console.error("Cloud delete failed:", e);
+      }
+    }
   };
 
-  // Calculations
-  const today = new Date().toLocaleDateString();
-  const todaysExpenses = expenses.filter(e => new Date(e.timestamp).toLocaleDateString() === today);
-  const todayTotal = todaysExpenses.reduce((sum, e) => sum + e.amountUSD, 0);
-  
-  const tripTotal = expenses.reduce((sum, e) => sum + e.amountUSD, 0);
-  const dailyAverage = tripTotal / trip.daysActive || 0;
+  const todayStr = new Date().toLocaleDateString();
+  const todayExpenses = expenses.filter((e) => new Date(e.timestamp).toLocaleDateString() === todayStr);
+  const todayTotal = todayExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+  const allExpensesTotal = expenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+  const daysActive = getDaysActive(expenses);
 
-  if (!isMounted) return <div style={{ minHeight: '100vh', background: '#f8f9fa' }} />;
-
-  return (
+  return isMounted ? (
     <div style={{
-      maxWidth: '480px',
-      margin: '0 auto',
-      minHeight: '100vh',
-      backgroundColor: '#f8f9fa',
-      position: 'relative',
-      fontFamily: 'var(--font-body), system-ui, sans-serif',
-      display: 'flex',
-      flexDirection: 'column'
+      maxWidth: "480px",
+      margin: "0 auto",
+      minHeight: "100vh",
+      backgroundColor: "#F9F6ED",
+      position: "relative",
+      fontFamily: "var(--font-body), system-ui, sans-serif",
+      display: "flex",
+      flexDirection: "column",
+      boxShadow: "0 0 40px rgba(0,0,0,0.05)",
+      color: "var(--color-text)",
     }}>
       {/* Header */}
-      <header style={{ padding: '40px 24px 20px', backgroundColor: 'white', borderBottom: '1px solid #eee' }}>
-        <h1 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#6B7280', marginBottom: '8px' }}>
-          {trip.name}
-        </h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <header style={{
+        padding: "30px 24px 20px",
+        backgroundColor: "white",
+        borderBottom: "1px solid #eee"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "12px",
+        }}>
+          <h1 style={{
+            fontSize: "1.2rem",
+            fontWeight: 800,
+            color: "var(--color-purple)",
+            margin: 0
+          }}>{trip.name}</h1>
+          {supabase && (
+            <div>
+              {trip.id ? (
+                <span style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "#10B981",
+                  backgroundColor: "#ECFDF5",
+                  padding: "4px 8px",
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}>
+                  ● Cloud Synced
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    isSubscribed ? enableCloudSync() : (setPendingCloudSync(true), setActiveModal("subscribe"));
+                  }}
+                  disabled={isSyncing}
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "white",
+                    backgroundColor: "var(--color-purple)",
+                    border: "none",
+                    borderRadius: "12px",
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    boxShadow: "0 2px 4px rgba(133, 58, 81, 0.2)"
+                  }}
+                >
+                  {isSyncing ? "Syncing..." : "☁️ Share & Sync"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Currency selectors */}
+        <div style={{
+          display: "flex",
+          gap: "12px",
+          fontSize: "0.85rem",
+          backgroundColor: "#F3F4F6",
+          padding: "6px 12px",
+          borderRadius: "20px",
+          width: "fit-content",
+          marginBottom: "16px"
+        }}>
+          <label style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            cursor: "pointer",
+            fontWeight: 600,
+            color: "#4B5563"
+          }}>
+            Home:
+            <select
+              value={trip.homeCurrency}
+              onChange={(e) => updateHomeCurrency(e.target.value)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontWeight: 700,
+                color: "var(--color-purple)",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              {Object.keys(rates).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <span style={{ color: "#D1D5DB" }}>|</span>
+          <label style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            cursor: "pointer",
+            fontWeight: 600,
+            color: "#4B5563"
+          }}>
+            Local:
+            <select
+              value={trip.localCurrency}
+              onChange={(e) => updateLocalCurrency(e.target.value)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontWeight: 700,
+                color: "var(--color-purple)",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              {Object.keys(rates).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {/* Location input */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "24px",
+          borderBottom: "1px dashed #E5E7EB",
+          paddingBottom: "10px"
+        }}>
+          <span style={{ fontSize: "1.1rem" }}>📍</span>
+          <input
+            type="text"
+            placeholder="Where are you today?"
+            value={trip.currentLocation}
+            onChange={(e) => updateLocation(e.target.value)}
+            style={{
+              border: "none",
+              fontSize: "0.95rem",
+              fontWeight: 500,
+              color: "#374151",
+              outline: "none",
+              width: "100%",
+              background: "transparent"
+            }}
+          />
+        </div>
+
+        {/* Totals */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end"
+        }}>
           <div>
-            <p style={{ fontSize: '0.9rem', color: '#6B7280', marginBottom: '4px' }}>Today's Spend</p>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>
-              ${todayTotal.toFixed(2)}
-            </h2>
+            <p style={{
+              fontSize: "0.9rem",
+              color: "#6B7280",
+              fontWeight: 500,
+              marginBottom: "4px"
+            }}>Today's Spend</p>
+            <h2 style={{
+              fontSize: "2.4rem",
+              fontWeight: 900,
+              color: "#111827",
+              lineHeight: 1,
+              fontFamily: "var(--font-heading)"
+            }}>{formatMoney(todayTotal, trip.homeCurrency)}</h2>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.85rem', color: '#6B7280', marginBottom: '4px' }}>Daily Avg</p>
-            <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#4B5563' }}>${dailyAverage.toFixed(2)}</p>
+          <div style={{ textAlign: "right" }}>
+            <p style={{
+              fontSize: "0.85rem",
+              color: "#6B7280",
+              fontWeight: 500,
+              marginBottom: "4px"
+            }}>Daily Avg ({daysActive}d)</p>
+            <p style={{
+              fontSize: "1.25rem",
+              fontWeight: 800,
+              color: "var(--color-purple)",
+              fontFamily: "var(--font-heading)"
+            }}>{formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}</p>
           </div>
         </div>
       </header>
 
-      {/* Main Content Scrollable */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: '120px' }}>
-        
-        {expenses.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: '60px', color: '#9CA3AF' }}>
-            <p style={{ fontSize: '1.1rem' }}>No expenses logged yet.</p>
-            <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>Tap the mic to add your first expense.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Recent</h3>
-            
-            {expenses.map(expense => (
-              <div key={expense.id} style={{
-                backgroundColor: 'white',
-                padding: '16px',
-                borderRadius: '16px',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ width: '4px', height: '100%', backgroundColor: CATEGORY_COLORS[expense.category], position: 'absolute', left: 0, top: 0 }} />
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 600, color: '#111827', fontSize: '1.1rem' }}>{expense.note || expense.category}</span>
-                    {expense.worthIt && <StarIcon filled />}
+      {syncError && (
+        <div style={{
+          backgroundColor: "#FEF2F2",
+          color: "#EF4444",
+          padding: "8px 24px",
+          fontSize: "0.8rem",
+          fontWeight: 500,
+          borderBottom: "1px solid #FEE2E2",
+          textAlign: "center"
+        }}>
+          ⚠️ {syncError}
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main style={{ flex: 1, overflowY: "auto", padding: "20px 0 120px" }}>
+        {/* Today's Breakdown */}
+        <section style={{ padding: "0 24px 24px" }}>
+          <h3 style={{
+            fontSize: "1.05rem",
+            fontWeight: 700,
+            color: "#374151",
+            marginBottom: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px"
+          }}>Today's Breakdown</h3>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "12px"
+          }}>
+            {CATEGORIES.map((cat) => {
+              const catExpenses = todayExpenses.filter((e) => e.category === cat);
+              const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+              const isExpanded = expandedCategory === cat;
+
+              return (
+                <div
+                  key={cat}
+                  style={{
+                    gridColumn: isExpanded ? "span 2" : "span 1",
+                    backgroundColor: "white",
+                    borderRadius: "16px",
+                    padding: "16px",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
+                    cursor: "pointer",
+                    border: isExpanded ? `1.5px solid ${CATEGORY_COLORS[cat]}` : "1.5px solid transparent",
+                    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                    overflow: "hidden"
+                  }}
+                  onClick={() => setExpandedCategory(isExpanded ? null : cat)}
+                >
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}>
+                      <span style={{ fontSize: "1.3rem" }}>{CATEGORY_EMOJIS[cat]}</span>
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#111827" }}>{cat}</span>
+                    </div>
+                    <div style={{
+                      fontWeight: 800,
+                      fontSize: "0.9rem",
+                      color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF"
+                    }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
                   </div>
-                  <span style={{ fontSize: '0.85rem', color: '#6B7280' }}>{expense.category}</span>
+
+                  {isExpanded && (
+                    <div
+                      style={{
+                        marginTop: "14px",
+                        borderTop: "1px solid #F3F4F6",
+                        paddingTop: "10px"
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {catExpenses.length === 0 ? (
+                        <p style={{
+                          fontSize: "0.8rem",
+                          color: "#9CA3AF",
+                          textAlign: "center",
+                          padding: "8px 0"
+                        }}>No expenses today</p>
+                      ) : (
+                        <div style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "6px"
+                        }}>
+                          {catExpenses.map((exp) => (
+                            <div
+                              key={exp.id}
+                              onClick={() => {
+                                setEditingExpense(exp);
+                                setActiveModal("manual");
+                              }}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                padding: "8px 10px",
+                                borderRadius: "10px",
+                                backgroundColor: "#F9FAFB",
+                                fontSize: "0.8rem",
+                                cursor: "pointer",
+                                border: "1px solid #E5E7EB"
+                              }}
+                            >
+                              <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "2px"
+                              }}>
+                                <span style={{ fontWeight: 600, color: "#374151" }}>{exp.note || "Unspecified"}</span>
+                                <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+                                  📍 {exp.location || trip.currentLocation}
+                                </span>
+                              </div>
+                              <div style={{ fontWeight: 700, color: "#111827" }}>
+                                {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827' }}>
-                    ${expense.amountUSD.toFixed(2)}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#9CA3AF' }}>
-                    {expense.amount} {expense.currency}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
+        </section>
+
+        {/* Running Ledger */}
+        <section style={{ padding: "0 24px" }}>
+          <h3 style={{
+            fontSize: "1.05rem",
+            fontWeight: 700,
+            color: "#374151",
+            marginBottom: "12px",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px"
+          }}>Running Ledger</h3>
+          {expenses.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "40px 0",
+              color: "#9CA3AF"
+            }}>
+              <p style={{ fontSize: "1rem", fontWeight: 500 }}>No expenses logged yet.</p>
+              <p style={{ fontSize: "0.85rem", marginTop: "6px" }}>Tap the mic to add your first expense.</p>
+            </div>
+          ) : (
+            <div>
+              {expenses.map((exp) => (
+                <ExpenseCard
+                  key={exp.id}
+                  expense={exp}
+                  onEdit={(e) => {
+                    setEditingExpense(e);
+                    setActiveModal("manual");
+                  }}
+                  onDelete={deleteExpense}
+                  formatMoney={formatMoney}
+                  convertCurrency={convertCurrency}
+                  homeCurrency={trip.homeCurrency}
+                  rates={rates}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </main>
 
       {/* Floating Action Buttons */}
       <div style={{
-        position: 'fixed',
-        bottom: '30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
+        position: "fixed",
+        bottom: "30px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "center",
+        gap: "20px",
         zIndex: 100
       }}>
-        <button 
-          onClick={() => setActiveModal('manual')}
+        <button
+          onClick={() => {
+            setEditingExpense(null);
+            setActiveModal("manual");
+          }}
           style={{
-            width: '56px', height: '56px',
-            borderRadius: '50%',
-            backgroundColor: 'white',
-            color: 'var(--color-purple)',
-            border: 'none',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer'
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            backgroundColor: "white",
+            color: "var(--color-purple)",
+            border: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer"
           }}
         >
           <PlusIcon />
         </button>
-
-        <button 
-          onClick={() => setActiveModal('voice')}
+        <button
+          onClick={() => setActiveModal("voice")}
           style={{
-            width: '72px', height: '72px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--color-purple)',
-            color: 'white',
-            border: 'none',
-            boxShadow: '0 10px 25px rgba(139, 92, 246, 0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'transform 0.1s'
+            width: "72px",
+            height: "72px",
+            borderRadius: "50%",
+            backgroundColor: "var(--color-purple)",
+            color: "white",
+            border: "none",
+            boxShadow: "0 10px 25px rgba(133, 58, 81, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "transform 0.1s"
           }}
-          onPointerDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-          onPointerUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+          onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           <MicIcon />
         </button>
       </div>
 
       {/* Modals */}
-      {activeModal === 'manual' && <ManualEntryModal onClose={() => setActiveModal(null)} onSave={addExpense} trip={trip} />}
-      {activeModal === 'voice' && <VoiceEntryModal onClose={() => setActiveModal(null)} onSave={addExpense} trip={trip} />}
+      {activeModal === "manual" && (
+        <ManualEntryModal
+          onClose={() => {
+            setActiveModal(null);
+            setEditingExpense(null);
+          }}
+          onSave={saveExpense}
+          trip={trip}
+          expenseToEdit={editingExpense}
+          rates={rates}
+          customCurrencies={customCurrencies}
+          onAddCustomCurrency={addCustomCurrency}
+        />
+      )}
+
+      {activeModal === "voice" && (
+        <VoiceEntryModal
+          onClose={() => setActiveModal(null)}
+          onSave={saveExpense}
+          trip={trip}
+          rates={rates}
+          categories={CATEGORIES}
+          onAddCustomCurrency={addCustomCurrency}
+          customCurrencies={customCurrencies}
+          setEditingExpense={setEditingExpense}
+          setActiveModal={setActiveModal}
+        />
+      )}
+
+      {activeModal === "subscribe" && (
+        <SubscribeModal
+          onClose={() => {
+            if (new URLSearchParams(window.location.search).get("trip")) {
+              const pathname = window.location.pathname;
+              window.history.pushState({ path: pathname }, "", pathname);
+              
+              const savedTrip = localStorage.getItem("tracker_trip");
+              if (savedTrip) {
+                setTrip(JSON.parse(savedTrip));
+              } else {
+                setTrip({
+                  name: "Southeast Asia 2026",
+                  homeCurrency: "USD",
+                  localCurrency: "PHP",
+                  currentLocation: "",
+                });
+              }
+              const savedExpenses = localStorage.getItem("tracker_expenses");
+              if (savedExpenses) {
+                setExpenses(JSON.parse(savedExpenses));
+              } else {
+                setExpenses([]);
+              }
+            }
+            setPendingCloudSync(false);
+            setActiveModal(null);
+          }}
+          onSuccess={() => {
+            setIsSubscribed(true);
+            localStorage.setItem("tracker_subscribed", "true");
+            setActiveModal(null);
+            if (pendingCloudSync) {
+              setPendingCloudSync(false);
+              enableCloudSync();
+            }
+          }}
+        />
+      )}
+    </div>
+  ) : (
+    <div style={{ minHeight: "100vh", background: "#F9F6ED" }} />
+  );
+}
+
+// Swipe-to-delete card representing each expense log
+function ExpenseCard({
+  expense,
+  onEdit,
+  onDelete,
+  formatMoney,
+  convertCurrency,
+  homeCurrency,
+  rates
+}) {
+  const [startX, setStartX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [offsetX, setOffsetX] = useState(0);
+  const [isSwipedOpen, setIsSwipedOpen] = useState(false);
+
+  const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
+
+  return (
+    <div style={{
+      position: "relative",
+      overflow: "hidden",
+      borderRadius: "16px",
+      marginBottom: "12px"
+    }}>
+      {/* Delete button revealed by swiping */}
+      <div
+        onClick={() => onDelete(expense.id)}
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: "80px",
+          backgroundColor: "#FCA5A5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#B91C1C",
+          fontWeight: 700,
+          fontSize: "0.85rem",
+          cursor: "pointer",
+          zIndex: 1,
+          borderTopRightRadius: "16px",
+          borderBottomRightRadius: "16px",
+          boxShadow: "inset 4px 0 10px rgba(0,0,0,0.05)"
+        }}
+      >
+        ✕ Delete
+      </div>
+
+      <div
+        onTouchStart={(e) => {
+          setStartX(e.touches[0].clientX);
+          setIsDragging(true);
+        }}
+        onTouchMove={(e) => {
+          if (!isDragging) return;
+          const diff = startX - e.touches[0].clientX;
+          if (diff > 0) {
+            setOffsetX(Math.min(isSwipedOpen ? 80 + diff : diff, 120));
+          } else if (isSwipedOpen && diff < 0) {
+            setOffsetX(Math.max(80 + diff, 0));
+          }
+        }}
+        onTouchEnd={() => {
+          setIsDragging(false);
+          if (isSwipedOpen) {
+            if (offsetX < 40) {
+              setOffsetX(0);
+              setIsSwipedOpen(false);
+            } else {
+              setOffsetX(80);
+            }
+          } else {
+            if (offsetX > 45) {
+              setOffsetX(80);
+              setIsSwipedOpen(true);
+            } else {
+              setOffsetX(0);
+            }
+          }
+        }}
+        onClick={() => {
+          if (isSwipedOpen) {
+            setOffsetX(0);
+            setIsSwipedOpen(false);
+          } else {
+            onEdit(expense);
+          }
+        }}
+        style={{
+          backgroundColor: "white",
+          padding: "16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "relative",
+          zIndex: 2,
+          transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: `translateX(-${offsetX}px)`,
+          cursor: "pointer",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.02)"
+        }}
+      >
+        <div style={{
+          width: "4px",
+          height: "100%",
+          backgroundColor: CATEGORY_COLORS[expense.category],
+          position: "absolute",
+          left: 0,
+          top: 0
+        }} />
+
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+          paddingLeft: "8px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{
+              fontWeight: 700,
+              color: "#111827",
+              fontSize: "1rem"
+            }}>{expense.note || expense.category}</span>
+            {expense.worthIt && <StarIcon filled={true} />}
+          </div>
+
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap"
+          }}>
+            <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
+              {CATEGORY_EMOJIS[expense.category]} {expense.category}
+            </span>
+            {expense.location && (
+              <span style={{
+                fontSize: "0.78rem",
+                color: "#9CA3AF",
+                display: "flex",
+                alignItems: "center",
+                gap: "2px"
+              }}>
+                📍 {expense.location}
+              </span>
+            )}
+          </div>
+
+          {expense.tags && expense.tags.length > 0 && (
+            <div style={{
+              display: "flex",
+              gap: "4px",
+              marginTop: "4px",
+              flexWrap: "wrap"
+            }}>
+              {expense.tags.map((tag, tIdx) => (
+                <span
+                  key={tIdx}
+                  style={{
+                    fontSize: "0.7rem",
+                    backgroundColor: "#F3F4F6",
+                    color: "#6B7280",
+                    padding: "2px 6px",
+                    borderRadius: "6px",
+                    fontWeight: 600
+                  }}
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ textAlign: "right" }}>
+          <div style={{
+            fontWeight: 800,
+            fontSize: "1.05rem",
+            color: "#111827"
+          }}>{formatMoney(convertedAmount, homeCurrency)}</div>
+          {expense.currency !== homeCurrency && (
+            <div style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>
+              {expense.amount.toFixed(2)} {expense.currency}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// --- MANUAL ENTRY MODAL ---
-function ManualEntryModal({ onClose, onSave, trip }) {
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [worthIt, setWorthIt] = useState(false);
+// Modal for adding or editing expenses manually
+function ManualEntryModal({
+  onClose,
+  onSave,
+  trip,
+  expenseToEdit,
+  rates,
+  customCurrencies,
+  onAddCustomCurrency
+}) {
+  const [amount, setAmount] = useState(expenseToEdit ? expenseToEdit.amount : "");
+  const [note, setNote] = useState(expenseToEdit ? expenseToEdit.note : "");
+  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Misc/Other");
+  const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
+  const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
+  const [location, setLocation] = useState(expenseToEdit ? expenseToEdit.location : trip.currentLocation);
+  const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
+  const [tagInput, setTagInput] = useState("");
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [customCodeInput, setCustomCodeInput] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!amount) return;
-    onSave({
-      amount: parseFloat(amount),
-      currency: trip.localCurrency,
-      category,
-      note,
-      worthIt
-    });
+  const removeTag = (idx) => {
+    setTags(tags.filter((_, i) => i !== idx));
   };
+
+  const handleCurrencyChange = (val) => {
+    if (val === "CUSTOM") {
+      setIsAddingCustom(true);
+    } else {
+      setCurrency(val);
+    }
+  };
+
+  const availableCurrencies = [
+    ...new Set([
+      "USD",
+      "EUR",
+      "THB",
+      "PHP",
+      "VND",
+      "IDR",
+      "CAD",
+      "MXN",
+      "AUD",
+      ...customCurrencies
+    ])
+  ];
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center'
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      zIndex: 200,
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center"
     }}>
       <div style={{
-        backgroundColor: 'white', width: '100%', maxWidth: '480px',
-        borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-        padding: '24px', animation: 'slideUp 0.3s ease-out'
+        backgroundColor: "white",
+        width: "100%",
+        maxWidth: "480px",
+        borderTopLeftRadius: "24px",
+        borderTopRightRadius: "24px",
+        padding: "24px",
+        animation: "slideUp 0.3s ease-out",
+        maxHeight: "90vh",
+        overflowY: "auto"
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Quick Add</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#9CA3AF' }}>×</button>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px"
+        }}>
+          <h3 style={{
+            fontSize: "1.15rem",
+            fontWeight: 800,
+            color: "var(--color-purple)"
+          }}>
+            {expenseToEdit?.id ? "Edit Expense" : "Log Expense"}
+          </h3>
+          <button onClick={onClose} style={{
+            background: "none",
+            border: "none",
+            fontSize: "1.5rem",
+            color: "#9CA3AF",
+            cursor: "pointer"
+          }}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #E5E7EB', paddingBottom: '8px' }}>
-            <span style={{ fontSize: '2rem', color: '#6B7280', marginRight: '8px' }}>{trip.localCurrency}</span>
-            <input 
-              type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
-              placeholder="0.00" autoFocus
-              style={{ flex: 1, border: 'none', fontSize: '2.5rem', fontWeight: 700, outline: 'none', width: '100%' }}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const val = parseFloat(amount);
+            if (!amount || isNaN(val) || val <= 0) {
+              alert("Please enter a valid positive amount.");
+              return;
+            }
+            onSave({
+              amount: val,
+              currency,
+              category,
+              note: note.trim() || category,
+              worthIt,
+              location: location.trim(),
+              tags,
+              id: expenseToEdit?.id
+            });
+          }}
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+        >
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            borderBottom: "2px solid #E5E7EB",
+            paddingBottom: "8px"
+          }}>
+            {isAddingCustom ? (
+              <div style={{
+                display: "flex",
+                gap: "6px",
+                alignItems: "center",
+                marginRight: "10px"
+              }}>
+                <input
+                  type="text"
+                  maxLength={3}
+                  placeholder="SGD"
+                  value={customCodeInput}
+                  onChange={(e) => setCustomCodeInput(e.target.value)}
+                  style={{
+                    width: "60px",
+                    fontSize: "1.1rem",
+                    fontWeight: 700,
+                    border: "1px solid #E5E7EB",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    padding: "6px"
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code = customCodeInput.trim().toUpperCase();
+                    if (code.length === 3) {
+                      onAddCustomCurrency(code);
+                      setCurrency(code);
+                      setIsAddingCustom(false);
+                      setCustomCodeInput("");
+                    } else {
+                      alert("Currency code must be exactly 3 letters (e.g. SGD)");
+                    }
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "0.8rem",
+                    backgroundColor: "var(--color-purple)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: 600
+                  }}
+                >Add</button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCustom(false)}
+                  style={{
+                    padding: "6px",
+                    fontSize: "0.8rem",
+                    background: "none",
+                    border: "none",
+                    color: "#6B7280",
+                    cursor: "pointer"
+                  }}
+                >✕</button>
+              </div>
+            ) : (
+              <select
+                value={currency}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
+                style={{
+                  fontSize: "1.4rem",
+                  color: "var(--color-purple)",
+                  border: "none",
+                  background: "transparent",
+                  outline: "none",
+                  fontWeight: 800,
+                  marginRight: "8px",
+                  cursor: "pointer"
+                }}
+              >
+                {availableCurrencies.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="CUSTOM">+ Add custom...</option>
+              </select>
+            )}
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={amount}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || parseFloat(val) >= 0) {
+                  setAmount(val);
+                }
+              }}
+              placeholder="0.00"
+              autoFocus={true}
+              style={{
+                flex: 1,
+                border: "none",
+                fontSize: "2.4rem",
+                fontWeight: 800,
+                outline: "none",
+                width: "100%",
+                color: "#111827"
+              }}
             />
           </div>
 
-          <input 
-            type="text" value={note} onChange={e => setNote(e.target.value)}
-            placeholder="What was it for?"
-            style={{ padding: '16px', borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: '1.1rem', outline: 'none' }}
-          />
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {CATEGORIES.map(cat => (
-              <button 
-                key={cat} type="button" onClick={() => setCategory(cat)}
-                style={{
-                  padding: '8px 16px', borderRadius: '20px', border: '1px solid',
-                  fontSize: '0.9rem', fontWeight: 500,
-                  backgroundColor: category === cat ? CATEGORY_COLORS[cat] : 'white',
-                  borderColor: category === cat ? CATEGORY_COLORS[cat] : '#E5E7EB',
-                  color: category === cat ? 'white' : '#4B5563',
-                }}
-              >
-                {cat}
-              </button>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <label style={{
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>What was it for?</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Description (e.g. Latte)"
+              style={{
+                padding: "12px",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB",
+                fontSize: "1rem",
+                outline: "none"
+              }}
+            />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', backgroundColor: '#FFFBEB', borderRadius: '12px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={worthIt} onChange={e => setWorthIt(e.target.checked)} style={{ width: '20px', height: '20px' }} />
-            <span style={{ fontSize: '1.1rem', color: '#92400E', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <label style={{
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Location</label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Establishment / City (e.g. Siargao Coffee)"
+              style={{
+                padding: "12px",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB",
+                fontSize: "1rem",
+                outline: "none"
+              }}
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Category</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "20px",
+                    border: "1.5px solid",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backgroundColor: category === cat ? CATEGORY_COLORS[cat] : "white",
+                    borderColor: category === cat ? CATEGORY_COLORS[cat] : "#E5E7EB",
+                    color: category === cat ? "white" : "#4B5563",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {CATEGORY_EMOJIS[cat]} {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <label style={{
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Tags (comma/enter to add)</label>
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "6px",
+              marginBottom: "4px"
+            }}>
+              {tags.map((t, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "0.78rem",
+                    backgroundColor: "#F3F4F6",
+                    color: "#4B5563",
+                    padding: "4px 8px",
+                    borderRadius: "8px",
+                    fontWeight: 600
+                  }}
+                >
+                  #{t}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(idx)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#9CA3AF",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      padding: 0
+                    }}
+                  >✕</button>
+                </span>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") {
+                  e.preventDefault();
+                  const val = tagInput.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+                  if (val && !tags.includes(val)) {
+                    setTags([...tags, val]);
+                  }
+                  setTagInput("");
+                }
+              }}
+              placeholder="e.g. coffee, dinner"
+              style={{
+                padding: "12px",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB",
+                fontSize: "1rem",
+                outline: "none"
+              }}
+            />
+          </div>
+
+          <label style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px",
+            backgroundColor: "#FFFBEB",
+            borderRadius: "12px",
+            cursor: "pointer"
+          }}>
+            <input
+              type="checkbox"
+              checked={worthIt}
+              onChange={(e) => setWorthIt(e.target.checked)}
+              style={{
+                width: "20px",
+                height: "20px",
+                accentColor: "#F59E0B"
+              }}
+            />
+            <span style={{
+              fontSize: "0.95rem",
+              color: "#92400E",
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}>
               <StarIcon filled={worthIt} /> Mark as "Worth It"
             </span>
           </label>
 
-          <button type="submit" style={{
-            padding: '18px', backgroundColor: 'var(--color-purple)', color: 'white',
-            borderRadius: '16px', fontSize: '1.2rem', fontWeight: 700, border: 'none', marginTop: '8px'
+          <div style={{
+            display: "flex",
+            gap: "8px",
+            marginTop: "8px"
           }}>
-            Save Expense
-          </button>
+            {expenseToEdit?.id && (
+              <button
+                type="button"
+                onClick={() => onSave({ id: expenseToEdit.id, delete: true })}
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#FEE2E2",
+                  color: "#EF4444",
+                  borderRadius: "16px",
+                  fontSize: "1.05rem",
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: "pointer",
+                  flex: 1
+                }}
+              >
+                Delete
+              </button>
+            )}
+            <button
+              type="submit"
+              style={{
+                padding: "16px",
+                backgroundColor: "var(--color-purple)",
+                color: "white",
+                borderRadius: "16px",
+                fontSize: "1.05rem",
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(133, 58, 81, 0.2)",
+                flex: 2
+              }}
+            >
+              {expenseToEdit?.id ? "Save Changes" : "Save Expense"}
+            </button>
+          </div>
         </form>
       </div>
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
@@ -286,112 +1582,404 @@ function ManualEntryModal({ onClose, onSave, trip }) {
   );
 }
 
-// --- VOICE ENTRY MODAL ---
-function VoiceEntryModal({ onClose, onSave, trip }) {
-  const [transcript, setTranscript] = useState('');
+// Modal for voice entry using Speech Recognition and AI parsing
+function VoiceEntryModal({
+  onClose,
+  onSave,
+  trip,
+  rates,
+  categories,
+  onAddCustomCurrency,
+  customCurrencies,
+  setEditingExpense,
+  setActiveModal
+}) {
+  const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const [parsedData, setParsedData] = useState(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [recognition, setRecognition] = useState(null);
 
   useEffect(() => {
-    // Fake the speech recognition for rapid prototyping if API not supported,
-    // or we can just use a text input to simulate speech in the prototype.
-    // Real implementation would use window.SpeechRecognition.
+    const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechClass) {
+      const rec = new SpeechClass();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = "en-US";
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        setTranscript(text);
+        handleVoiceParse(text);
+      };
+      rec.onerror = (e) => {
+        console.error("Speech Recognition Error:", e);
+        setIsListening(false);
+      };
+      rec.onend = () => {
+        setIsListening(false);
+      };
+      setRecognition(rec);
+    }
   }, []);
 
-  // Simple Regex Parser
-  const handleParse = (text) => {
-    let worthIt = false;
-    let modifiedText = text.toLowerCase();
-    
-    if (modifiedText.includes('worth it')) {
-      worthIt = true;
-      modifiedText = modifiedText.replace('worth it', '').trim();
+  const handleVoiceParse = async (text) => {
+    if (!text.trim()) return;
+    setIsParsing(true);
+    try {
+      const res = await fetch("/api/parse-expense", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: text,
+          homeCurrency: trip.homeCurrency,
+          localCurrency: trip.localCurrency,
+          currentLocation: trip.currentLocation,
+          categories: categories
+        })
+      });
+      if (res.ok) {
+        const parsed = await res.json();
+        setEditingExpense({
+          amount: parsed.amount,
+          currency: parsed.currency,
+          category: parsed.category,
+          note: parsed.note,
+          location: parsed.location,
+          tags: parsed.tags || [],
+          worthIt: parsed.worthIt,
+          id: null
+        });
+        setActiveModal("manual");
+      } else {
+        console.error("Parser endpoint failed, using fallback");
+        alert("Parsing failed. Please enter the details manually.");
+      }
+    } catch (e) {
+      console.error("Failed to call parser API:", e);
+      alert("Could not reach parser. Please enter the details manually.");
+    } finally {
+      setIsParsing(false);
     }
-
-    const amountMatch = modifiedText.match(/\\d+(\\.\\d{1,2})?/);
-    const amount = amountMatch ? parseFloat(amountMatch[0]) : 0;
-
-    let currency = trip.localCurrency;
-    if (modifiedText.includes('usd') || modifiedText.includes('dollar')) currency = 'USD';
-    
-    let category = 'Miscellaneous';
-    if (/(latte|coffee|tacos|breakfast|dinner|lunch|food|meal|beer|drink|water|cafe)/.test(modifiedText)) category = 'Food & Drink';
-    else if (/(ferry|bus|grab|taxi|flight|train|scooter|gas|fuel|ride)/.test(modifiedText)) category = 'Transportation';
-    else if (/(hostel|hotel|stay|airbnb|room)/.test(modifiedText)) category = 'Accommodation';
-    else if (/(surf|massage|tour|ticket|museum|hike|guide|rental)/.test(modifiedText)) category = 'Activities';
-
-    let note = text;
-    if (amountMatch) note = note.replace(amountMatch[0], '');
-    note = note.replace(/(worth it|pesos|peso|baht|euro|euros|yen)/ig, '').trim();
-
-    setParsedData({ amount, currency, category, note, worthIt });
-  };
-
-  const handleSimulateVoice = (e) => {
-    const text = e.target.value;
-    setTranscript(text);
-    handleParse(text);
   };
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
-      zIndex: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0,0,0,0.85)",
+      backdropFilter: "blur(6px)",
+      zIndex: 200,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center"
     }}>
-      <div style={{ position: 'absolute', top: '24px', right: '24px' }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '2rem' }}>×</button>
+      <div style={{ position: "absolute", top: "24px", right: "24px" }}>
+        <button onClick={onClose} style={{
+          background: "none",
+          border: "none",
+          color: "white",
+          fontSize: "2rem",
+          cursor: "pointer"
+        }}>✕</button>
       </div>
 
-      <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(139, 92, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', animation: 'pulse 2s infinite' }}>
-        <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--color-purple)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        onClick={() => {
+          if (!recognition) {
+            alert("Speech recognition is not supported in this browser. Please type to simulate speech!");
+            return;
+          }
+          isListening ? recognition.stop() : recognition.start();
+        }}
+        style={{
+          width: "90px",
+          height: "90px",
+          borderRadius: "50%",
+          backgroundColor: isListening ? "rgba(226, 78, 66, 0.2)" : "rgba(133, 58, 81, 0.2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "20px",
+          cursor: "pointer",
+          animation: isListening ? "pulseRed 1.5s infinite" : "pulsePurple 2.5s infinite",
+          transition: "all 0.3s"
+        }}
+      >
+        <div style={{
+          width: "64px",
+          height: "64px",
+          borderRadius: "50%",
+          backgroundColor: isListening ? "var(--color-red)" : "var(--color-purple)",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
           <MicIcon />
         </div>
       </div>
 
-      <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 400, marginBottom: '40px' }}>
-        Listening...
+      <h2 style={{ color: "white", fontSize: "1.4rem", fontWeight: 600, marginBottom: "8px" }}>
+        {isListening ? "Listening..." : "Tap Mic to Speak"}
       </h2>
+      <p style={{
+        color: "#9CA3AF",
+        fontSize: "0.85rem",
+        marginBottom: "40px",
+        maxWidth: "300px",
+        textAlign: "center",
+        lineHeight: "1.4"
+      }}>
+        Try saying: "300 PHP on caramel macchiato at Siargao coffee company worth it"
+      </p>
 
-      {/* Simulator input for prototype testing */}
-      <input 
-        type="text" 
-        value={transcript}
-        onChange={handleSimulateVoice}
-        placeholder="Type here to simulate voice (e.g. '300 pesos latte worth it')"
-        autoFocus
-        style={{
-          width: '90%', maxWidth: '400px', padding: '16px', borderRadius: '12px',
-          border: 'none', fontSize: '1.2rem', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.1)', color: 'white', outline: 'none'
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleVoiceParse(transcript);
         }}
-      />
-
-      {parsedData && parsedData.amount > 0 && (
-        <div style={{ marginTop: '40px', backgroundColor: 'white', borderRadius: '24px', padding: '24px', width: '90%', maxWidth: '400px', animation: 'slideUp 0.3s ease-out' }}>
-          <p style={{ fontSize: '0.9rem', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Parsed Result</p>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>
-            {parsedData.amount} {parsedData.currency}
-          </div>
-          <div style={{ fontSize: '1.1rem', color: '#4B5563', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {parsedData.note || parsedData.category} 
-            {parsedData.worthIt && <StarIcon filled />}
-          </div>
-          <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: CATEGORY_COLORS[parsedData.category], color: 'white', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
-            {parsedData.category}
-          </div>
-
-          <button 
-            onClick={() => onSave(parsedData)}
-            style={{ width: '100%', padding: '16px', backgroundColor: '#111827', color: 'white', borderRadius: '16px', fontSize: '1.1rem', fontWeight: 700, border: 'none', marginTop: '24px' }}
-          >
-            Confirm & Save
-          </button>
-        </div>
-      )}
+        style={{
+          width: "90%",
+          maxWidth: "400px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
+        }}
+      >
+        <input
+          type="text"
+          value={transcript}
+          onChange={(e) => setTranscript(e.target.value)}
+          placeholder={isListening ? "Listening transcript..." : "Type text input to parse..."}
+          disabled={isParsing}
+          style={{
+            width: "100%",
+            padding: "16px",
+            borderRadius: "14px",
+            border: "none",
+            fontSize: "1.1rem",
+            textAlign: "center",
+            backgroundColor: "rgba(255,255,255,0.1)",
+            color: "white",
+            outline: "none"
+          }}
+        />
+        <button
+          type="submit"
+          disabled={isParsing || !transcript.trim()}
+          style={{
+            width: "100%",
+            padding: "16px",
+            backgroundColor: "white",
+            color: "var(--color-purple)",
+            borderRadius: "14px",
+            fontSize: "1.05rem",
+            fontWeight: 700,
+            border: "none",
+            cursor: "pointer",
+            opacity: isParsing || !transcript.trim() ? 0.6 : 1,
+            transition: "opacity 0.2s",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+          }}
+        >
+          {isParsing ? "Parsing with AI..." : "Parse & Validate"}
+        </button>
+      </form>
 
       <style>{`
-        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }
+        @keyframes pulsePurple { 
+          0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(133, 58, 81, 0.7); } 
+          70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(133, 58, 81, 0); } 
+          100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(133, 58, 81, 0); } 
+        }
+        @keyframes pulseRed { 
+          0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(226, 78, 66, 0.7); } 
+          70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(226, 78, 66, 0); } 
+          100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(226, 78, 66, 0); } 
+        }
       `}</style>
+    </div>
+  );
+}
+
+// Modal popup acting as the Newsletter email signup gate
+function SubscribeModal({ onClose, onSuccess }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("idle"); // 'idle', 'submitting', 'error'
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (email && email.trim()) {
+      setStatus("submitting");
+      setErrorMessage("");
+      try {
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to subscribe. Please try again.");
+        }
+        setStatus("idle");
+        onSuccess();
+      } catch (err) {
+        console.error("Subscription failed:", err);
+        setStatus("error");
+        setErrorMessage(err.message || "Something went wrong. Please check your connection.");
+      }
+    }
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.75)",
+      backdropFilter: "blur(8px)",
+      WebkitBackdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: "20px"
+    }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: "white",
+          borderRadius: "24px",
+          width: "100%",
+          maxWidth: "420px",
+          padding: "32px 24px",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          position: "relative",
+          border: "1px solid rgba(229, 231, 235, 0.8)",
+          textAlign: "center",
+          animation: "fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+        }}
+      >
+        <div style={{
+          width: "56px",
+          height: "56px",
+          borderRadius: "50%",
+          backgroundColor: "rgba(133, 58, 81, 0.08)",
+          color: "var(--color-purple)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.8rem",
+          margin: "0 auto 20px"
+        }}>
+          ✈️
+        </div>
+
+        <h2 style={{
+          fontSize: "1.5rem",
+          fontWeight: 700,
+          color: "#1F2937",
+          marginBottom: "8px"
+        }}>
+          Join the Trip Ledger
+        </h2>
+
+        <p style={{
+          fontSize: "0.9rem",
+          color: "#6B7280",
+          lineHeight: "1.5",
+          marginBottom: "24px"
+        }}>
+          Enter your email to unlock this trip, enable real-time co-editing, and receive travel updates from Lost & Sound.
+        </p>
+
+        <form onSubmit={handleSubscribe} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <input
+            type="email"
+            required={true}
+            placeholder="your.email@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={status === "submitting"}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              borderRadius: "12px",
+              border: "1px solid #D1D5DB",
+              fontSize: "1rem",
+              outline: "none",
+              transition: "border-color 0.2s",
+              color: "#1F2937"
+            }}
+          />
+          {status === "error" && (
+            <div style={{
+              color: "#E24E42",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              textAlign: "left",
+              marginTop: "-4px"
+            }}>
+              ⚠️ {errorMessage}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            style={{
+              width: "100%",
+              padding: "14px",
+              backgroundColor: "var(--color-purple)",
+              color: "white",
+              borderRadius: "12px",
+              fontSize: "1rem",
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              opacity: status === "submitting" ? 0.7 : 1,
+              transition: "opacity 0.2s",
+              boxShadow: "0 4px 6px -1px rgba(133, 58, 81, 0.15)"
+            }}
+          >
+            {status === "submitting" ? "Joining..." : "Subscribe & Unlock"}
+          </button>
+        </form>
+
+        <button
+          onClick={onClose}
+          disabled={status === "submitting"}
+          style={{
+            marginTop: "16px",
+            fontSize: "0.85rem",
+            color: "#9CA3AF",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 500,
+            textDecoration: "underline"
+          }}
+        >
+          Cancel (Go back offline)
+        </button>
+
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
     </div>
   );
 }
