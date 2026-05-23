@@ -1,5 +1,5 @@
 'use client';
-// Re-trigger Vercel build
+// Trigger Vercel rebuild #2
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import SearchableCurrencySelect from '../../components/SearchableCurrencySelect';
