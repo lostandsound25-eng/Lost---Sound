@@ -162,7 +162,7 @@ export default function SearchableCurrencySelect({
               padding: "8px 10px",
               borderRadius: "8px",
               border: "1px solid #D1D5DB",
-              fontSize: "0.85rem",
+              fontSize: "16px",
               outline: "none",
               width: "100%",
               boxSizing: "border-box",

@@ -159,16 +159,19 @@ export default function TrackerApp() {
       });
       if (res.ok) {
         const parsed = await res.json();
-        setEditingExpense((prev) => ({
-          amount: parsed.amount,
-          currency: parsed.currency,
-          category: parsed.category,
-          note: parsed.note,
-          location: parsed.location,
-          tags: parsed.tags || [],
-          worthIt: parsed.worthIt,
-          id: prev?.id || null
-        }));
+        setEditingExpense((prev) => {
+          const combinedNote = parsed.location ? `${parsed.note}, ${parsed.location}` : parsed.note;
+          return {
+            amount: parsed.amount,
+            currency: parsed.currency,
+            category: parsed.category,
+            note: combinedNote,
+            location: "",
+            tags: parsed.tags || [],
+            worthIt: parsed.worthIt,
+            id: prev?.id || null
+          };
+        });
         setActiveModal("manual");
       } else {
         console.error("Parser endpoint failed, using fallback");
@@ -367,6 +370,34 @@ export default function TrackerApp() {
     if (navigator.onLine) {
       fetchLatestRates();
     }
+  }, []);
+
+  // Prevent bouncy/page-level scrolling on mobile browsers to make the web app feel native
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      document.documentElement.style.position = "fixed";
+      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.width = "100%";
+      document.documentElement.style.height = "100%";
+      
+      document.body.style.position = "fixed";
+      document.body.style.overflow = "hidden";
+      document.body.style.width = "100%";
+      document.body.style.height = "100%";
+    }
+
+    return () => {
+      document.documentElement.style.position = "";
+      document.documentElement.style.overflow = "";
+      document.documentElement.style.width = "";
+      document.documentElement.style.height = "";
+      
+      document.body.style.position = "";
+      document.body.style.overflow = "";
+      document.body.style.width = "";
+      document.body.style.height = "";
+    };
   }, []);
 
   // Keep locationInput in sync when trip location is loaded/changed
@@ -612,17 +643,23 @@ export default function TrackerApp() {
         const newExpenses = [];
         const dbInserts = [];
 
+        const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
+
         for (let i = 0; i < N; i++) {
           const amt = (i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount;
           const newId = crypto.randomUUID ? crypto.randomUUID() : (Date.now() + i).toString();
           
-          // Calculate timestamp offset (days added)
-          const d = new Date();
+          // Calculate timestamp offset starting from selected date range start
+          const d = new Date(startD);
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
 
+          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
+          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
           const baseNote = expense.note || expense.category;
-          const noteWithSuffix = `${baseNote} (Day ${i + 1}/${N})`;
+          const noteWithSuffix = startStr && endStr 
+            ? `${baseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+            : `${baseNote} (Day ${i + 1}/${N})`;
 
           const singleExpense = {
             amount: amt,
@@ -708,11 +745,14 @@ export default function TrackerApp() {
     }
   };
 
+  const now = new Date();
+  const visibleExpenses = expenses.filter((e) => new Date(e.timestamp) <= now);
+
   const todayStr = new Date().toLocaleDateString();
-  const todayExpenses = expenses.filter((e) => new Date(e.timestamp).toLocaleDateString() === todayStr);
+  const todayExpenses = visibleExpenses.filter((e) => new Date(e.timestamp).toLocaleDateString() === todayStr);
   const todayTotal = todayExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
-  const allExpensesTotal = expenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
-  const daysActive = getDaysActive(expenses);
+  const allExpensesTotal = visibleExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+  const daysActive = getDaysActive(visibleExpenses);
 
   return isMounted ? (
     <div 
@@ -720,7 +760,8 @@ export default function TrackerApp() {
       style={{
         maxWidth: "480px",
         margin: "0 auto",
-        minHeight: "100vh",
+        height: "100vh",
+        height: "100dvh",
         backgroundColor: "#F9F6ED",
         position: "relative",
         fontFamily: "var(--font-body), system-ui, sans-serif",
@@ -728,6 +769,7 @@ export default function TrackerApp() {
         flexDirection: "column",
         boxShadow: "0 0 40px rgba(0,0,0,0.05)",
         color: "var(--color-text)",
+        overflow: "hidden"
       }}
     >
       {/* Header */}
@@ -741,15 +783,20 @@ export default function TrackerApp() {
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "12px",
+          gap: "12px"
         }}>
           <h1 style={{
             fontSize: "1.2rem",
             fontWeight: 800,
             color: "var(--color-purple)",
-            margin: 0
-          }}>{trip.name}</h1>
+            margin: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: 1
+          }} title={trip.name}>{trip.name}</h1>
           {supabase && (
-            <div>
+            <div style={{ flexShrink: 0 }}>
               {trip.id ? (
                 <span style={{
                   fontSize: "0.75rem",
@@ -862,7 +909,7 @@ export default function TrackerApp() {
             }}
             style={{
               border: "none",
-              fontSize: "0.95rem",
+              fontSize: "16px",
               fontWeight: 500,
               color: "#374151",
               outline: "none",
@@ -955,7 +1002,7 @@ export default function TrackerApp() {
       )}
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflowY: "auto", padding: "20px 0 120px" }}>
+      <main style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 0 120px" }}>
         {/* Today's Breakdown */}
         <section style={{ padding: "0 24px 24px" }}>
           <h3 style={{
@@ -1095,7 +1142,7 @@ export default function TrackerApp() {
             textTransform: "uppercase",
             letterSpacing: "0.5px"
           }}>Log</h3>
-          {expenses.length === 0 ? (
+          {visibleExpenses.length === 0 ? (
             <div style={{
               textAlign: "center",
               padding: "40px 0",
@@ -1108,7 +1155,7 @@ export default function TrackerApp() {
             <div>
               {/* Process and partition expenses */}
               {(() => {
-                const sortedExpenses = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const sortedExpenses = [...visibleExpenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 const recentExpenses = sortedExpenses.slice(0, 10);
                 const olderExpenses = sortedExpenses.slice(10);
 
@@ -1622,6 +1669,11 @@ function ExpenseCard({
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
 
+  // Parse custom note suffix for spread details if present: e.g. "Hotel Booking (Day 1/7, May 23 - May 29)"
+  const spreadMatch = expense.note ? expense.note.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
+  const displayNote = spreadMatch ? spreadMatch[1].trim() : (expense.note || expense.category);
+  const spreadInfo = spreadMatch ? `Spread: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` : null;
+
   return (
     <div style={{
       position: "relative",
@@ -1724,14 +1776,27 @@ function ExpenseCard({
           gap: "4px",
           paddingLeft: "8px"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             <span style={{
               fontWeight: 700,
               color: "#111827",
               fontSize: "1rem"
-            }}>{expense.note || expense.category}</span>
+            }}>{displayNote}</span>
             {expense.worthIt && <StarIcon filled={true} />}
           </div>
+          {spreadInfo && (
+            <div style={{
+              fontSize: "0.78rem",
+              color: "var(--color-orange)",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              marginTop: "-2px"
+            }}>
+              🗓️ {spreadInfo}
+            </div>
+          )}
 
           <div style={{
             display: "flex",
@@ -1818,7 +1883,13 @@ function ManualEntryModal({
   const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
   const [tagInput, setTagInput] = useState("");
   const [spreadExpense, setSpreadExpense] = useState(false);
-  const [spreadDays, setSpreadDays] = useState(7);
+  const getFutureDateString = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toLocaleDateString('en-CA');
+  };
+  const [spreadStart, setSpreadStart] = useState(new Date().toLocaleDateString('en-CA'));
+  const [spreadEnd, setSpreadEnd] = useState(getFutureDateString(6));
 
   // Sync inputs with expenseToEdit changes (e.g. from async speech parser)
   useEffect(() => {
@@ -1901,16 +1972,24 @@ function ManualEntryModal({
               alert("Please enter a valid positive amount.");
               return;
             }
+            const start = new Date(spreadStart);
+            const end = new Date(spreadEnd);
+            let days = 1;
+            if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
+              days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            }
             onSave({
               amount: val,
               currency,
               category,
               note: note.trim() || category,
               worthIt,
-              location: location.trim(),
+              location: "", // combined in notes
               tags,
               id: expenseToEdit?.id,
-              spreadDays: (!expenseToEdit?.id && spreadExpense) ? (parseInt(spreadDays) || 1) : 1
+              spreadDays: (!expenseToEdit?.id && spreadExpense) ? days : 1,
+              spreadStart: (!expenseToEdit?.id && spreadExpense) ? spreadStart : null,
+              spreadEnd: (!expenseToEdit?.id && spreadExpense) ? spreadEnd : null
             });
           }}
           style={{ display: "flex", flexDirection: "column", gap: "16px" }}
@@ -1983,40 +2062,17 @@ function ManualEntryModal({
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>What was it for?</label>
+            }}>Notes</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Description (e.g. Latte)"
+              placeholder="e.g. Latte, Establishment name, overpriced, etc."
               style={{
                 padding: "12px",
                 borderRadius: "12px",
                 border: "1px solid #E5E7EB",
-                fontSize: "1rem",
-                outline: "none"
-              }}
-            />
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <label style={{
-              fontSize: "0.8rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Location</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Establishment / City (e.g. Siargao Coffee)"
-              style={{
-                padding: "12px",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB",
-                fontSize: "1rem",
+                fontSize: "16px",
                 outline: "none"
               }}
             />
@@ -2114,12 +2170,12 @@ function ManualEntryModal({
                   setTagInput("");
                 }
               }}
-              placeholder="e.g. coffee, dinner"
+              placeholder="e.g. coffee, fuel, activity, souvenirs, etc."
               style={{
                 padding: "12px",
                 borderRadius: "12px",
                 border: "1px solid #E5E7EB",
-                fontSize: "1rem",
+                fontSize: "16px",
                 outline: "none"
               }}
             />
@@ -2166,32 +2222,82 @@ function ManualEntryModal({
               {spreadExpense && (
                 <div style={{
                   display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginTop: "4px",
+                  flexDirection: "column",
+                  gap: "10px",
+                  marginTop: "8px",
                   paddingLeft: "32px"
                 }}>
-                  <span style={{ fontSize: "0.85rem", color: "#1E40AF", fontWeight: 600 }}>Number of days:</span>
-                  <input
-                    type="number"
-                    min="2"
-                    max="365"
-                    value={spreadDays}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      setSpreadDays(isNaN(val) ? "" : val);
-                    }}
-                    style={{
-                      width: "80px",
-                      padding: "6px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid #BFDBFE",
-                      outline: "none",
-                      fontSize: "0.9rem",
-                      fontWeight: 700,
-                      color: "#1E40AF"
-                    }}
-                  />
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
+                      <input
+                        type="date"
+                        value={spreadStart}
+                        onChange={(e) => setSpreadStart(e.target.value)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #BFDBFE",
+                          outline: "none",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          color: "#1E40AF",
+                          backgroundColor: "white",
+                          width: "100%",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
+                      <input
+                        type="date"
+                        value={spreadEnd}
+                        onChange={(e) => setSpreadEnd(e.target.value)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #BFDBFE",
+                          outline: "none",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          color: "#1E40AF",
+                          backgroundColor: "white",
+                          width: "100%",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {(() => {
+                    const start = new Date(spreadStart + "T00:00:00");
+                    const end = new Date(spreadEnd + "T00:00:00");
+                    if (!isNaN(start) && !isNaN(end) && end >= start) {
+                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                      const val = parseFloat(amount);
+                      const dailyPortion = !isNaN(val) && val > 0 ? (val / days).toFixed(2) : "0.00";
+                      return (
+                        <div style={{
+                          fontSize: "0.85rem",
+                          color: "#1E40AF",
+                          fontWeight: 600,
+                          backgroundColor: "#DBEAFE",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          marginTop: "4px"
+                        }}>
+                          Spreading across <strong>{days} days</strong> ({dailyPortion} {currency} / day)
+                        </div>
+                      );
+                    } else if (end < start) {
+                      return (
+                        <div style={{ fontSize: "0.8rem", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
+                          ⚠️ End date must be on or after start date.
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
             </div>
@@ -2387,7 +2493,7 @@ function SubscribeModal({ onClose, onSuccess }) {
               padding: "14px 16px",
               borderRadius: "12px",
               border: "1px solid #D1D5DB",
-              fontSize: "1rem",
+              fontSize: "16px",
               outline: "none",
               transition: "border-color 0.2s",
               color: "#1F2937"
