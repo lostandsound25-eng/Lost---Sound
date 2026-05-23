@@ -1,4 +1,5 @@
 'use client';
+// Re-trigger Vercel build
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import SearchableCurrencySelect from '../../components/SearchableCurrencySelect';
