@@ -754,6 +754,15 @@ export default function TrackerApp() {
   const allExpensesTotal = visibleExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
   const daysActive = getDaysActive(visibleExpenses);
 
+  const nameLength = trip.name ? trip.name.length : 0;
+  const dynamicFontSize = nameLength > 24 
+    ? "0.85rem" 
+    : nameLength > 18 
+      ? "0.95rem" 
+      : nameLength > 12 
+        ? "1.05rem" 
+        : "1.2rem";
+
   return isMounted ? (
     <div 
       className="tracker-container"
@@ -772,221 +781,6 @@ export default function TrackerApp() {
         overflow: "hidden"
       }}
     >
-      {/* Header */}
-      <header style={{
-        padding: "30px 24px 20px",
-        backgroundColor: "white",
-        borderBottom: "1px solid #eee"
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-          gap: "12px"
-        }}>
-          <h1 style={{
-            fontSize: "1.2rem",
-            fontWeight: 800,
-            color: "var(--color-purple)",
-            margin: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1
-          }} title={trip.name}>{trip.name}</h1>
-          {supabase && (
-            <div style={{ flexShrink: 0 }}>
-              {trip.id ? (
-                <span style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: "#10B981",
-                  backgroundColor: "#ECFDF5",
-                  padding: "4px 8px",
-                  borderRadius: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}>
-                  ● Cloud Synced
-                </span>
-              ) : (
-                <button
-                  onClick={() => {
-                    isSubscribed ? enableCloudSync() : (setPendingCloudSync(true), setActiveModal("subscribe"));
-                  }}
-                  disabled={isSyncing}
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    color: "white",
-                    backgroundColor: "var(--color-purple)",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "6px 12px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    boxShadow: "0 2px 4px rgba(133, 58, 81, 0.2)"
-                  }}
-                >
-                  {isSyncing ? "Syncing..." : "☁️ Share & Sync"}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Currency selectors */}
-        <div style={{
-          display: "flex",
-          gap: "12px",
-          fontSize: "0.85rem",
-          backgroundColor: "#F3F4F6",
-          padding: "6px 12px",
-          borderRadius: "20px",
-          width: "fit-content",
-          marginBottom: "16px"
-        }}>
-          <label style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            cursor: "pointer",
-            fontWeight: 600,
-            color: "#4B5563"
-          }}>
-            Home:
-            <SearchableCurrencySelect
-              value={trip.homeCurrency}
-              onChange={updateHomeCurrency}
-              rates={rates}
-              customCurrencies={customCurrencies}
-              onAddCustomCurrency={addCustomCurrency}
-            />
-          </label>
-          <span style={{ color: "#D1D5DB" }}>|</span>
-          <label style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            cursor: "pointer",
-            fontWeight: 600,
-            color: "#4B5563"
-          }}>
-            Local:
-            <SearchableCurrencySelect
-              value={trip.localCurrency}
-              onChange={updateLocalCurrency}
-              rates={rates}
-              customCurrencies={customCurrencies}
-              onAddCustomCurrency={addCustomCurrency}
-            />
-          </label>
-        </div>
-
-        {/* Location input */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "24px",
-          borderBottom: "1px dashed #E5E7EB",
-          paddingBottom: "10px"
-        }}>
-          <span style={{ fontSize: "1.1rem" }}>📍</span>
-          <input
-            type="text"
-            placeholder="Where are you today?"
-            value={locationInput}
-            onChange={(e) => setLocationInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                updateLocation(locationInput);
-              }
-            }}
-            style={{
-              border: "none",
-              fontSize: "16px",
-              fontWeight: 500,
-              color: "#374151",
-              outline: "none",
-              width: "100%",
-              background: "transparent"
-            }}
-          />
-          {locationInput !== (trip.currentLocation || "") && (
-            <button
-              type="button"
-              onClick={() => updateLocation(locationInput)}
-              style={{
-                backgroundColor: "var(--color-purple)",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                padding: "6px 12px",
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 4px 10px rgba(133, 58, 81, 0.2)",
-                animation: "fadeInOverlay 0.2s ease-out",
-                transition: "all 0.2s",
-                whiteSpace: "nowrap"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-orange)";
-                e.currentTarget.style.boxShadow = "0 6px 12px rgba(232, 107, 50, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-purple)";
-                e.currentTarget.style.boxShadow = "0 4px 10px rgba(133, 58, 81, 0.2)";
-              }}
-            >
-              Save
-            </button>
-          )}
-        </div>
-
-        {/* Totals */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end"
-        }}>
-          <div>
-            <p style={{
-              fontSize: "0.9rem",
-              color: "#6B7280",
-              fontWeight: 500,
-              marginBottom: "4px"
-            }}>Today's Spend</p>
-            <h2 style={{
-              fontSize: "2.4rem",
-              fontWeight: 900,
-              color: "#111827",
-              lineHeight: 1,
-              fontFamily: "var(--font-heading)"
-            }}>{formatMoney(todayTotal, trip.homeCurrency)}</h2>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <p style={{
-              fontSize: "0.85rem",
-              color: "#6B7280",
-              fontWeight: 500,
-              marginBottom: "4px"
-            }}>Daily Avg ({daysActive}d)</p>
-            <p style={{
-              fontSize: "1.25rem",
-              fontWeight: 800,
-              color: "var(--color-purple)",
-              fontFamily: "var(--font-heading)"
-            }}>{formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}</p>
-          </div>
-        </div>
-      </header>
-
       {syncError && (
         <div style={{
           backgroundColor: "#FEF2F2",
@@ -1002,7 +796,224 @@ export default function TrackerApp() {
       )}
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 0 120px" }}>
+      <main style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 120px" }}>
+        {/* Header (scrolls out of the way) */}
+        <header style={{
+          padding: "20px 20px 16px",
+          backgroundColor: "white",
+          borderBottom: "1px solid #eee",
+          marginBottom: "20px"
+        }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "10px",
+            gap: "12px"
+          }}>
+            <h1 style={{
+              fontSize: dynamicFontSize,
+              fontWeight: 800,
+              color: "var(--color-purple)",
+              margin: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0
+            }} title={trip.name}>{trip.name}</h1>
+            {supabase && (
+              <div style={{ flexShrink: 0 }}>
+                {trip.id ? (
+                  <span style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "#10B981",
+                    backgroundColor: "#ECFDF5",
+                    padding: "4px 8px",
+                    borderRadius: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}>
+                    ● Cloud Synced
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      isSubscribed ? enableCloudSync() : (setPendingCloudSync(true), setActiveModal("subscribe"));
+                    }}
+                    disabled={isSyncing}
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "white",
+                      backgroundColor: "var(--color-purple)",
+                      border: "none",
+                      borderRadius: "12px",
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      boxShadow: "0 2px 4px rgba(133, 58, 81, 0.2)"
+                    }}
+                  >
+                    {isSyncing ? "Syncing..." : "☁️ Share & Sync"}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Currency selectors */}
+          <div style={{
+            display: "flex",
+            gap: "12px",
+            fontSize: "0.85rem",
+            backgroundColor: "#F3F4F6",
+            padding: "6px 12px",
+            borderRadius: "20px",
+            width: "fit-content",
+            marginBottom: "12px"
+          }}>
+            <label style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "#4B5563"
+            }}>
+              Home:
+              <SearchableCurrencySelect
+                value={trip.homeCurrency}
+                onChange={updateHomeCurrency}
+                rates={rates}
+                customCurrencies={customCurrencies}
+                onAddCustomCurrency={addCustomCurrency}
+              />
+            </label>
+            <span style={{ color: "#D1D5DB" }}>|</span>
+            <label style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "#4B5563"
+            }}>
+              Local:
+              <SearchableCurrencySelect
+                value={trip.localCurrency}
+                onChange={updateLocalCurrency}
+                rates={rates}
+                customCurrencies={customCurrencies}
+                onAddCustomCurrency={addCustomCurrency}
+              />
+            </label>
+          </div>
+
+          {/* Location input */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "14px",
+            borderBottom: "1px dashed #E5E7EB",
+            paddingBottom: "6px"
+          }}>
+            <span style={{ fontSize: "1.1rem" }}>📍</span>
+            <input
+              type="text"
+              placeholder="Where are you today?"
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  updateLocation(locationInput);
+                }
+              }}
+              style={{
+                border: "none",
+                fontSize: "16px",
+                fontWeight: 500,
+                color: "#374151",
+                outline: "none",
+                width: "100%",
+                background: "transparent"
+              }}
+            />
+            {locationInput !== (trip.currentLocation || "") && (
+              <button
+                type="button"
+                onClick={() => updateLocation(locationInput)}
+                style={{
+                  backgroundColor: "var(--color-purple)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 10px rgba(133, 58, 81, 0.2)",
+                  animation: "fadeInOverlay 0.2s ease-out",
+                  transition: "all 0.2s",
+                  whiteSpace: "nowrap"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--color-orange)";
+                  e.currentTarget.style.boxShadow = "0 6px 12px rgba(232, 107, 50, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--color-purple)";
+                  e.currentTarget.style.boxShadow = "0 4px 10px rgba(133, 58, 81, 0.2)";
+                }}
+              >
+                Save
+              </button>
+            )}
+          </div>
+
+          {/* Totals */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end"
+          }}>
+            <div>
+              <p style={{
+                fontSize: "0.85rem",
+                color: "#6B7280",
+                fontWeight: 500,
+                marginBottom: "2px"
+              }}>Today's Spend</p>
+              <h2 style={{
+                fontSize: "1.8rem",
+                fontWeight: 900,
+                color: "#111827",
+                lineHeight: 1,
+                fontFamily: "var(--font-heading)"
+              }}>{formatMoney(todayTotal, trip.homeCurrency)}</h2>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{
+                fontSize: "0.8rem",
+                color: "#6B7280",
+                fontWeight: 500,
+                marginBottom: "2px"
+              }}>Daily Avg ({daysActive}d)</p>
+              <p style={{
+                fontSize: "1.1rem",
+                fontWeight: 800,
+                color: "var(--color-purple)",
+                fontFamily: "var(--font-heading)"
+              }}>{formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}</p>
+            </div>
+          </div>
+        </header>
+
         {/* Today's Breakdown */}
         <section style={{ padding: "0 24px 24px" }}>
           <h3 style={{
@@ -1016,7 +1027,7 @@ export default function TrackerApp() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "12px"
+            gap: "8px"
           }}>
             {CATEGORIES.map((cat) => {
               const catExpenses = todayExpenses.filter((e) => e.category === cat);
@@ -1030,7 +1041,7 @@ export default function TrackerApp() {
                     gridColumn: isExpanded ? "span 2" : "span 1",
                     backgroundColor: "white",
                     borderRadius: "16px",
-                    padding: "16px",
+                    padding: "10px 12px",
                     boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
                     cursor: "pointer",
                     border: isExpanded ? `1.5px solid ${CATEGORY_COLORS[cat]}` : "1.5px solid transparent",
@@ -1042,25 +1053,35 @@ export default function TrackerApp() {
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "4px",
-                    alignItems: "flex-start"
+                    gap: "2px",
+                    alignItems: "flex-start",
+                    width: "100%"
                   }}>
-                    <span style={{ fontSize: "1.4rem", marginBottom: "2px" }}>{CATEGORY_EMOJIS[cat]}</span>
-                    <span style={{
-                      fontWeight: 700,
-                      fontSize: "0.72rem",
-                      color: "#6B7280",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      wordBreak: "break-word",
-                      whiteSpace: "normal",
-                      lineHeight: "1.2"
-                    }}>{cat}</span>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      width: "100%",
+                      overflow: "hidden"
+                    }}>
+                      <span style={{ fontSize: "1.15rem", flexShrink: 0 }}>{CATEGORY_EMOJIS[cat]}</span>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: "0.72rem",
+                        color: "#6B7280",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1
+                      }} title={cat}>{cat}</span>
+                    </div>
                     <div style={{
                       fontWeight: 900,
-                      fontSize: "1.2rem",
+                      fontSize: "1.1rem",
                       color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF",
-                      marginTop: "2px"
+                      marginTop: "1px"
                     }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
                   </div>
 
