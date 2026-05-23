@@ -116,6 +116,11 @@ export default function TrackerApp() {
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [isVoiceParsing, setIsVoiceParsing] = useState(false);
 
+  const recognitionRef = useRef(null);
+  const latestTranscriptRef = useRef("");
+  const hasParsedRef = useRef(false);
+  const voiceTimeoutRef = useRef(null);
+
   const handleVoiceParse = async (text) => {
     if (!text.trim()) return;
     setIsVoiceParsing(true);
@@ -187,34 +192,102 @@ export default function TrackerApp() {
       return;
     }
     
+    // Abort any running instances
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (e) {}
+    }
+    
+    // Clear any active timeouts
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current);
+    }
+    
     const rec = new SpeechClass();
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.lang = "en-US";
+    
+    hasParsedRef.current = false;
+    latestTranscriptRef.current = "";
     
     rec.onstart = () => {
       setIsVoiceListening(true);
       setVoiceTranscript("");
+      
+      // Start an 8-second absolute inactivity/no-speech timeout
+      voiceTimeoutRef.current = setTimeout(() => {
+        if (!latestTranscriptRef.current) {
+          console.log("No speech detected, timing out...");
+          hasParsedRef.current = true;
+          try {
+            rec.abort();
+          } catch (e) {}
+          setIsVoiceListening(false);
+          alert("No speech detected. Directing to manual entry.");
+          setEditingExpense(null);
+          setActiveModal("manual");
+        }
+      }, 8000);
     };
     
-    rec.onresult = async (e) => {
-      const text = e.results[0][0].transcript;
-      setVoiceTranscript(text);
-      setIsVoiceListening(false);
-      await handleVoiceParse(text);
+    rec.onresult = (e) => {
+      // Clear timeout once speech is received
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current);
+        voiceTimeoutRef.current = null;
+      }
+      
+      let interimTranscript = "";
+      let finalTranscript = "";
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interimTranscript += e.results[i][0].transcript;
+        }
+      }
+      
+      const text = finalTranscript || interimTranscript;
+      if (text) {
+        setVoiceTranscript(text);
+        latestTranscriptRef.current = text;
+      }
     };
     
     rec.onerror = (e) => {
       console.error("Speech Recognition Error:", e);
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current);
+        voiceTimeoutRef.current = null;
+      }
+      
       setIsVoiceListening(false);
-      alert("Voice recognition encountered an error. Please enter manually.");
-      setEditingExpense(null);
-      setActiveModal("manual");
+      
+      // Skip manual modal popups for intentional user cancellation
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        alert(`Voice recognition error (${e.error}). Directing to manual entry.`);
+        setEditingExpense(null);
+        setActiveModal("manual");
+      }
     };
     
     rec.onend = () => {
       setIsVoiceListening(false);
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current);
+        voiceTimeoutRef.current = null;
+      }
+      
+      const finalVal = latestTranscriptRef.current;
+      if (finalVal && !hasParsedRef.current) {
+        hasParsedRef.current = true;
+        handleVoiceParse(finalVal);
+      }
     };
+    
+    recognitionRef.current = rec;
     
     try {
       rec.start();
@@ -225,6 +298,7 @@ export default function TrackerApp() {
       setActiveModal("manual");
     }
   };
+
 
 
   // Load state from localStorage / cloud on mount
@@ -531,18 +605,21 @@ export default function TrackerApp() {
   const daysActive = getDaysActive(expenses);
 
   return isMounted ? (
-    <div style={{
-      maxWidth: "480px",
-      margin: "0 auto",
-      minHeight: "100vh",
-      backgroundColor: "#F9F6ED",
-      position: "relative",
-      fontFamily: "var(--font-body), system-ui, sans-serif",
-      display: "flex",
-      flexDirection: "column",
-      boxShadow: "0 0 40px rgba(0,0,0,0.05)",
-      color: "var(--color-text)",
-    }}>
+    <div 
+      className="tracker-container"
+      style={{
+        maxWidth: "480px",
+        margin: "0 auto",
+        minHeight: "100vh",
+        backgroundColor: "#F9F6ED",
+        position: "relative",
+        fontFamily: "var(--font-body), system-ui, sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 0 40px rgba(0,0,0,0.05)",
+        color: "var(--color-text)",
+      }}
+    >
       {/* Header */}
       <header style={{
         padding: "30px 24px 20px",
@@ -977,15 +1054,17 @@ export default function TrackerApp() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.8)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          zIndex: 1000,
+          backgroundColor: "rgba(15, 23, 42, 0.85)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          zIndex: 2000,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          color: "white"
+          color: "white",
+          padding: "24px",
+          textAlign: "center"
         }}>
           <div style={{
             width: "100px",
@@ -1012,7 +1091,84 @@ export default function TrackerApp() {
             </div>
           </div>
           <h3 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "8px" }}>Listening...</h3>
-          <p style={{ color: "#9CA3AF", fontSize: "0.95rem" }}>Speak your expense now</p>
+          <p style={{ color: "#9CA3AF", fontSize: "0.95rem", marginBottom: "24px", maxWidth: "280px" }}>
+            Speak your expense now (e.g. 5 USD coffee at Starbucks)
+          </p>
+
+          {voiceTranscript ? (
+            <div style={{
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              padding: "16px 24px",
+              borderRadius: "16px",
+              fontSize: "1.1rem",
+              fontStyle: "italic",
+              color: "#E5E7EB",
+              maxWidth: "360px",
+              lineHeight: "1.4",
+              marginBottom: "32px",
+              minHeight: "50px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              "{voiceTranscript}"
+            </div>
+          ) : (
+            <div style={{ height: "82px" }} />
+          )}
+
+          <div style={{ display: "flex", gap: "16px", width: "100%", maxWidth: "320px" }}>
+            <button
+              type="button"
+              onClick={() => {
+                hasParsedRef.current = true;
+                if (recognitionRef.current) {
+                  try {
+                    recognitionRef.current.abort();
+                  } catch (e) {}
+                }
+                setIsVoiceListening(false);
+              }}
+              style={{
+                flex: 1,
+                padding: "14px",
+                borderRadius: "12px",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                color: "white",
+                border: "none",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "background-color 0.2s"
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!voiceTranscript}
+              onClick={() => {
+                if (recognitionRef.current) {
+                  try {
+                    recognitionRef.current.stop();
+                  } catch (e) {}
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: "14px",
+                borderRadius: "12px",
+                backgroundColor: "white",
+                color: "var(--color-purple)",
+                border: "none",
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: !voiceTranscript ? 0.5 : 1,
+                transition: "opacity 0.2s"
+              }}
+            >
+              Done Speaking
+            </button>
+          </div>
         </div>
       )}
 
@@ -1026,7 +1182,7 @@ export default function TrackerApp() {
           backgroundColor: "rgba(15, 23, 42, 0.8)",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
-          zIndex: 1000,
+          zIndex: 2000,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -1323,7 +1479,7 @@ function ManualEntryModal({
         right: 0,
         bottom: 0,
         backgroundColor: "rgba(0,0,0,0.4)",
-        zIndex: 200,
+        zIndex: 2000,
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center"
@@ -1704,7 +1860,7 @@ function SubscribeModal({ onClose, onSuccess }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 1000,
+      zIndex: 2000,
       padding: "20px"
     }}>
       <div

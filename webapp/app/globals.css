@@ -890,6 +890,10 @@ footer {
   .navbar.collapsed-mobile .logo-img {
     height: 48px !important;
   }
+
+  .tracker-container {
+    padding-top: 80px;
+  }
 }
 
 /* Animations & Spinner */
