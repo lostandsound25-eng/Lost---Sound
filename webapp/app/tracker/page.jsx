@@ -129,6 +129,14 @@ export default function TrackerApp() {
   const [editingExpense, setEditingExpense] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [expandedLogDates, setExpandedLogDates] = useState([]);
+  const [expandedOlderCategory, setExpandedOlderCategory] = useState({});
+
+  const toggleOlderCategory = (dateKey, cat) => {
+    setExpandedOlderCategory((prev) => ({
+      ...prev,
+      [`${dateKey}-${cat}`]: !prev[`${dateKey}-${cat}`]
+    }));
+  };
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -812,7 +820,7 @@ export default function TrackerApp() {
             marginBottom: "10px",
             gap: "12px"
           }}>
-            <h1 style={{
+            <div style={{
               fontSize: dynamicFontSize,
               fontWeight: 800,
               color: "var(--color-purple)",
@@ -822,7 +830,7 @@ export default function TrackerApp() {
               whiteSpace: "nowrap",
               flex: 1,
               minWidth: 0
-            }} title={trip.name}>{trip.name}</h1>
+            }} title={trip.name}>{trip.name}</div>
             {supabase && (
               <div style={{ flexShrink: 0 }}>
                 {trip.id ? (
@@ -1200,9 +1208,10 @@ export default function TrackerApp() {
                   olderGroups[dateKey].totalSpend += amtInHome;
 
                   if (!olderGroups[dateKey].categories[exp.category]) {
-                    olderGroups[dateKey].categories[exp.category] = 0;
+                    olderGroups[dateKey].categories[exp.category] = { total: 0, list: [] };
                   }
-                  olderGroups[dateKey].categories[exp.category] += amtInHome;
+                  olderGroups[dateKey].categories[exp.category].total += amtInHome;
+                  olderGroups[dateKey].categories[exp.category].list.push(exp);
 
                   const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || "") : "";
                   if (highLevelLoc && !olderGroups[dateKey].location) {
@@ -1355,29 +1364,84 @@ export default function TrackerApp() {
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {Object.entries(group.categories).map(([cat, catTotal]) => (
-                                    <div
-                                      key={cat}
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        fontSize: "0.85rem",
-                                        color: "#4B5563"
-                                      }}
-                                    >
-                                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
-                                        <span style={{ fontWeight: 600 }}>{cat}</span>
+                                  {Object.entries(group.categories).map(([cat, catData]) => {
+                                    const key = `${group.dateKey}-${cat}`;
+                                    const isCatExpanded = !!expandedOlderCategory[key];
+                                    return (
+                                      <div
+                                        key={cat}
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "6px",
+                                          fontSize: "0.85rem",
+                                          color: "#4B5563",
+                                          borderBottom: "1px dashed #F3F4F6",
+                                          paddingBottom: "8px",
+                                          marginTop: "4px"
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            cursor: "pointer",
+                                            width: "100%"
+                                          }}
+                                          onClick={() => toggleOlderCategory(group.dateKey, cat)}
+                                        >
+                                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
+                                            <span style={{ fontWeight: 600 }}>{cat}</span>
+                                            <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                                              ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
+                                            </span>
+                                          </div>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{
+                                              fontWeight: 700,
+                                              color: CATEGORY_COLORS[cat] || "#111827"
+                                            }}>
+                                              {formatMoney(catData.total, trip.homeCurrency)}
+                                            </span>
+                                            <span style={{
+                                              fontSize: "0.6rem",
+                                              color: "#9CA3AF",
+                                              transform: isCatExpanded ? "rotate(180deg)" : "none",
+                                              transition: "transform 0.15s"
+                                            }}>▼</span>
+                                          </div>
+                                        </div>
+
+                                        {isCatExpanded && (
+                                          <div style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "8px",
+                                            paddingLeft: "16px",
+                                            marginTop: "6px"
+                                          }}>
+                                            {catData.list.map((exp) => (
+                                              <ExpenseCard
+                                                key={exp.id}
+                                                expense={exp}
+                                                onEdit={(e) => {
+                                                  setEditingExpense(e);
+                                                  setActiveModal("manual");
+                                                }}
+                                                onDelete={deleteExpense}
+                                                formatMoney={formatMoney}
+                                                convertCurrency={convertCurrency}
+                                                homeCurrency={trip.homeCurrency}
+                                                rates={rates}
+                                              />
+                                            ))}
+                                          </div>
+                                        )}
                                       </div>
-                                      <span style={{
-                                        fontWeight: 700,
-                                        color: CATEGORY_COLORS[cat] || "#111827"
-                                      }}>
-                                        {formatMoney(catTotal, trip.homeCurrency)}
-                                      </span>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
