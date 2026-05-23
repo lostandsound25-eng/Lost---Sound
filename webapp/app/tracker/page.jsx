@@ -207,7 +207,7 @@ export default function TrackerApp() {
   const startVoiceListening = () => {
     const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechClass) {
-      alert("Speech recognition is not supported in this browser. Please type to enter details manually.");
+      alert("Speech recognition is not supported in this browser. Please type to enter details manually. Note: On iOS (iPhone/iPad), Apple restricts Chrome and other third-party browsers from using the speech engine. Please open this page in Safari to use microphone dictation!");
       setEditingExpense(null);
       setActiveModal("manual");
       return;
@@ -290,7 +290,7 @@ export default function TrackerApp() {
         alert("Microphone access is blocked. Please enable microphone permissions for this website in your browser settings (e.g. tap the 'aA' icon in Safari, or check Settings > Safari > Microphone).");
         setActiveModal("manual");
       } else if (e.error === "service-not-allowed") {
-        alert("Speech recognition service is not allowed or supported on this browser version. Directing to manual entry.");
+        alert("Speech recognition is not allowed or supported on this browser. Note: If you are using Chrome or another browser on iPhone/iPad, Apple's iOS sandbox blocks them from using speech recognition features. Please open this page in Safari to use the microphone!");
         setActiveModal("manual");
       } else if (e.error !== "aborted" && e.error !== "no-speech") {
         alert(`Voice recognition error (${e.error}). Directing to manual entry.`);
@@ -568,7 +568,17 @@ export default function TrackerApp() {
 
     if (expense.id) {
       // Update
-      setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...expense } : e)));
+      const originalHighLevel = editingExpense?.location ? (editingExpense.location.split(" | ")[1] || "") : "";
+      const finalLocation = originalHighLevel 
+        ? (expense.location ? `${expense.location} | ${originalHighLevel}` : `| ${originalHighLevel}`) 
+        : (expense.location ? `${expense.location} | ${trip.currentLocation}` : (trip.currentLocation ? `| ${trip.currentLocation}` : ""));
+
+      const updatedExpense = {
+        ...expense,
+        location: finalLocation
+      };
+
+      setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...updatedExpense } : e)));
       if (trip.id && supabase) {
         try {
           await supabase
@@ -579,7 +589,7 @@ export default function TrackerApp() {
               category: expense.category,
               note: expense.note,
               worth_it: expense.worthIt,
-              location: expense.location,
+              location: finalLocation,
               tags: expense.tags
             })
             .eq("id", expense.id);
@@ -589,6 +599,10 @@ export default function TrackerApp() {
       }
     } else {
       // Insert
+      const finalLocation = expense.location 
+        ? `${expense.location} | ${trip.currentLocation}` 
+        : (trip.currentLocation ? `| ${trip.currentLocation}` : "");
+
       if (expense.spreadDays && expense.spreadDays > 1) {
         const N = expense.spreadDays;
         const totalAmount = expense.amount;
@@ -616,7 +630,7 @@ export default function TrackerApp() {
             category: expense.category,
             note: noteWithSuffix,
             worthIt: expense.worthIt,
-            location: expense.location,
+            location: finalLocation,
             tags: expense.tags,
             id: newId,
             timestamp: timestamp
@@ -653,6 +667,7 @@ export default function TrackerApp() {
         const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
         const newExpense = {
           ...expense,
+          location: finalLocation,
           id: newId,
           timestamp: new Date().toISOString()
         };
@@ -980,20 +995,25 @@ export default function TrackerApp() {
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "6px"
+                    gap: "4px",
+                    alignItems: "flex-start"
                   }}>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px"
-                    }}>
-                      <span style={{ fontSize: "1.2rem" }}>{CATEGORY_EMOJIS[cat]}</span>
-                      <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.3px" }}>{cat}</span>
-                    </div>
+                    <span style={{ fontSize: "1.4rem", marginBottom: "2px" }}>{CATEGORY_EMOJIS[cat]}</span>
+                    <span style={{
+                      fontWeight: 700,
+                      fontSize: "0.72rem",
+                      color: "#6B7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                      wordBreak: "break-word",
+                      whiteSpace: "normal",
+                      lineHeight: "1.2"
+                    }}>{cat}</span>
                     <div style={{
                       fontWeight: 900,
                       fontSize: "1.2rem",
-                      color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF"
+                      color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF",
+                      marginTop: "2px"
                     }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
                   </div>
 
@@ -1102,7 +1122,8 @@ export default function TrackerApp() {
                       dateDisplay: d.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }),
                       dateKey: dateKey,
                       totalSpend: 0,
-                      categories: {}
+                      categories: {},
+                      location: ""
                     };
                   }
 
@@ -1113,6 +1134,11 @@ export default function TrackerApp() {
                     olderGroups[dateKey].categories[exp.category] = 0;
                   }
                   olderGroups[dateKey].categories[exp.category] += amtInHome;
+
+                  const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || "") : "";
+                  if (highLevelLoc && !olderGroups[dateKey].location) {
+                    olderGroups[dateKey].location = highLevelLoc;
+                  }
                 });
 
                 const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
@@ -1127,6 +1153,9 @@ export default function TrackerApp() {
                       const showHeader = label !== lastLabel;
                       lastLabel = label;
 
+                      const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
+                      const dayLocation = sameDayExpenses.map(e => e.location ? (e.location.split(" | ")[1] || "") : "").find(loc => loc) || "";
+
                       return (
                         <div key={exp.id}>
                           {showHeader && (
@@ -1139,11 +1168,18 @@ export default function TrackerApp() {
                               borderRadius: "8px",
                               marginTop: "16px",
                               marginBottom: "8px",
-                              display: "inline-block",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
                               textTransform: "uppercase",
                               letterSpacing: "0.5px"
                             }}>
-                              {label}
+                              <span>{label}</span>
+                              {dayLocation && (
+                                <span style={{ color: "var(--color-orange)", display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                                  📍 {dayLocation}
+                                </span>
+                              )}
                             </div>
                           )}
                           <ExpenseCard
@@ -1203,11 +1239,23 @@ export default function TrackerApp() {
                                 justifyContent: "space-between",
                                 alignItems: "center"
                               }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                   <span style={{ fontSize: "1.1rem" }}>📅</span>
                                   <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#374151" }}>
                                     {group.dateDisplay}
                                   </span>
+                                  {group.location && (
+                                    <span style={{
+                                      fontSize: "0.78rem",
+                                      color: "var(--color-orange)",
+                                      fontWeight: 600,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "2px"
+                                    }}>
+                                      📍 {group.location}
+                                    </span>
+                                  )}
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                   <span style={{
@@ -1694,7 +1742,7 @@ function ExpenseCard({
             <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
               {CATEGORY_EMOJIS[expense.category]} {expense.category}
             </span>
-            {expense.location && (
+            {expense.location && expense.location.split(" | ")[0] && (
               <span style={{
                 fontSize: "0.78rem",
                 color: "#9CA3AF",
@@ -1702,7 +1750,7 @@ function ExpenseCard({
                 alignItems: "center",
                 gap: "2px"
               }}>
-                📍 {expense.location}
+                📍 {expense.location.split(" | ")[0]}
               </span>
             )}
           </div>
@@ -1766,7 +1814,7 @@ function ManualEntryModal({
   const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Misc/Other");
   const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
   const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
-  const [location, setLocation] = useState(expenseToEdit ? expenseToEdit.location : "");
+  const [location, setLocation] = useState(expenseToEdit ? (expenseToEdit.location.split(" | ")[0] || "") : "");
   const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
   const [tagInput, setTagInput] = useState("");
   const [spreadExpense, setSpreadExpense] = useState(false);
@@ -1780,7 +1828,7 @@ function ManualEntryModal({
       setCategory(expenseToEdit.category || "Misc/Other");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
-      setLocation(expenseToEdit.location || "");
+      setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
       setTags(expenseToEdit.tags || []);
     }
   }, [expenseToEdit, trip.localCurrency]);
