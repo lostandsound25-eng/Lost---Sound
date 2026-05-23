@@ -29,15 +29,73 @@ export default function SearchableCurrencySelect({
   const defaultCurrencies = ["USD", "THB", "VND", "EUR", "PHP", "IDR", "CAD", "MXN", "AUD"];
   const allAvailable = Object.keys(rates).length > 0 ? Object.keys(rates) : defaultCurrencies;
 
+  // Country-to-Currency mapping for country-based search
+  const COUNTRY_CURRENCY_MAP = {
+    "japan": "JPY", "japanese": "JPY",
+    "vietnam": "VND", "vietnamese": "VND",
+    "united states": "USD", "usa": "USD", "america": "USD", "american": "USD", "us": "USD",
+    "thailand": "THB", "thai": "THB",
+    "europe": "EUR", "euro": "EUR", "european": "EUR", "germany": "EUR", "france": "EUR", "italy": "EUR", "spain": "EUR", "netherlands": "EUR", "greece": "EUR", "portugal": "EUR", "austria": "EUR", "belgium": "EUR", "ireland": "EUR", "finland": "EUR",
+    "philippines": "PHP", "philippine": "PHP", "filipino": "PHP", "manila": "PHP", "siargao": "PHP",
+    "indonesia": "IDR", "indonesian": "IDR", "bali": "IDR", "jakarta": "IDR",
+    "canada": "CAD", "canadian": "CAD",
+    "mexico": "MXN", "mexican": "MXN", "peso": "MXN",
+    "australia": "AUD", "australian": "AUD",
+    "united kingdom": "GBP", "uk": "GBP", "great britain": "GBP", "england": "GBP", "london": "GBP", "british": "GBP", "pound": "GBP",
+    "singapore": "SGD", "singaporean": "SGD",
+    "malaysia": "MYR", "malaysian": "MYR",
+    "new zealand": "NZD", "kiwi": "NZD",
+    "switzerland": "CHF", "swiss": "CHF", "franc": "CHF",
+    "china": "CNY", "chinese": "CNY", "yuan": "CNY", "renminbi": "CNY",
+    "hong kong": "HKD",
+    "taiwan": "TWD", "taiwanese": "TWD",
+    "south korea": "KRW", "korea": "KRW", "korean": "KRW", "won": "KRW",
+    "india": "INR", "indian": "INR", "rupee": "INR",
+    "brazil": "BRL", "brazilian": "BRL", "real": "BRL",
+    "south africa": "ZAR", "south african": "ZAR", "rand": "ZAR",
+    "norway": "NOK", "norwegian": "NOK", "krone": "NOK",
+    "sweden": "SEK", "swedish": "SEK", "krona": "SEK",
+    "denmark": "DKK", "danish": "DKK",
+    "turkey": "TRY", "turkish": "TRY", "lira": "TRY",
+    "russia": "RUB", "russian": "RUB", "ruble": "RUB",
+    "united arab emirates": "AED", "uae": "AED", "dubai": "AED", "dirham": "AED",
+    "saudi arabia": "SAR", "saudi": "SAR", "riyal": "SAR",
+    "argentina": "ARS", "argentine": "ARS", "argentinian": "ARS",
+    "chile": "CLP", "chilean": "CLP",
+    "colombia": "COP", "colombian": "COP",
+    "peru": "PEN", "peruvian": "PEN", "sol": "PEN",
+    "costa rica": "CRC", "costan rican": "CRC", "colon": "CRC",
+    "croatia": "HRK", "croatian": "HRK", "kuna": "HRK",
+    "czech republic": "CZK", "czech": "CZK", "czechia": "CZK", "koruna": "CZK",
+    "egypt": "EGP", "egyptian": "EGP",
+    "hungary": "HUF", "hungarian": "HUF", "forint": "HUF",
+    "israel": "ILS", "israeli": "ILS", "shekel": "ILS",
+    "morocco": "MAD", "moroccan": "MAD",
+    "poland": "PLN", "polish": "PLN", "zloty": "PLN",
+    "romania": "RON", "romanian": "RON", "leu": "RON",
+    "sri lanka": "LKR", "sri lankan": "LKR",
+    "ukraine": "UAH", "ukrainian": "UAH", "hryvnia": "UAH",
+    "uruguay": "UYU", "uruguayan": "UYU"
+  };
+
   // Filter currency options
   let options = [];
   if (!search.trim()) {
     // Show defaults + any custom currencies added + the current value
     options = [...new Set([...defaultCurrencies, ...customCurrencies, value])];
   } else {
-    // Search within all available currencies in rates
-    const query = search.trim().toUpperCase();
-    options = allAvailable.filter(c => c.includes(query));
+    // Search within all available currencies in rates & match country names
+    const query = search.trim().toLowerCase();
+    options = allAvailable.filter(c => {
+      const codeLower = c.toLowerCase();
+      // Match by currency code directly
+      if (codeLower.includes(query)) return true;
+      // Match by country names mapping to this currency code
+      const matchesCountry = Object.entries(COUNTRY_CURRENCY_MAP).some(([country, code]) => {
+        return code.toLowerCase() === codeLower && country.includes(query);
+      });
+      return matchesCountry;
+    });
   }
 
   const handleSelect = (code) => {

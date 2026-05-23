@@ -93,6 +93,25 @@ const getDaysActive = (expenses) => {
   return Math.max(1, Math.round((endDate - startDate) / 86400000) + 1);
 };
 
+const getDayLabel = (timestamp) => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const dDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffTime = dToday.getTime() - dDate.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return "Today";
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else if (diffDays === 2) {
+    return "Day Before";
+  } else {
+    return date.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+};
+
 export default function TrackerApp() {
   const [expenses, setExpenses] = useState([]);
   const [trip, setTrip] = useState({
@@ -101,12 +120,14 @@ export default function TrackerApp() {
     localCurrency: "PHP",
     currentLocation: ""
   });
+  const [locationInput, setLocationInput] = useState("");
   const [rates, setRates] = useState(DEFAULT_RATES);
   const [customCurrencies, setCustomCurrencies] = useState([]);
   const [isMounted, setIsMounted] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'manual', 'voice', 'subscribe'
   const [editingExpense, setEditingExpense] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const [expandedLogDates, setExpandedLogDates] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -138,7 +159,7 @@ export default function TrackerApp() {
       });
       if (res.ok) {
         const parsed = await res.json();
-        setEditingExpense({
+        setEditingExpense((prev) => ({
           amount: parsed.amount,
           currency: parsed.currency,
           category: parsed.category,
@@ -146,13 +167,13 @@ export default function TrackerApp() {
           location: parsed.location,
           tags: parsed.tags || [],
           worthIt: parsed.worthIt,
-          id: null
-        });
+          id: prev?.id || null
+        }));
         setActiveModal("manual");
       } else {
         console.error("Parser endpoint failed, using fallback");
         alert("Parsing failed. Please enter details manually.");
-        setEditingExpense({
+        setEditingExpense((prev) => ({
           amount: "",
           currency: trip.localCurrency,
           category: "Misc/Other",
@@ -160,14 +181,14 @@ export default function TrackerApp() {
           location: "",
           tags: [],
           worthIt: false,
-          id: null
-        });
+          id: prev?.id || null
+        }));
         setActiveModal("manual");
       }
     } catch (e) {
       console.error("Failed to call parser API:", e);
       alert("Could not reach parser. Please enter details manually.");
-      setEditingExpense({
+      setEditingExpense((prev) => ({
         amount: "",
         currency: trip.localCurrency,
         category: "Misc/Other",
@@ -175,8 +196,8 @@ export default function TrackerApp() {
         location: "",
         tags: [],
         worthIt: false,
-        id: null
-      });
+        id: prev?.id || null
+      }));
       setActiveModal("manual");
     } finally {
       setIsVoiceParsing(false);
@@ -265,8 +286,13 @@ export default function TrackerApp() {
       
       setIsVoiceListening(false);
       
-      // Skip manual modal popups for intentional user cancellation
-      if (e.error !== "aborted" && e.error !== "no-speech") {
+      if (e.error === "not-allowed") {
+        alert("Microphone access is blocked. Please enable microphone permissions for this website in your browser settings (e.g. tap the 'aA' icon in Safari, or check Settings > Safari > Microphone).");
+        setActiveModal("manual");
+      } else if (e.error === "service-not-allowed") {
+        alert("Speech recognition service is not allowed or supported on this browser version. Directing to manual entry.");
+        setActiveModal("manual");
+      } else if (e.error !== "aborted" && e.error !== "no-speech") {
         alert(`Voice recognition error (${e.error}). Directing to manual entry.`);
         setEditingExpense(null);
         setActiveModal("manual");
@@ -342,6 +368,13 @@ export default function TrackerApp() {
       fetchLatestRates();
     }
   }, []);
+
+  // Keep locationInput in sync when trip location is loaded/changed
+  useEffect(() => {
+    if (trip?.currentLocation !== undefined) {
+      setLocationInput(trip.currentLocation);
+    }
+  }, [trip?.currentLocation]);
 
   // Save changes locally
   useEffect(() => {
@@ -556,30 +589,92 @@ export default function TrackerApp() {
       }
     } else {
       // Insert
-      const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
-      const newExpense = {
-        ...expense,
-        id: newId,
-        timestamp: new Date().toISOString()
-      };
-      setExpenses((prev) => [newExpense, ...prev]);
+      if (expense.spreadDays && expense.spreadDays > 1) {
+        const N = expense.spreadDays;
+        const totalAmount = expense.amount;
+        const dailyAmount = parseFloat((totalAmount / N).toFixed(2));
+        const remainder = parseFloat((totalAmount - dailyAmount * N).toFixed(2));
 
-      if (trip.id && supabase) {
-        try {
-          await supabase.from("expenses").insert({
-            id: newExpense.id,
-            created_at: newExpense.timestamp,
-            amount: newExpense.amount,
-            currency: newExpense.currency,
-            category: newExpense.category,
-            note: newExpense.note,
-            worth_it: newExpense.worthIt,
-            location: newExpense.location,
-            tags: newExpense.tags,
-            trip_id: trip.id
-          });
-        } catch (e) {
-          console.error("Cloud insert failed:", e);
+        const newExpenses = [];
+        const dbInserts = [];
+
+        for (let i = 0; i < N; i++) {
+          const amt = (i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount;
+          const newId = crypto.randomUUID ? crypto.randomUUID() : (Date.now() + i).toString();
+          
+          // Calculate timestamp offset (days added)
+          const d = new Date();
+          d.setDate(d.getDate() + i);
+          const timestamp = d.toISOString();
+
+          const baseNote = expense.note || expense.category;
+          const noteWithSuffix = `${baseNote} (Day ${i + 1}/${N})`;
+
+          const singleExpense = {
+            amount: amt,
+            currency: expense.currency,
+            category: expense.category,
+            note: noteWithSuffix,
+            worthIt: expense.worthIt,
+            location: expense.location,
+            tags: expense.tags,
+            id: newId,
+            timestamp: timestamp
+          };
+
+          newExpenses.push(singleExpense);
+
+          if (trip.id && supabase) {
+            dbInserts.push({
+              id: singleExpense.id,
+              created_at: singleExpense.timestamp,
+              amount: singleExpense.amount,
+              currency: singleExpense.currency,
+              category: singleExpense.category,
+              note: singleExpense.note,
+              worth_it: singleExpense.worthIt,
+              location: singleExpense.location,
+              tags: singleExpense.tags,
+              trip_id: trip.id
+            });
+          }
+        }
+
+        setExpenses((prev) => [...newExpenses, ...prev]);
+
+        if (trip.id && supabase && dbInserts.length > 0) {
+          try {
+            await supabase.from("expenses").insert(dbInserts);
+          } catch (e) {
+            console.error("Cloud insert bulk failed:", e);
+          }
+        }
+      } else {
+        const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+        const newExpense = {
+          ...expense,
+          id: newId,
+          timestamp: new Date().toISOString()
+        };
+        setExpenses((prev) => [newExpense, ...prev]);
+
+        if (trip.id && supabase) {
+          try {
+            await supabase.from("expenses").insert({
+              id: newExpense.id,
+              created_at: newExpense.timestamp,
+              amount: newExpense.amount,
+              currency: newExpense.currency,
+              category: newExpense.category,
+              note: newExpense.note,
+              worth_it: newExpense.worthIt,
+              location: newExpense.location,
+              tags: newExpense.tags,
+              trip_id: trip.id
+            });
+          } catch (e) {
+            console.error("Cloud insert failed:", e);
+          }
         }
       }
     }
@@ -743,8 +838,13 @@ export default function TrackerApp() {
           <input
             type="text"
             placeholder="Where are you today?"
-            value={trip.currentLocation}
-            onChange={(e) => updateLocation(e.target.value)}
+            value={locationInput}
+            onChange={(e) => setLocationInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                updateLocation(locationInput);
+              }
+            }}
             style={{
               border: "none",
               fontSize: "0.95rem",
@@ -755,6 +855,36 @@ export default function TrackerApp() {
               background: "transparent"
             }}
           />
+          {locationInput !== (trip.currentLocation || "") && (
+            <button
+              type="button"
+              onClick={() => updateLocation(locationInput)}
+              style={{
+                backgroundColor: "var(--color-purple)",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(133, 58, 81, 0.2)",
+                animation: "fadeInOverlay 0.2s ease-out",
+                transition: "all 0.2s",
+                whiteSpace: "nowrap"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-orange)";
+                e.currentTarget.style.boxShadow = "0 6px 12px rgba(232, 107, 50, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--color-purple)";
+                e.currentTarget.style.boxShadow = "0 4px 10px rgba(133, 58, 81, 0.2)";
+              }}
+            >
+              Save
+            </button>
+          )}
         </div>
 
         {/* Totals */}
@@ -849,20 +979,20 @@ export default function TrackerApp() {
                 >
                   <div style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center"
+                    flexDirection: "column",
+                    gap: "6px"
                   }}>
                     <div style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px"
+                      gap: "6px"
                     }}>
-                      <span style={{ fontSize: "1.3rem" }}>{CATEGORY_EMOJIS[cat]}</span>
-                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#111827" }}>{cat}</span>
+                      <span style={{ fontSize: "1.2rem" }}>{CATEGORY_EMOJIS[cat]}</span>
+                      <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.3px" }}>{cat}</span>
                     </div>
                     <div style={{
-                      fontWeight: 800,
-                      fontSize: "0.9rem",
+                      fontWeight: 900,
+                      fontSize: "1.2rem",
                       color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF"
                     }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
                   </div>
@@ -935,7 +1065,7 @@ export default function TrackerApp() {
           </div>
         </section>
 
-        {/* Running Ledger */}
+        {/* Log */}
         <section style={{ padding: "0 24px" }}>
           <h3 style={{
             fontSize: "1.05rem",
@@ -944,7 +1074,7 @@ export default function TrackerApp() {
             marginBottom: "12px",
             textTransform: "uppercase",
             letterSpacing: "0.5px"
-          }}>Running Ledger</h3>
+          }}>Log</h3>
           {expenses.length === 0 ? (
             <div style={{
               textAlign: "center",
@@ -956,21 +1086,191 @@ export default function TrackerApp() {
             </div>
           ) : (
             <div>
-              {expenses.map((exp) => (
-                <ExpenseCard
-                  key={exp.id}
-                  expense={exp}
-                  onEdit={(e) => {
-                    setEditingExpense(e);
-                    setActiveModal("manual");
-                  }}
-                  onDelete={deleteExpense}
-                  formatMoney={formatMoney}
-                  convertCurrency={convertCurrency}
-                  homeCurrency={trip.homeCurrency}
-                  rates={rates}
-                />
-              ))}
+              {/* Process and partition expenses */}
+              {(() => {
+                const sortedExpenses = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const recentExpenses = sortedExpenses.slice(0, 10);
+                const olderExpenses = sortedExpenses.slice(10);
+
+                // Group older expenses by local date
+                const olderGroups = {};
+                olderExpenses.forEach((exp) => {
+                  const d = new Date(exp.timestamp);
+                  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  if (!olderGroups[dateKey]) {
+                    olderGroups[dateKey] = {
+                      dateDisplay: d.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }),
+                      dateKey: dateKey,
+                      totalSpend: 0,
+                      categories: {}
+                    };
+                  }
+
+                  const amtInHome = convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates);
+                  olderGroups[dateKey].totalSpend += amtInHome;
+
+                  if (!olderGroups[dateKey].categories[exp.category]) {
+                    olderGroups[dateKey].categories[exp.category] = 0;
+                  }
+                  olderGroups[dateKey].categories[exp.category] += amtInHome;
+                });
+
+                const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+                let lastLabel = null;
+
+                return (
+                  <div>
+                    {/* Recent 10 Expenses with separators */}
+                    {recentExpenses.map((exp) => {
+                      const label = getDayLabel(exp.timestamp);
+                      const showHeader = label !== lastLabel;
+                      lastLabel = label;
+
+                      return (
+                        <div key={exp.id}>
+                          {showHeader && (
+                            <div style={{
+                              fontSize: "0.8rem",
+                              fontWeight: 800,
+                              color: "var(--color-purple)",
+                              backgroundColor: "rgba(133, 58, 81, 0.06)",
+                              padding: "6px 12px",
+                              borderRadius: "8px",
+                              marginTop: "16px",
+                              marginBottom: "8px",
+                              display: "inline-block",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}>
+                              {label}
+                            </div>
+                          )}
+                          <ExpenseCard
+                            expense={exp}
+                            onEdit={(e) => {
+                              setEditingExpense(e);
+                              setActiveModal("manual");
+                            }}
+                            onDelete={deleteExpense}
+                            formatMoney={formatMoney}
+                            convertCurrency={convertCurrency}
+                            homeCurrency={trip.homeCurrency}
+                            rates={rates}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Older aggregated expenses */}
+                    {olderGroupsArray.length > 0 && (
+                      <div style={{ marginTop: "24px" }}>
+                        <h4 style={{
+                          fontSize: "0.9rem",
+                          fontWeight: 800,
+                          color: "#6B7280",
+                          marginBottom: "12px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "1px solid #E5E7EB",
+                          paddingBottom: "6px"
+                        }}>Older History</h4>
+                        {olderGroupsArray.map((group) => {
+                          const isExpanded = expandedLogDates.includes(group.dateKey);
+                          return (
+                            <div
+                              key={group.dateKey}
+                              style={{
+                                backgroundColor: "white",
+                                borderRadius: "16px",
+                                padding: "16px",
+                                marginBottom: "12px",
+                                boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
+                                border: isExpanded ? "1.5px solid var(--color-purple)" : "1.5px solid transparent",
+                                transition: "all 0.25s ease",
+                                cursor: "pointer"
+                              }}
+                              onClick={() => {
+                                setExpandedLogDates((prev) =>
+                                  prev.includes(group.dateKey)
+                                    ? prev.filter((d) => d !== group.dateKey)
+                                    : [...prev, group.dateKey]
+                                );
+                              }}
+                            >
+                              <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center"
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ fontSize: "1.1rem" }}>📅</span>
+                                  <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#374151" }}>
+                                    {group.dateDisplay}
+                                  </span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <span style={{
+                                    fontWeight: 800,
+                                    fontSize: "1rem",
+                                    color: "var(--color-purple)"
+                                  }}>
+                                    {formatMoney(group.totalSpend, trip.homeCurrency)}
+                                  </span>
+                                  <span style={{
+                                    fontSize: "0.7rem",
+                                    color: "#9CA3AF",
+                                    transform: isExpanded ? "rotate(180deg)" : "none",
+                                    transition: "transform 0.2s"
+                                  }}>▼</span>
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div
+                                  style={{
+                                    marginTop: "14px",
+                                    borderTop: "1px solid #F3F4F6",
+                                    paddingTop: "10px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "8px"
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {Object.entries(group.categories).map(([cat, catTotal]) => (
+                                    <div
+                                      key={cat}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        fontSize: "0.85rem",
+                                        color: "#4B5563"
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
+                                        <span style={{ fontWeight: 600 }}>{cat}</span>
+                                      </div>
+                                      <span style={{
+                                        fontWeight: 700,
+                                        color: CATEGORY_COLORS[cat] || "#111827"
+                                      }}>
+                                        {formatMoney(catTotal, trip.homeCurrency)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </section>
@@ -1009,7 +1309,10 @@ export default function TrackerApp() {
           <PlusIcon />
         </button>
         <button
-          onClick={startVoiceListening}
+          onClick={() => {
+            setEditingExpense(null);
+            startVoiceListening();
+          }}
           style={{
             width: "72px",
             height: "72px",
@@ -1044,6 +1347,7 @@ export default function TrackerApp() {
           rates={rates}
           customCurrencies={customCurrencies}
           onAddCustomCurrency={addCustomCurrency}
+          onVoiceStart={startVoiceListening}
         />
       )}
 
@@ -1454,7 +1758,8 @@ function ManualEntryModal({
   expenseToEdit,
   rates,
   customCurrencies,
-  onAddCustomCurrency
+  onAddCustomCurrency,
+  onVoiceStart
 }) {
   const [amount, setAmount] = useState(expenseToEdit ? expenseToEdit.amount : "");
   const [note, setNote] = useState(expenseToEdit ? expenseToEdit.note : "");
@@ -1464,6 +1769,21 @@ function ManualEntryModal({
   const [location, setLocation] = useState(expenseToEdit ? expenseToEdit.location : "");
   const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
   const [tagInput, setTagInput] = useState("");
+  const [spreadExpense, setSpreadExpense] = useState(false);
+  const [spreadDays, setSpreadDays] = useState(7);
+
+  // Sync inputs with expenseToEdit changes (e.g. from async speech parser)
+  useEffect(() => {
+    if (expenseToEdit) {
+      setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
+      setNote(expenseToEdit.note !== undefined ? expenseToEdit.note : "");
+      setCategory(expenseToEdit.category || "Misc/Other");
+      setWorthIt(!!expenseToEdit.worthIt);
+      setCurrency(expenseToEdit.currency || trip.localCurrency);
+      setLocation(expenseToEdit.location || "");
+      setTags(expenseToEdit.tags || []);
+    }
+  }, [expenseToEdit, trip.localCurrency]);
 
   const removeTag = (idx) => {
     setTags(tags.filter((_, i) => i !== idx));
@@ -1541,7 +1861,8 @@ function ManualEntryModal({
               worthIt,
               location: location.trim(),
               tags,
-              id: expenseToEdit?.id
+              id: expenseToEdit?.id,
+              spreadDays: (!expenseToEdit?.id && spreadExpense) ? (parseInt(spreadDays) || 1) : 1
             });
           }}
           style={{ display: "flex", flexDirection: "column", gap: "16px" }}
@@ -1583,6 +1904,28 @@ function ManualEntryModal({
                 color: "#111827"
               }}
             />
+            {onVoiceStart && (
+              <button
+                type="button"
+                onClick={onVoiceStart}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-purple)",
+                  cursor: "pointer",
+                  padding: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "50%",
+                  transition: "background-color 0.2s"
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.05)"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+              >
+                <MicIcon />
+              </button>
+            )}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -1733,6 +2076,78 @@ function ManualEntryModal({
               }}
             />
           </div>
+
+          {!expenseToEdit?.id && (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              padding: "14px",
+              backgroundColor: "#EFF6FF",
+              borderRadius: "12px",
+              border: "1px solid #BFDBFE"
+            }}>
+              <label style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                cursor: "pointer",
+                userSelect: "none"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={spreadExpense}
+                  onChange={(e) => setSpreadExpense(e.target.checked)}
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    accentColor: "#2563EB"
+                  }}
+                />
+                <span style={{
+                  fontSize: "0.95rem",
+                  color: "#1E40AF",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  🗓️ Spread across multiple days
+                </span>
+              </label>
+              {spreadExpense && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginTop: "4px",
+                  paddingLeft: "32px"
+                }}>
+                  <span style={{ fontSize: "0.85rem", color: "#1E40AF", fontWeight: 600 }}>Number of days:</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="365"
+                    value={spreadDays}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setSpreadDays(isNaN(val) ? "" : val);
+                    }}
+                    style={{
+                      width: "80px",
+                      padding: "6px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid #BFDBFE",
+                      outline: "none",
+                      fontSize: "0.9rem",
+                      fontWeight: 700,
+                      color: "#1E40AF"
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <label style={{
             display: "flex",
