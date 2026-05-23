@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import SearchableCurrencySelect from '../../components/SearchableCurrencySelect';
+
 
 // SVG Icons as minimal inline components
 const MicIcon = () => (
@@ -109,6 +111,121 @@ export default function TrackerApp() {
   const [syncError, setSyncError] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pendingCloudSync, setPendingCloudSync] = useState(false);
+
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [isVoiceParsing, setIsVoiceParsing] = useState(false);
+
+  const handleVoiceParse = async (text) => {
+    if (!text.trim()) return;
+    setIsVoiceParsing(true);
+    try {
+      const res = await fetch("/api/parse-expense", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: text,
+          homeCurrency: trip.homeCurrency,
+          localCurrency: trip.localCurrency,
+          currentLocation: trip.currentLocation,
+          categories: CATEGORIES
+        })
+      });
+      if (res.ok) {
+        const parsed = await res.json();
+        setEditingExpense({
+          amount: parsed.amount,
+          currency: parsed.currency,
+          category: parsed.category,
+          note: parsed.note,
+          location: parsed.location,
+          tags: parsed.tags || [],
+          worthIt: parsed.worthIt,
+          id: null
+        });
+        setActiveModal("manual");
+      } else {
+        console.error("Parser endpoint failed, using fallback");
+        alert("Parsing failed. Please enter details manually.");
+        setEditingExpense({
+          amount: "",
+          currency: trip.localCurrency,
+          category: "Misc/Other",
+          note: text,
+          location: "",
+          tags: [],
+          worthIt: false,
+          id: null
+        });
+        setActiveModal("manual");
+      }
+    } catch (e) {
+      console.error("Failed to call parser API:", e);
+      alert("Could not reach parser. Please enter details manually.");
+      setEditingExpense({
+        amount: "",
+        currency: trip.localCurrency,
+        category: "Misc/Other",
+        note: text,
+        location: "",
+        tags: [],
+        worthIt: false,
+        id: null
+      });
+      setActiveModal("manual");
+    } finally {
+      setIsVoiceParsing(false);
+    }
+  };
+
+  const startVoiceListening = () => {
+    const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechClass) {
+      alert("Speech recognition is not supported in this browser. Please type to enter details manually.");
+      setEditingExpense(null);
+      setActiveModal("manual");
+      return;
+    }
+    
+    const rec = new SpeechClass();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+    
+    rec.onstart = () => {
+      setIsVoiceListening(true);
+      setVoiceTranscript("");
+    };
+    
+    rec.onresult = async (e) => {
+      const text = e.results[0][0].transcript;
+      setVoiceTranscript(text);
+      setIsVoiceListening(false);
+      await handleVoiceParse(text);
+    };
+    
+    rec.onerror = (e) => {
+      console.error("Speech Recognition Error:", e);
+      setIsVoiceListening(false);
+      alert("Voice recognition encountered an error. Please enter manually.");
+      setEditingExpense(null);
+      setActiveModal("manual");
+    };
+    
+    rec.onend = () => {
+      setIsVoiceListening(false);
+    };
+    
+    try {
+      rec.start();
+    } catch (err) {
+      console.error("Failed to start Speech Recognition:", err);
+      setIsVoiceListening(false);
+      setEditingExpense(null);
+      setActiveModal("manual");
+    }
+  };
+
 
   // Load state from localStorage / cloud on mount
   useEffect(() => {
@@ -373,10 +490,6 @@ export default function TrackerApp() {
       };
       setExpenses((prev) => [newExpense, ...prev]);
 
-      if (newExpense.location && !trip.currentLocation) {
-        updateLocation(newExpense.location);
-      }
-
       if (trip.id && supabase) {
         try {
           await supabase.from("expenses").insert({
@@ -512,22 +625,13 @@ export default function TrackerApp() {
             color: "#4B5563"
           }}>
             Home:
-            <select
+            <SearchableCurrencySelect
               value={trip.homeCurrency}
-              onChange={(e) => updateHomeCurrency(e.target.value)}
-              style={{
-                border: "none",
-                background: "transparent",
-                fontWeight: 700,
-                color: "var(--color-purple)",
-                outline: "none",
-                cursor: "pointer"
-              }}
-            >
-              {Object.keys(rates).map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={updateHomeCurrency}
+              rates={rates}
+              customCurrencies={customCurrencies}
+              onAddCustomCurrency={addCustomCurrency}
+            />
           </label>
           <span style={{ color: "#D1D5DB" }}>|</span>
           <label style={{
@@ -539,22 +643,13 @@ export default function TrackerApp() {
             color: "#4B5563"
           }}>
             Local:
-            <select
+            <SearchableCurrencySelect
               value={trip.localCurrency}
-              onChange={(e) => updateLocalCurrency(e.target.value)}
-              style={{
-                border: "none",
-                background: "transparent",
-                fontWeight: 700,
-                color: "var(--color-purple)",
-                outline: "none",
-                cursor: "pointer"
-              }}
-            >
-              {Object.keys(rates).map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+              onChange={updateLocalCurrency}
+              rates={rates}
+              customCurrencies={customCurrencies}
+              onAddCustomCurrency={addCustomCurrency}
+            />
           </label>
         </div>
 
@@ -742,9 +837,11 @@ export default function TrackerApp() {
                                 gap: "2px"
                               }}>
                                 <span style={{ fontWeight: 600, color: "#374151" }}>{exp.note || "Unspecified"}</span>
-                                <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
-                                  📍 {exp.location || trip.currentLocation}
-                                </span>
+                                {exp.location && (
+                                  <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+                                    📍 {exp.location}
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontWeight: 700, color: "#111827" }}>
                                 {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
@@ -835,7 +932,7 @@ export default function TrackerApp() {
           <PlusIcon />
         </button>
         <button
-          onClick={() => setActiveModal("voice")}
+          onClick={startVoiceListening}
           style={{
             width: "72px",
             height: "72px",
@@ -873,19 +970,87 @@ export default function TrackerApp() {
         />
       )}
 
-      {activeModal === "voice" && (
-        <VoiceEntryModal
-          onClose={() => setActiveModal(null)}
-          onSave={saveExpense}
-          trip={trip}
-          rates={rates}
-          categories={CATEGORIES}
-          onAddCustomCurrency={addCustomCurrency}
-          customCurrencies={customCurrencies}
-          setEditingExpense={setEditingExpense}
-          setActiveModal={setActiveModal}
-        />
+      {isVoiceListening && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.8)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          zIndex: 1000,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white"
+        }}>
+          <div style={{
+            width: "100px",
+            height: "100px",
+            borderRadius: "50%",
+            backgroundColor: "rgba(133, 58, 81, 0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "24px",
+            animation: "pulsePurple 1.5s infinite"
+          }}>
+            <div style={{
+              width: "68px",
+              height: "68px",
+              borderRadius: "50%",
+              backgroundColor: "var(--color-purple)",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <MicIcon />
+            </div>
+          </div>
+          <h3 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "8px" }}>Listening...</h3>
+          <p style={{ color: "#9CA3AF", fontSize: "0.95rem" }}>Speak your expense now</p>
+        </div>
       )}
+
+      {isVoiceParsing && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.8)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          zIndex: 1000,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white"
+        }}>
+          <div className="spinner" style={{ marginBottom: "24px" }} />
+          <h3 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "12px" }}>Processing Expense...</h3>
+          {voiceTranscript && (
+            <p style={{ 
+              fontSize: "1.1rem", 
+              fontStyle: "italic", 
+              color: "#D1D5DB", 
+              padding: "0 24px", 
+              textAlign: "center",
+              lineHeight: "1.4",
+              maxWidth: "320px"
+            }}>
+              "{voiceTranscript}"
+            </p>
+          )}
+        </div>
+      )}
+
 
       {activeModal === "subscribe" && (
         <SubscribeModal
@@ -1140,63 +1305,44 @@ function ManualEntryModal({
   const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Misc/Other");
   const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
   const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
-  const [location, setLocation] = useState(expenseToEdit ? expenseToEdit.location : trip.currentLocation);
+  const [location, setLocation] = useState(expenseToEdit ? expenseToEdit.location : "");
   const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
   const [tagInput, setTagInput] = useState("");
-  const [isAddingCustom, setIsAddingCustom] = useState(false);
-  const [customCodeInput, setCustomCodeInput] = useState("");
 
   const removeTag = (idx) => {
     setTags(tags.filter((_, i) => i !== idx));
   };
 
-  const handleCurrencyChange = (val) => {
-    if (val === "CUSTOM") {
-      setIsAddingCustom(true);
-    } else {
-      setCurrency(val);
-    }
-  };
-
-  const availableCurrencies = [
-    ...new Set([
-      "USD",
-      "EUR",
-      "THB",
-      "PHP",
-      "VND",
-      "IDR",
-      "CAD",
-      "MXN",
-      "AUD",
-      ...customCurrencies
-    ])
-  ];
-
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.4)",
-      zIndex: 200,
-      display: "flex",
-      alignItems: "flex-end",
-      justifyContent: "center"
-    }}>
-      <div style={{
-        backgroundColor: "white",
-        width: "100%",
-        maxWidth: "480px",
-        borderTopLeftRadius: "24px",
-        borderTopRightRadius: "24px",
-        padding: "24px",
-        animation: "slideUp 0.3s ease-out",
-        maxHeight: "90vh",
-        overflowY: "auto"
-      }}>
+    <div 
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center"
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: "white",
+          width: "100%",
+          maxWidth: "480px",
+          borderTopLeftRadius: "24px",
+          borderTopRightRadius: "24px",
+          padding: "24px",
+          animation: "slideUp 0.3s ease-out",
+          maxHeight: "90vh",
+          overflowY: "auto"
+        }}
+      >
         <div style={{
           display: "flex",
           justifyContent: "space-between",
@@ -1210,13 +1356,17 @@ function ManualEntryModal({
           }}>
             {expenseToEdit?.id ? "Edit Expense" : "Log Expense"}
           </h3>
-          <button onClick={onClose} style={{
-            background: "none",
-            border: "none",
-            fontSize: "1.5rem",
-            color: "#9CA3AF",
-            cursor: "pointer"
-          }}>✕</button>
+          <button 
+            type="button"
+            onClick={onClose} 
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "1.5rem",
+              color: "#9CA3AF",
+              cursor: "pointer"
+            }}
+          >✕</button>
         </div>
 
         <form
@@ -1246,88 +1396,14 @@ function ManualEntryModal({
             borderBottom: "2px solid #E5E7EB",
             paddingBottom: "8px"
           }}>
-            {isAddingCustom ? (
-              <div style={{
-                display: "flex",
-                gap: "6px",
-                alignItems: "center",
-                marginRight: "10px"
-              }}>
-                <input
-                  type="text"
-                  maxLength={3}
-                  placeholder="SGD"
-                  value={customCodeInput}
-                  onChange={(e) => setCustomCodeInput(e.target.value)}
-                  style={{
-                    width: "60px",
-                    fontSize: "1.1rem",
-                    fontWeight: 700,
-                    border: "1px solid #E5E7EB",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                    textTransform: "uppercase",
-                    padding: "6px"
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const code = customCodeInput.trim().toUpperCase();
-                    if (code.length === 3) {
-                      onAddCustomCurrency(code);
-                      setCurrency(code);
-                      setIsAddingCustom(false);
-                      setCustomCodeInput("");
-                    } else {
-                      alert("Currency code must be exactly 3 letters (e.g. SGD)");
-                    }
-                  }}
-                  style={{
-                    padding: "6px 10px",
-                    fontSize: "0.8rem",
-                    backgroundColor: "var(--color-purple)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontWeight: 600
-                  }}
-                >Add</button>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingCustom(false)}
-                  style={{
-                    padding: "6px",
-                    fontSize: "0.8rem",
-                    background: "none",
-                    border: "none",
-                    color: "#6B7280",
-                    cursor: "pointer"
-                  }}
-                >✕</button>
-              </div>
-            ) : (
-              <select
-                value={currency}
-                onChange={(e) => handleCurrencyChange(e.target.value)}
-                style={{
-                  fontSize: "1.4rem",
-                  color: "var(--color-purple)",
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  fontWeight: 800,
-                  marginRight: "8px",
-                  cursor: "pointer"
-                }}
-              >
-                {availableCurrencies.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-                <option value="CUSTOM">+ Add custom...</option>
-              </select>
-            )}
+            <SearchableCurrencySelect
+              value={currency}
+              onChange={setCurrency}
+              rates={rates}
+              customCurrencies={customCurrencies}
+              onAddCustomCurrency={onAddCustomCurrency}
+              style={{ fontSize: "1.4rem", marginRight: "10px" }}
+            />
             <input
               type="number"
               step="0.01"
@@ -1582,232 +1658,7 @@ function ManualEntryModal({
   );
 }
 
-// Modal for voice entry using Speech Recognition and AI parsing
-function VoiceEntryModal({
-  onClose,
-  onSave,
-  trip,
-  rates,
-  categories,
-  onAddCustomCurrency,
-  customCurrencies,
-  setEditingExpense,
-  setActiveModal
-}) {
-  const [transcript, setTranscript] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [recognition, setRecognition] = useState(null);
-
-  useEffect(() => {
-    const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechClass) {
-      const rec = new SpeechClass();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = "en-US";
-      rec.onstart = () => {
-        setIsListening(true);
-      };
-      rec.onresult = (e) => {
-        const text = e.results[0][0].transcript;
-        setTranscript(text);
-        handleVoiceParse(text);
-      };
-      rec.onerror = (e) => {
-        console.error("Speech Recognition Error:", e);
-        setIsListening(false);
-      };
-      rec.onend = () => {
-        setIsListening(false);
-      };
-      setRecognition(rec);
-    }
-  }, []);
-
-  const handleVoiceParse = async (text) => {
-    if (!text.trim()) return;
-    setIsParsing(true);
-    try {
-      const res = await fetch("/api/parse-expense", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text,
-          homeCurrency: trip.homeCurrency,
-          localCurrency: trip.localCurrency,
-          currentLocation: trip.currentLocation,
-          categories: categories
-        })
-      });
-      if (res.ok) {
-        const parsed = await res.json();
-        setEditingExpense({
-          amount: parsed.amount,
-          currency: parsed.currency,
-          category: parsed.category,
-          note: parsed.note,
-          location: parsed.location,
-          tags: parsed.tags || [],
-          worthIt: parsed.worthIt,
-          id: null
-        });
-        setActiveModal("manual");
-      } else {
-        console.error("Parser endpoint failed, using fallback");
-        alert("Parsing failed. Please enter the details manually.");
-      }
-    } catch (e) {
-      console.error("Failed to call parser API:", e);
-      alert("Could not reach parser. Please enter the details manually.");
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.85)",
-      backdropFilter: "blur(6px)",
-      zIndex: 200,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center"
-    }}>
-      <div style={{ position: "absolute", top: "24px", right: "24px" }}>
-        <button onClick={onClose} style={{
-          background: "none",
-          border: "none",
-          color: "white",
-          fontSize: "2rem",
-          cursor: "pointer"
-        }}>✕</button>
-      </div>
-
-      <div
-        onClick={() => {
-          if (!recognition) {
-            alert("Speech recognition is not supported in this browser. Please type to simulate speech!");
-            return;
-          }
-          isListening ? recognition.stop() : recognition.start();
-        }}
-        style={{
-          width: "90px",
-          height: "90px",
-          borderRadius: "50%",
-          backgroundColor: isListening ? "rgba(226, 78, 66, 0.2)" : "rgba(133, 58, 81, 0.2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "20px",
-          cursor: "pointer",
-          animation: isListening ? "pulseRed 1.5s infinite" : "pulsePurple 2.5s infinite",
-          transition: "all 0.3s"
-        }}
-      >
-        <div style={{
-          width: "64px",
-          height: "64px",
-          borderRadius: "50%",
-          backgroundColor: isListening ? "var(--color-red)" : "var(--color-purple)",
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          <MicIcon />
-        </div>
-      </div>
-
-      <h2 style={{ color: "white", fontSize: "1.4rem", fontWeight: 600, marginBottom: "8px" }}>
-        {isListening ? "Listening..." : "Tap Mic to Speak"}
-      </h2>
-      <p style={{
-        color: "#9CA3AF",
-        fontSize: "0.85rem",
-        marginBottom: "40px",
-        maxWidth: "300px",
-        textAlign: "center",
-        lineHeight: "1.4"
-      }}>
-        Try saying: "300 PHP on caramel macchiato at Siargao coffee company worth it"
-      </p>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleVoiceParse(transcript);
-        }}
-        style={{
-          width: "90%",
-          maxWidth: "400px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px"
-        }}
-      >
-        <input
-          type="text"
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
-          placeholder={isListening ? "Listening transcript..." : "Type text input to parse..."}
-          disabled={isParsing}
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: "14px",
-            border: "none",
-            fontSize: "1.1rem",
-            textAlign: "center",
-            backgroundColor: "rgba(255,255,255,0.1)",
-            color: "white",
-            outline: "none"
-          }}
-        />
-        <button
-          type="submit"
-          disabled={isParsing || !transcript.trim()}
-          style={{
-            width: "100%",
-            padding: "16px",
-            backgroundColor: "white",
-            color: "var(--color-purple)",
-            borderRadius: "14px",
-            fontSize: "1.05rem",
-            fontWeight: 700,
-            border: "none",
-            cursor: "pointer",
-            opacity: isParsing || !transcript.trim() ? 0.6 : 1,
-            transition: "opacity 0.2s",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-          }}
-        >
-          {isParsing ? "Parsing with AI..." : "Parse & Validate"}
-        </button>
-      </form>
-
-      <style>{`
-        @keyframes pulsePurple { 
-          0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(133, 58, 81, 0.7); } 
-          70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(133, 58, 81, 0); } 
-          100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(133, 58, 81, 0); } 
-        }
-        @keyframes pulseRed { 
-          0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(226, 78, 66, 0.7); } 
-          70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(226, 78, 66, 0); } 
-          100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(226, 78, 66, 0); } 
-        }
-      `}</style>
-    </div>
-  );
-}
+// Newsletter email signup gate modal is defined below
 
 // Modal popup acting as the Newsletter email signup gate
 function SubscribeModal({ onClose, onSuccess }) {
