@@ -28,24 +28,22 @@ const StarIcon = ({ filled }) => (
 );
 
 // Constants
-const CATEGORIES = ["Accommodation", "Transportation", "Breakfast", "Lunch", "Dinner", "Misc/Other"];
+const CATEGORIES = ["Accommodation", "Food & Drink", "Transportation", "Activities", "Miscellaneous"];
 
 const CATEGORY_COLORS = {
   Accommodation: "#853A51",
+  "Food & Drink": "#E86B32",
   Transportation: "#81C3D7",
-  Breakfast: "#F2AE30",
-  Lunch: "#E86B32",
-  Dinner: "#E24E42",
-  "Misc/Other": "#6B7280"
+  Activities: "#F2AE30",
+  Miscellaneous: "#6B7280"
 };
 
 const CATEGORY_EMOJIS = {
   Accommodation: "🏨",
+  "Food & Drink": "🍔",
   Transportation: "🛵",
-  Breakfast: "☕️",
-  Lunch: "🍔",
-  Dinner: "🍕",
-  "Misc/Other": "📦"
+  Activities: "🎟️",
+  Miscellaneous: "📦"
 };
 
 const DEFAULT_RATES = {
@@ -133,6 +131,7 @@ export default function TrackerApp() {
   const [expandedLogDates, setExpandedLogDates] = useState([]);
   const [expandedOlderCategory, setExpandedOlderCategory] = useState({});
   const [showFuture, setShowFuture] = useState(false);
+  const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
 
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
@@ -191,7 +190,7 @@ export default function TrackerApp() {
         setEditingExpense((prev) => ({
           amount: "",
           currency: trip.localCurrency,
-          category: "Misc/Other",
+          category: "Miscellaneous",
           note: text,
           location: "",
           tags: [],
@@ -206,7 +205,7 @@ export default function TrackerApp() {
       setEditingExpense((prev) => ({
         amount: "",
         currency: trip.localCurrency,
-        category: "Misc/Other",
+        category: "Miscellaneous",
         note: text,
         location: "",
         tags: [],
@@ -768,6 +767,16 @@ export default function TrackerApp() {
   const allExpensesTotal = visibleExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
   const daysActive = getDaysActive(visibleExpenses);
 
+  const categoryTotalsToday = CATEGORIES.map((cat) => {
+    const catExpenses = todayExpenses.filter((e) => e.category === cat);
+    const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+    return { cat, total: catTotal };
+  });
+  const activeTotalsToday = categoryTotalsToday.filter(c => c.total > 0);
+  const topCategoryToday = activeTotalsToday.length > 0 
+    ? activeTotalsToday.sort((a, b) => b.total - a.total)[0] 
+    : null;
+
   const nameLength = trip.name ? trip.name.length : 0;
   const dynamicFontSize = nameLength > 24 
     ? "0.85rem" 
@@ -1028,143 +1037,191 @@ export default function TrackerApp() {
           </div>
         </header>
 
-        {/* Today's Breakdown */}
+        {/* Today Section */}
         <section style={{ padding: "0 24px 24px" }}>
-          <h3 style={{
-            fontSize: "1.05rem",
-            fontWeight: 700,
-            color: "#374151",
-            marginBottom: "12px",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px"
-          }}>Today's Breakdown</h3>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "8px"
-          }}>
-            {CATEGORIES.map((cat) => {
-              const catExpenses = todayExpenses.filter((e) => e.category === cat);
-              const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
-              const isExpanded = expandedCategory === cat;
+          <div 
+            onClick={() => setTodaySectionExpanded(!todaySectionExpanded)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backgroundColor: "white",
+              borderRadius: "16px",
+              padding: "12px 16px",
+              cursor: "pointer",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
+              border: "1px solid #F3F4F6",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = "#F3F4F6"}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <h3 style={{
+                fontSize: "1.02rem",
+                fontWeight: 700,
+                color: "#374151",
+                margin: 0,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
+              }}>Today</h3>
+              <div style={{
+                fontSize: "0.82rem",
+                color: "#6B7280",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontWeight: 500
+              }}>
+                <span>Total: <strong>{formatMoney(todayTotal, trip.homeCurrency)}</strong></span>
+                {topCategoryToday && (
+                  <>
+                    <span style={{ color: "#D1D5DB" }}>•</span>
+                    <span>Top: {CATEGORY_EMOJIS[topCategoryToday.cat]} <strong>{topCategoryToday.cat}</strong></span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{
+                fontSize: "0.7rem",
+                color: "#9CA3AF",
+                transform: todaySectionExpanded ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s"
+              }}>▼</span>
+            </div>
+          </div>
 
-              return (
-                <div
-                  key={cat}
-                  style={{
-                    gridColumn: isExpanded ? "span 2" : "span 1",
-                    backgroundColor: "white",
-                    borderRadius: "16px",
-                    padding: "10px 12px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
-                    cursor: "pointer",
-                    border: isExpanded ? `1.5px solid ${CATEGORY_COLORS[cat]}` : "1.5px solid transparent",
-                    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                    overflow: "hidden"
-                  }}
-                  onClick={() => setExpandedCategory(isExpanded ? null : cat)}
-                >
-                  <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px",
-                    alignItems: "flex-start",
-                    width: "100%"
-                  }}>
+          {todaySectionExpanded && (
+            <div style={{
+              marginTop: "12px",
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "8px"
+            }}>
+              {CATEGORIES.map((cat) => {
+                const catExpenses = todayExpenses.filter((e) => e.category === cat);
+                const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+                const isExpanded = expandedCategory === cat;
+
+                return (
+                  <div
+                    key={cat}
+                    style={{
+                      gridColumn: isExpanded ? "span 2" : "span 1",
+                      backgroundColor: "white",
+                      borderRadius: "16px",
+                      padding: "10px 12px",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
+                      cursor: "pointer",
+                      border: isExpanded ? `1.5px solid ${CATEGORY_COLORS[cat]}` : "1.5px solid transparent",
+                      transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                      overflow: "hidden"
+                    }}
+                    onClick={() => setExpandedCategory(isExpanded ? null : cat)}
+                  >
                     <div style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      width: "100%",
-                      overflow: "hidden"
+                      flexDirection: "column",
+                      gap: "2px",
+                      alignItems: "flex-start",
+                      width: "100%"
                     }}>
-                      <span style={{ fontSize: "1.15rem", flexShrink: 0 }}>{CATEGORY_EMOJIS[cat]}</span>
-                      <span style={{
-                        fontWeight: 700,
-                        fontSize: "0.72rem",
-                        color: "#6B7280",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1
-                      }} title={cat}>{cat}</span>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        width: "100%",
+                        overflow: "hidden"
+                      }}>
+                        <span style={{ fontSize: "1.15rem", flexShrink: 0 }}>{CATEGORY_EMOJIS[cat]}</span>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: "0.72rem",
+                          color: "#6B7280",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1
+                        }} title={cat}>{cat}</span>
+                      </div>
+                      <div style={{
+                        fontWeight: 900,
+                        fontSize: "1.1rem",
+                        color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF",
+                        marginTop: "1px"
+                      }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
                     </div>
-                    <div style={{
-                      fontWeight: 900,
-                      fontSize: "1.1rem",
-                      color: catTotal > 0 ? CATEGORY_COLORS[cat] : "#9CA3AF",
-                      marginTop: "1px"
-                    }}>{formatMoney(catTotal, trip.homeCurrency)}</div>
-                  </div>
 
-                  {isExpanded && (
-                    <div
-                      style={{
-                        marginTop: "14px",
-                        borderTop: "1px solid #F3F4F6",
-                        paddingTop: "10px"
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {catExpenses.length === 0 ? (
-                        <p style={{
-                          fontSize: "0.8rem",
-                          color: "#9CA3AF",
-                          textAlign: "center",
-                          padding: "8px 0"
-                        }}>No expenses today</p>
-                      ) : (
-                        <div style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "6px"
-                        }}>
-                          {catExpenses.map((exp) => (
-                            <div
-                              key={exp.id}
-                              onClick={() => {
-                                setEditingExpense(exp);
-                                setActiveModal("manual");
-                              }}
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                padding: "8px 10px",
-                                borderRadius: "10px",
-                                backgroundColor: "#F9FAFB",
-                                fontSize: "0.8rem",
-                                cursor: "pointer",
-                                border: "1px solid #E5E7EB"
-                              }}
-                            >
-                              <div style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "2px"
-                              }}>
-                                <span style={{ fontWeight: 600, color: "#374151" }}>{exp.note || "Unspecified"}</span>
-                                {exp.location && (
-                                  <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
-                                    📍 {exp.location}
-                                  </span>
-                                )}
+                    {isExpanded && (
+                      <div
+                        style={{
+                          marginTop: "14px",
+                          borderTop: "1px solid #F3F4F6",
+                          paddingTop: "10px"
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {catExpenses.length === 0 ? (
+                          <p style={{
+                            fontSize: "0.8rem",
+                            color: "#9CA3AF",
+                            textAlign: "center",
+                            padding: "8px 0"
+                          }}>No expenses today</p>
+                        ) : (
+                          <div style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "6px"
+                          }}>
+                            {catExpenses.map((exp) => (
+                              <div
+                                key={exp.id}
+                                onClick={() => {
+                                  setEditingExpense(exp);
+                                  setActiveModal("manual");
+                                }}
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  padding: "8px 10px",
+                                  borderRadius: "10px",
+                                  backgroundColor: "#F9FAFB",
+                                  fontSize: "0.8rem",
+                                  cursor: "pointer",
+                                  border: "1px solid #E5E7EB"
+                                }}
+                              >
+                                <div style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "2px"
+                                }}>
+                                  <span style={{ fontWeight: 600, color: "#374151" }}>{exp.note || "Unspecified"}</span>
+                                  {exp.location && (
+                                    <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
+                                      📍 {exp.location}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontWeight: 700, color: "#111827" }}>
+                                  {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
+                                </div>
                               </div>
-                              <div style={{ fontWeight: 700, color: "#111827" }}>
-                                {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Log */}
@@ -1882,7 +1939,7 @@ function ExpenseCard({
         <div style={{
           width: "4px",
           height: "100%",
-          backgroundColor: CATEGORY_COLORS[expense.category],
+          backgroundColor: CATEGORY_COLORS[expense.category] || "#6B7280",
           position: "absolute",
           left: 0,
           top: 0
@@ -1923,7 +1980,7 @@ function ExpenseCard({
             flexWrap: "wrap"
           }}>
             <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
-              {CATEGORY_EMOJIS[expense.category]} {expense.category}
+              {CATEGORY_EMOJIS[expense.category] || "📦"} {expense.category}
             </span>
             {expense.location && expense.location.split(" | ")[0] && (
               <span style={{
@@ -1994,7 +2051,7 @@ function ManualEntryModal({
 }) {
   const [amount, setAmount] = useState(expenseToEdit ? expenseToEdit.amount : "");
   const [note, setNote] = useState(expenseToEdit ? expenseToEdit.note : "");
-  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Misc/Other");
+  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Miscellaneous");
   const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
   const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
   const [location, setLocation] = useState(expenseToEdit ? (expenseToEdit.location.split(" | ")[0] || "") : "");
@@ -2019,7 +2076,7 @@ function ManualEntryModal({
     if (expenseToEdit) {
       setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
       setNote(expenseToEdit.note !== undefined ? expenseToEdit.note : "");
-      setCategory(expenseToEdit.category || "Misc/Other");
+      setCategory(expenseToEdit.category || "Miscellaneous");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
       setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
