@@ -24,13 +24,13 @@ Context:
 - Active Location/City: ${currentLocation}
 
 Available Categories (you MUST classify the expense into exactly one of these):
-${JSON.stringify(categories.length > 0 ? categories : ['Accommodation', 'Food & Drink', 'Transportation', 'Activities', 'Miscellaneous'])}
+${JSON.stringify(categories.length > 0 ? categories : ['Accommodation', 'Transportation', 'Food & Drink', 'Everything Else'])}
 
 Strict JSON Schema Output (Return ONLY a raw JSON block, do not include markdown \`\`\`json wraps, just plain text JSON):
 {
   "amount": number (the expense amount in the logged currency, e.g. 300.00. Extract from text.),
   "currency": string (3-letter currency code, e.g. "PHP", "USD", "EUR", "THB", "VND", "IDR", "CAD", "MXN", "AUD". Default to local currency "${localCurrency}" unless another currency is explicitly mentioned, e.g., "dollars", "USD", "euros", "baht", etc.),
-  "category": string (one of the available categories listed above. Be smart: "coffee"/"latte"/"lunch"/"dinner"/"food"/"restaurant"/"drink" is Food & Drink. "hotel"/"airbnb"/"stay" is Accommodation. "taxi"/"bus"/"grab"/"scooter"/"flight" is Transportation. "museum"/"tour"/"massage"/"surf"/"temple" is Activities. Otherwise Miscellaneous.),
+  "category": string (one of the available categories listed above. Be smart: "coffee"/"latte"/"lunch"/"dinner"/"food"/"restaurant"/"drink" is Food & Drink. "hotel"/"airbnb"/"stay" is Accommodation. "taxi"/"bus"/"grab"/"scooter"/"flight" is Transportation. Otherwise Everything Else.),
   "note": string (a short clean description of what it was, e.g. "Caramel macchiato at Siargao Coffee Company" or "Taxi ride", with the amount/currency clean-removed),
   "location": string (the city, town, or specific place/establishment where it occurred, e.g. "Siargao coffee company" or "Bangkok", extracted from the text if possible. Defaults to "${currentLocation}" if no specific location/establishment is mentioned),
   "tags": string[] (array of 1-3 lowercase keywords that represent details for down-the-road insights, e.g. ["coffee", "cafe", "sweets"] or ["grab", "ride", "commute"]),
@@ -132,12 +132,11 @@ function localParse(text, localCurrency, currentLocation) {
   }
 
   // Detect category
-  let category = 'Miscellaneous';
+  let category = 'Everything Else';
   const categoryKeywords = {
     Accommodation: ['hostel', 'hotel', 'stay', 'airbnb', 'room', 'lodging', 'guesthouse', 'camp'],
     Transportation: ['ferry', 'bus', 'grab', 'taxi', 'flight', 'train', 'scooter', 'gas', 'fuel', 'ride', 'uber', 'bolt', 'tuktuk', 'moped', 'plane', 'transport', 'ticket'],
-    'Food & Drink': ['breakfast', 'coffee', 'latte', 'cappuccino', 'macchiato', 'cafe', 'croissant', 'bakery', 'espresso', 'tea', 'machiato', 'lunch', 'sandwich', 'taco', 'tacos', 'burger', 'wrap', 'salad', 'noodle', 'noodles', 'dinner', 'restaurant', 'sushi', 'pasta', 'pizza', 'steak', 'curry', 'feast', 'beer', 'wine', 'cocktail', 'bar', 'food', 'drink', 'drinks', 'pub', 'bistro'],
-    Activities: ['tour', 'surf', 'massage', 'museum', 'activity', 'diving', 'excursion', 'admission', 'entry', 'show', 'concert', 'park', 'temple', 'guide', 'class', 'gym', 'yoga', 'theater', 'attraction', 'snorkeling']
+    'Food & Drink': ['breakfast', 'coffee', 'latte', 'cappuccino', 'macchiato', 'cafe', 'croissant', 'bakery', 'espresso', 'tea', 'machiato', 'lunch', 'sandwich', 'taco', 'tacos', 'burger', 'wrap', 'salad', 'noodle', 'noodles', 'dinner', 'restaurant', 'sushi', 'pasta', 'pizza', 'steak', 'curry', 'feast', 'beer', 'wine', 'cocktail', 'bar', 'food', 'drink', 'drinks', 'pub', 'bistro']
   };
 
   for (const [cat, keywords] of Object.entries(categoryKeywords)) {

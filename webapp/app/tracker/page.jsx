@@ -28,22 +28,20 @@ const StarIcon = ({ filled }) => (
 );
 
 // Constants
-const CATEGORIES = ["Accommodation", "Food & Drink", "Transportation", "Activities", "Miscellaneous"];
+const CATEGORIES = ["Accommodation", "Transportation", "Food & Drink", "Everything Else"];
 
 const CATEGORY_COLORS = {
   Accommodation: "#853A51",
-  "Food & Drink": "#E86B32",
   Transportation: "#81C3D7",
-  Activities: "#F2AE30",
-  Miscellaneous: "#6B7280"
+  "Food & Drink": "#E86B32",
+  "Everything Else": "#6B7280"
 };
 
 const CATEGORY_EMOJIS = {
   Accommodation: "🏨",
-  "Food & Drink": "🍔",
   Transportation: "🛵",
-  Activities: "🎟️",
-  Miscellaneous: "📦"
+  "Food & Drink": "🍔",
+  "Everything Else": "📦"
 };
 
 const DEFAULT_RATES = {
@@ -132,6 +130,8 @@ export default function TrackerApp() {
   const [expandedOlderCategory, setExpandedOlderCategory] = useState({});
   const [showFuture, setShowFuture] = useState(false);
   const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
+  const [logView, setLogView] = useState("recent"); // 'recent' or 'history'
+  const [logLimit, setLogLimit] = useState(5);
 
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
@@ -190,7 +190,7 @@ export default function TrackerApp() {
         setEditingExpense((prev) => ({
           amount: "",
           currency: trip.localCurrency,
-          category: "Miscellaneous",
+          category: "Everything Else",
           note: text,
           location: "",
           tags: [],
@@ -205,7 +205,7 @@ export default function TrackerApp() {
       setEditingExpense((prev) => ({
         amount: "",
         currency: trip.localCurrency,
-        category: "Miscellaneous",
+        category: "Everything Else",
         note: text,
         location: "",
         tags: [],
@@ -1235,16 +1235,57 @@ export default function TrackerApp() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "12px"
+                  marginBottom: "16px",
+                  gap: "10px",
+                  flexWrap: "wrap"
                 }}>
-                  <h3 style={{
-                    fontSize: "1.05rem",
-                    fontWeight: 700,
-                    color: "#374151",
-                    margin: 0,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px"
-                  }}>Log</h3>
+                  {/* Segmented View Toggles */}
+                  <div style={{
+                    display: "flex",
+                    backgroundColor: "rgba(133, 58, 81, 0.05)",
+                    padding: "3px",
+                    borderRadius: "8px",
+                    gap: "2px"
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setLogView("recent")}
+                      style={{
+                        fontSize: "0.82rem",
+                        fontWeight: logView === "recent" ? 700 : 500,
+                        color: logView === "recent" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "recent" ? "white" : "transparent",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        boxShadow: logView === "recent" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      Log
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLogView("history")}
+                      style={{
+                        fontSize: "0.82rem",
+                        fontWeight: logView === "history" ? 700 : 500,
+                        color: logView === "history" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "history" ? "white" : "transparent",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        boxShadow: logView === "history" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      History
+                    </button>
+                  </div>
+
+                  {/* Future filter toggle */}
                   {hasFutureExpenses && (
                     <button
                       type="button"
@@ -1261,10 +1302,11 @@ export default function TrackerApp() {
                         transition: "all 0.2s"
                       }}
                     >
-                      {showFuture ? "Hide Future Expenses" : "Show Future Expenses"}
+                      {showFuture ? "Hide Future" : "Show Future"}
                     </button>
                   )}
                 </div>
+
                 {displayedExpenses.length === 0 ? (
                   <div style={{
                     textAlign: "center",
@@ -1276,267 +1318,305 @@ export default function TrackerApp() {
                   </div>
                 ) : (
                   <div>
-                    {/* Process and partition expenses */}
                     {(() => {
                       const sortedExpenses = [...displayedExpenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                      const recentExpenses = sortedExpenses.slice(0, 10);
-                      const olderExpenses = sortedExpenses.slice(10);
 
-                      // Group older expenses by local date
-                      const olderGroups = {};
-                      olderExpenses.forEach((exp) => {
-                        const d = new Date(exp.timestamp);
-                        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        if (!olderGroups[dateKey]) {
-                          olderGroups[dateKey] = {
-                            dateDisplay: d.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }),
-                            dateKey: dateKey,
-                            totalSpend: 0,
-                            categories: {},
-                            location: ""
-                          };
-                        }
-
-                        const amtInHome = convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates);
-                        olderGroups[dateKey].totalSpend += amtInHome;
-
-                        if (!olderGroups[dateKey].categories[exp.category]) {
-                          olderGroups[dateKey].categories[exp.category] = { total: 0, list: [] };
-                        }
-                        olderGroups[dateKey].categories[exp.category].total += amtInHome;
-                        olderGroups[dateKey].categories[exp.category].list.push(exp);
-
-                        const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || "") : "";
-                        if (highLevelLoc && !olderGroups[dateKey].location) {
-                          olderGroups[dateKey].location = highLevelLoc;
-                        }
-                      });
-
-                      const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-
-                      let lastLabel = null;
-
-                      return (
-                        <div>
-                          {/* Recent 10 Expenses with separators */}
-                          {recentExpenses.map((exp) => {
-                            const label = getDayLabel(exp.timestamp);
-                            const showHeader = label !== lastLabel;
-                            lastLabel = label;
-
-                            const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
-                            const dayLocation = sameDayExpenses.map(e => e.location ? (e.location.split(" | ")[1] || "") : "").find(loc => loc) || "";
-
-                            return (
-                              <div key={exp.id}>
-                                {showHeader && (
-                                  <div style={{
-                                    fontSize: "0.8rem",
-                                    fontWeight: 800,
-                                    color: "var(--color-purple)",
-                                    backgroundColor: "rgba(133, 58, 81, 0.06)",
-                                    padding: "6px 12px",
-                                    borderRadius: "8px",
-                                    marginTop: "16px",
-                                    marginBottom: "8px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.5px"
-                                  }}>
-                                    <span>{label}</span>
-                                    {dayLocation && (
-                                      <span style={{ color: "var(--color-orange)", display: "inline-flex", alignItems: "center", gap: "2px" }}>
-                                        📍 {dayLocation}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                <ExpenseCard
-                                  expense={exp}
-                                  onEdit={(e) => {
-                                    setEditingExpense(e);
-                                    setActiveModal("manual");
-                                  }}
-                                  onDelete={deleteExpense}
-                                  formatMoney={formatMoney}
-                                  convertCurrency={convertCurrency}
-                                  homeCurrency={trip.homeCurrency}
-                                  rates={rates}
-                                />
+                      if (logView === "recent") {
+                        const recentExpenses = sortedExpenses.slice(0, logLimit);
+                        let lastLabel = null;
+                        return (
+                          <div>
+                            {recentExpenses.length === 0 ? (
+                              <div style={{ textAlign: "center", padding: "30px 0", color: "#9CA3AF" }}>
+                                <p style={{ fontSize: "0.9rem" }}>No recent expenses.</p>
                               </div>
-                            );
-                          })}
+                            ) : (
+                              <div>
+                                {recentExpenses.map((exp) => {
+                                  const label = getDayLabel(exp.timestamp);
+                                  const showHeader = label !== lastLabel;
+                                  lastLabel = label;
 
-                          {/* Older aggregated expenses */}
-                          {olderGroupsArray.length > 0 && (
-                            <div style={{ marginTop: "24px" }}>
-                              <h4 style={{
-                                fontSize: "0.9rem",
-                                fontWeight: 800,
-                                color: "#6B7280",
-                                marginBottom: "12px",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.5px",
-                                borderBottom: "1px solid #E5E7EB",
-                                paddingBottom: "6px"
-                              }}>Older History</h4>
-                              {olderGroupsArray.map((group) => {
-                                const isExpanded = expandedLogDates.includes(group.dateKey);
-                                return (
+                                  const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
+                                  const dayLocation = sameDayExpenses.map(e => e.location ? (e.location.split(" | ")[1] || "") : "").find(loc => loc) || "";
+
+                                  return (
+                                    <div key={exp.id}>
+                                      {showHeader && (
+                                        <div style={{
+                                          fontSize: "0.8rem",
+                                          fontWeight: 800,
+                                          color: "var(--color-purple)",
+                                          backgroundColor: "rgba(133, 58, 81, 0.06)",
+                                          padding: "6px 12px",
+                                          borderRadius: "8px",
+                                          marginTop: "16px",
+                                          marginBottom: "8px",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.5px"
+                                        }}>
+                                          <span>{label}</span>
+                                          {dayLocation && (
+                                            <span style={{ color: "var(--color-orange)", display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                                              📍 {dayLocation}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      <ExpenseCard
+                                        expense={exp}
+                                        onEdit={(e) => {
+                                          setEditingExpense(e);
+                                          setActiveModal("manual");
+                                        }}
+                                        onDelete={deleteExpense}
+                                        formatMoney={formatMoney}
+                                        convertCurrency={convertCurrency}
+                                        homeCurrency={trip.homeCurrency}
+                                        rates={rates}
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Load More Button */}
+                            {sortedExpenses.length > logLimit && (
+                              <div style={{ display: "flex", justifyContent: "center", marginTop: "16px", marginBottom: "10px" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setLogLimit((prev) => prev + 10)}
+                                  style={{
+                                    fontSize: "0.82rem",
+                                    fontWeight: 750,
+                                    color: "var(--color-purple)",
+                                    backgroundColor: "white",
+                                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                                    borderRadius: "12px",
+                                    padding: "10px 20px",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                                    width: "100%",
+                                    maxWidth: "200px",
+                                    textAlign: "center"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = "var(--color-purple)";
+                                    e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.02)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = "rgba(133, 58, 81, 0.15)";
+                                    e.currentTarget.style.backgroundColor = "white";
+                                  }}
+                                >
+                                  Load More
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        // History View
+                        const olderGroups = {};
+                        sortedExpenses.forEach((exp) => {
+                          const d = new Date(exp.timestamp);
+                          const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          if (!olderGroups[dateKey]) {
+                            olderGroups[dateKey] = {
+                              dateDisplay: d.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }),
+                              dateKey: dateKey,
+                              totalSpend: 0,
+                              categories: {},
+                              location: ""
+                            };
+                          }
+
+                          const amtInHome = convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates);
+                          olderGroups[dateKey].totalSpend += amtInHome;
+
+                          if (!olderGroups[dateKey].categories[exp.category]) {
+                            olderGroups[dateKey].categories[exp.category] = { total: 0, list: [] };
+                          }
+                          olderGroups[dateKey].categories[exp.category].total += amtInHome;
+                          olderGroups[dateKey].categories[exp.category].list.push(exp);
+
+                          const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || "") : "";
+                          if (highLevelLoc && !olderGroups[dateKey].location) {
+                            olderGroups[dateKey].location = highLevelLoc;
+                          }
+                        });
+
+                        const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+                        if (olderGroupsArray.length === 0) {
+                          return (
+                            <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
+                              <p style={{ fontSize: "1rem", fontWeight: 500 }}>No history yet.</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div style={{ marginTop: "8px" }}>
+                            {olderGroupsArray.map((group) => {
+                              const isExpanded = expandedLogDates.includes(group.dateKey);
+                              return (
+                                <div
+                                  key={group.dateKey}
+                                  style={{
+                                    backgroundColor: "white",
+                                    borderRadius: "16px",
+                                    padding: "14px",
+                                    marginBottom: "10px",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                                    border: "1px solid #F3F4F6"
+                                  }}
+                                >
                                   <div
-                                    key={group.dateKey}
                                     style={{
-                                      backgroundColor: "white",
-                                      borderRadius: "16px",
-                                      padding: "14px",
-                                      marginBottom: "10px",
-                                      boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                                      border: "1px solid #F3F4F6"
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      cursor: "pointer"
+                                    }}
+                                    onClick={() => {
+                                      setExpandedLogDates(prev =>
+                                        prev.includes(group.dateKey)
+                                          ? prev.filter(k => k !== group.dateKey)
+                                          : [...prev, group.dateKey]
+                                      );
                                     }}
                                   >
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                      <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151" }}>
+                                        {group.dateDisplay}
+                                      </span>
+                                      {group.location && (
+                                        <span style={{ fontSize: "0.75rem", color: "var(--color-orange)", display: "flex", alignItems: "center", gap: "2px" }}>
+                                          📍 {group.location}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                      <span style={{
+                                        fontSize: "0.95rem",
+                                        fontWeight: 800,
+                                        color: "var(--color-purple)"
+                                      }}>
+                                        {formatMoney(group.totalSpend, trip.homeCurrency)}
+                                      </span>
+                                      <span style={{
+                                        fontSize: "0.7rem",
+                                        color: "#9CA3AF",
+                                        transform: isExpanded ? "rotate(180deg)" : "none",
+                                        transition: "transform 0.2s"
+                                      }}>▼</span>
+                                    </div>
+                                  </div>
+
+                                  {isExpanded && (
                                     <div
                                       style={{
+                                        marginTop: "14px",
+                                        borderTop: "1px solid #F3F4F6",
+                                        paddingTop: "10px",
                                         display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        cursor: "pointer"
+                                        flexDirection: "column",
+                                        gap: "8px"
                                       }}
-                                      onClick={() => {
-                                        setExpandedLogDates(prev =>
-                                          prev.includes(group.dateKey)
-                                            ? prev.filter(k => k !== group.dateKey)
-                                            : [...prev, group.dateKey]
-                                        );
-                                      }}
+                                      onClick={(e) => e.stopPropagation()}
                                     >
-                                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                        <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151" }}>
-                                          {group.dateDisplay}
-                                        </span>
-                                        {group.location && (
-                                          <span style={{ fontSize: "0.75rem", color: "var(--color-orange)", display: "flex", alignItems: "center", gap: "2px" }}>
-                                            📍 {group.location}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                        <span style={{
-                                          fontSize: "0.95rem",
-                                          fontWeight: 800,
-                                          color: "var(--color-purple)"
-                                        }}>
-                                          {formatMoney(group.totalSpend, trip.homeCurrency)}
-                                        </span>
-                                        <span style={{
-                                          fontSize: "0.7rem",
-                                          color: "#9CA3AF",
-                                          transform: isExpanded ? "rotate(180deg)" : "none",
-                                          transition: "transform 0.2s"
-                                        }}>▼</span>
-                                      </div>
-                                    </div>
-
-                                    {isExpanded && (
-                                      <div
-                                        style={{
-                                          marginTop: "14px",
-                                          borderTop: "1px solid #F3F4F6",
-                                          paddingTop: "10px",
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px"
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {Object.entries(group.categories).map(([cat, catData]) => {
-                                          const key = `${group.dateKey}-${cat}`;
-                                          const isCatExpanded = !!expandedOlderCategory[key];
-                                          return (
+                                      {Object.entries(group.categories).map(([cat, catData]) => {
+                                        const key = `${group.dateKey}-${cat}`;
+                                        const isCatExpanded = !!expandedOlderCategory[key];
+                                        return (
+                                          <div
+                                            key={cat}
+                                            style={{
+                                              display: "flex",
+                                              flexDirection: "column",
+                                              gap: "6px",
+                                              fontSize: "0.85rem",
+                                              color: "#4B5563",
+                                              borderBottom: "1px dashed #F3F4F6",
+                                              paddingBottom: "8px",
+                                              marginTop: "4px"
+                                            }}
+                                          >
                                             <div
-                                              key={cat}
                                               style={{
                                                 display: "flex",
-                                                flexDirection: "column",
-                                                gap: "6px",
-                                                fontSize: "0.85rem",
-                                                color: "#4B5563",
-                                                borderBottom: "1px dashed #F3F4F6",
-                                                paddingBottom: "8px",
-                                                marginTop: "4px"
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                cursor: "pointer",
+                                                width: "100%"
                                               }}
+                                              onClick={() => toggleOlderCategory(group.dateKey, cat)}
                                             >
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  justifyContent: "space-between",
-                                                  alignItems: "center",
-                                                  cursor: "pointer",
-                                                  width: "100%"
-                                                }}
-                                                onClick={() => toggleOlderCategory(group.dateKey, cat)}
-                                              >
-                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                  <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
-                                                  <span style={{ fontWeight: 600 }}>{cat}</span>
-                                                  <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
-                                                    ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
-                                                  </span>
-                                                </div>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                  <span style={{
-                                                    fontWeight: 700,
-                                                    color: CATEGORY_COLORS[cat] || "#111827"
-                                                  }}>
-                                                    {formatMoney(catData.total, trip.homeCurrency)}
-                                                  </span>
-                                                  <span style={{
-                                                    fontSize: "0.6rem",
-                                                    color: "#9CA3AF",
-                                                    transform: isCatExpanded ? "rotate(180deg)" : "none",
-                                                    transition: "transform 0.15s"
-                                                  }}>▼</span>
-                                                </div>
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
+                                                <span style={{ fontWeight: 600 }}>{cat}</span>
+                                                <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                                                  ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
+                                                </span>
                                               </div>
-
-                                              {isCatExpanded && (
-                                                <div style={{
-                                                  display: "flex",
-                                                  flexDirection: "column",
-                                                  gap: "8px",
-                                                  paddingLeft: "16px",
-                                                  marginTop: "6px"
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <span style={{
+                                                  fontWeight: 700,
+                                                  color: CATEGORY_COLORS[cat] || "#111827"
                                                 }}>
-                                                  {catData.list.map((exp) => (
-                                                    <ExpenseCard
-                                                      key={exp.id}
-                                                      expense={exp}
-                                                      onEdit={(e) => {
-                                                        setEditingExpense(e);
-                                                        setActiveModal("manual");
-                                                      }}
-                                                      onDelete={deleteExpense}
-                                                      formatMoney={formatMoney}
-                                                      convertCurrency={convertCurrency}
-                                                      homeCurrency={trip.homeCurrency}
-                                                      rates={rates}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              )}
+                                                  {formatMoney(catData.total, trip.homeCurrency)}
+                                                </span>
+                                                <span style={{
+                                                  fontSize: "0.6rem",
+                                                  color: "#9CA3AF",
+                                                  transform: isCatExpanded ? "rotate(180deg)" : "none",
+                                                  transition: "transform 0.15s"
+                                                }}>▼</span>
+                                              </div>
                                             </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
+
+                                            {isCatExpanded && (
+                                              <div style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "8px",
+                                                paddingLeft: "16px",
+                                                marginTop: "6px"
+                                              }}>
+                                                {catData.list.map((exp) => (
+                                                  <ExpenseCard
+                                                    key={exp.id}
+                                                    expense={exp}
+                                                    onEdit={(e) => {
+                                                      setEditingExpense(e);
+                                                      setActiveModal("manual");
+                                                    }}
+                                                    onDelete={deleteExpense}
+                                                    formatMoney={formatMoney}
+                                                    convertCurrency={convertCurrency}
+                                                    homeCurrency={trip.homeCurrency}
+                                                    rates={rates}
+                                                  />
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
                     })()}
                   </div>
                 )}
@@ -1566,15 +1646,18 @@ export default function TrackerApp() {
             width: "56px",
             height: "56px",
             borderRadius: "50%",
-            backgroundColor: "white",
-            color: "var(--color-purple)",
+            backgroundColor: "var(--color-orange)",
+            color: "white",
             border: "none",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            boxShadow: "0 8px 24px rgba(232, 107, 50, 0.35)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: "pointer"
+            cursor: "pointer",
+            transition: "transform 0.1s"
           }}
+          onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+          onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           <PlusIcon />
         </button>
@@ -1923,8 +2006,10 @@ function ExpenseCard({
           }
         }}
         style={{
-          backgroundColor: "white",
-          padding: "16px",
+          backgroundColor: expense.worthIt ? "#FFFDF6" : "white",
+          borderRadius: "16px",
+          border: expense.worthIt ? "1.5px solid rgba(242, 174, 48, 0.35)" : "1.5px solid transparent",
+          padding: "15px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -1933,7 +2018,7 @@ function ExpenseCard({
           transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
           transform: `translateX(-${offsetX}px)`,
           cursor: "pointer",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.02)"
+          boxShadow: expense.worthIt ? "0 4px 16px rgba(242, 174, 48, 0.16)" : "0 4px 10px rgba(0,0,0,0.02)"
         }}
       >
         <div style={{
@@ -2051,7 +2136,7 @@ function ManualEntryModal({
 }) {
   const [amount, setAmount] = useState(expenseToEdit ? expenseToEdit.amount : "");
   const [note, setNote] = useState(expenseToEdit ? expenseToEdit.note : "");
-  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Miscellaneous");
+  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Everything Else");
   const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
   const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
   const [location, setLocation] = useState(expenseToEdit ? (expenseToEdit.location.split(" | ")[0] || "") : "");
@@ -2076,7 +2161,7 @@ function ManualEntryModal({
     if (expenseToEdit) {
       setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
       setNote(expenseToEdit.note !== undefined ? expenseToEdit.note : "");
-      setCategory(expenseToEdit.category || "Miscellaneous");
+      setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
       setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
