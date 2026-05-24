@@ -16,14 +16,47 @@ export default function TripsDashboard() {
   useEffect(() => {
     if (!supabase) return;
 
+    const isAuthCallback = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+    if (isAuthCallback) {
+      setLoading(true);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        window.location.href = '/tracker';
-      } else {
+      if (session) {
         setSession(session);
         fetchTrips(session.user);
+        setLoading(false);
+      } else if (!isAuthCallback) {
+        window.location.href = '/tracker';
       }
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setSession(session);
+        fetchTrips(session.user);
+        setLoading(false);
+      } else if (!isAuthCallback) {
+        window.location.href = '/tracker';
+      }
+    });
+
+    let fallbackTimeout;
+    if (isAuthCallback) {
+      fallbackTimeout = setTimeout(() => {
+        setLoading(false);
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session) {
+            window.location.href = '/tracker';
+          }
+        });
+      }, 6000);
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      if (fallbackTimeout) clearTimeout(fallbackTimeout);
+    };
   }, []);
 
   const fetchTrips = async (user) => {
