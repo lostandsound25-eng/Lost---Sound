@@ -3341,6 +3341,10 @@ function AuthModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
+  
+  // OTP code verification states
+  const [otpToken, setOtpToken] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   const handleMagicLogin = async (e) => {
     e.preventDefault();
@@ -3362,6 +3366,27 @@ function AuthModal({ onClose, onSuccess }) {
       setError(err.message || "Failed to send magic link. Please check your connection.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
+    if (!otpToken || otpToken.length !== 6 || !supabase) return;
+    setVerifying(true);
+    setError(null);
+    try {
+      const { error: err } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: otpToken.trim(),
+        type: 'email'
+      });
+      if (err) throw err;
+      onSuccess();
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      setError(err.message || "Invalid or expired 6-digit code. Please try again.");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -3404,20 +3429,80 @@ function AuthModal({ onClose, onSuccess }) {
         {sent ? (
           <div>
             <p style={{
-              fontSize: "0.9rem",
+              fontSize: "0.85rem",
               color: "#4B5563",
-              lineHeight: "1.6",
-              marginBottom: "24px"
+              lineHeight: "1.5",
+              marginBottom: "16px"
             }}>
-              We sent a secure magic login link to <strong>{email}</strong>.<br/><br/>
-              Click the link in your email to instantly sync your trip across all devices!
+              We sent a secure magic login link and code to <strong>{email}</strong>.
             </p>
+            <p style={{
+              fontSize: "0.82rem",
+              color: "#6B7280",
+              marginBottom: "16px",
+              lineHeight: "1.4"
+            }}>
+              Click the link in your email, or enter the <strong>6-digit verification code</strong> below to log in directly:
+            </p>
+            
+            <form onSubmit={handleOtpVerify} style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+              <input
+                type="text"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                required
+                value={otpToken}
+                onChange={(e) => setOtpToken(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="123456"
+                maxLength={6}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: "12px",
+                  border: "1.5px solid #E5E7EB",
+                  fontSize: "1.2rem",
+                  letterSpacing: "4px",
+                  outline: "none",
+                  textAlign: "center",
+                  fontWeight: 800,
+                  color: "#1F2937"
+                }}
+              />
+              {error && (
+                <p style={{
+                  color: "#EF4444",
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                  margin: "0 0 8px 0"
+                }}>{error}</p>
+              )}
+              <button
+                type="submit"
+                disabled={verifying}
+                className="btn btn-primary"
+                style={{
+                  width: "100%",
+                  borderRadius: "12px",
+                  padding: "12px",
+                  fontWeight: 700
+                }}
+              >
+                {verifying ? "Verifying..." : "Verify Code"}
+              </button>
+            </form>
+
             <button
               onClick={onClose}
-              className="btn btn-primary"
-              style={{ width: "100%", borderRadius: "12px" }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#9CA3AF",
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                padding: "8px"
+              }}
             >
-              Done
+              Cancel
             </button>
           </div>
         ) : (
