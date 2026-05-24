@@ -62,6 +62,7 @@ export default function RootLayout({ children }) {
         <Script id="stay22-script" strategy="afterInteractive">
           {`
             (function (s, t, a, y, twenty, two) {
+              if (window.location.pathname.startsWith('/tracker')) return;
               s.Stay22 = s.Stay22 || {};
               s.Stay22.params = { lmaID: '6a07e3f8eaad88fd98f397a9' };
               twenty = t.createElement(a);
