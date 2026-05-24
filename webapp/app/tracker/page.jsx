@@ -18,13 +18,33 @@ export default function TrackerLandingPage() {
     }
 
     if (supabase) {
-      const isAuthCallback = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+      const code = params.get('code');
+      const isAuthCallback = (typeof window !== 'undefined' && window.location.hash.includes('access_token')) || !!code;
       if (isAuthCallback) {
         setLoading(true);
       }
 
+      // Handle PKCE code exchange
+      const handleCodeExchange = async () => {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          if (data?.session) {
+            setIsLoggedIn(true);
+            window.location.href = '/tracker/trips';
+          }
+        } catch (err) {
+          console.error("Code exchange failed:", err);
+          setLoading(false);
+        }
+      };
+
+      if (code) {
+        handleCodeExchange();
+      }
+
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
+        if (session && !code) {
           setIsLoggedIn(true);
           window.location.href = '/tracker/trips';
         } else if (!isAuthCallback) {
@@ -33,9 +53,8 @@ export default function TrackerLandingPage() {
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session) {
+        if (session && !code) {
           setIsLoggedIn(true);
-          // Wait 300ms to ensure localStorage writes settle on mobile/slow browsers
           setTimeout(() => {
             window.location.href = '/tracker/trips';
           }, 300);

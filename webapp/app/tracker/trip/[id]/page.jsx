@@ -9,7 +9,16 @@ export default function TrackerTripPage({ params }) {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    if (supabase && tripId) {
+    if (!supabase || !tripId) {
+      setLoading(false);
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const isAuthCallback = (typeof window !== 'undefined' && window.location.hash.includes('access_token')) || !!code;
+
+    const checkTripAccess = () => {
       supabase
         .from('trips')
         .select('id')
@@ -17,15 +26,47 @@ export default function TrackerTripPage({ params }) {
         .single()
         .then(({ data, error }) => {
           if (error || !data) {
-            alert('This trip does not exist or has been deleted.');
+            alert('This trip does not exist or you do not have permission to view it.');
             window.location.href = '/tracker';
           } else {
             setAuthorized(true);
             setLoading(false);
           }
         });
+    };
+
+    if (code) {
+      // Exchange PKCE code
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!error && data?.session) {
+          // Remove code from URL without reloading
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+          checkTripAccess();
+        } else {
+          console.error("Code exchange failed:", error);
+          checkTripAccess(); // Try anyway, though RLS will block if not auth'd
+        }
+      });
+    } else if (isAuthCallback) {
+      // It's implicit flow hash callback, wait for onAuthStateChange to fire
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          subscription.unsubscribe();
+          checkTripAccess();
+        }
+      });
+      // Fallback timeout
+      const t = setTimeout(() => {
+        subscription.unsubscribe();
+        checkTripAccess();
+      }, 5000);
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(t);
+      };
     } else {
-      setLoading(false);
+      checkTripAccess();
     }
   }, [tripId]);
 

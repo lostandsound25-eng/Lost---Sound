@@ -16,16 +16,41 @@ export default function TripsDashboard() {
   useEffect(() => {
     if (!supabase) return;
 
-    const isAuthCallback = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const isAuthCallback = (typeof window !== 'undefined' && window.location.hash.includes('access_token')) || !!code;
+    
     if (isAuthCallback) {
       setLoading(true);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const handleAuthSession = (session) => {
       if (session) {
         setSession(session);
         fetchTrips(session.user);
-        setLoading(false);
+      } else {
+        window.location.href = '/tracker';
+      }
+    };
+
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!error && data?.session) {
+          // Remove code from URL
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+          handleAuthSession(data.session);
+        } else {
+          console.error("Code exchange failed:", error);
+          window.location.href = '/tracker';
+        }
+      });
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        handleAuthSession(session);
       } else if (!isAuthCallback) {
         window.location.href = '/tracker';
       }
@@ -33,9 +58,7 @@ export default function TripsDashboard() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        setSession(session);
-        fetchTrips(session.user);
-        setLoading(false);
+        handleAuthSession(session);
       } else if (!isAuthCallback) {
         window.location.href = '/tracker';
       }
@@ -44,10 +67,11 @@ export default function TripsDashboard() {
     let fallbackTimeout;
     if (isAuthCallback) {
       fallbackTimeout = setTimeout(() => {
-        setLoading(false);
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (!session) {
             window.location.href = '/tracker';
+          } else {
+            setLoading(false);
           }
         });
       }, 6000);
