@@ -2537,13 +2537,54 @@ function ManualEntryModal({
   onAddCustomCurrency,
   onVoiceStart
 }) {
-  const [amount, setAmount] = useState(expenseToEdit ? expenseToEdit.amount : "");
-  const [note, setNote] = useState(expenseToEdit ? expenseToEdit.note : "");
-  const [category, setCategory] = useState(expenseToEdit ? expenseToEdit.category : "Everything Else");
-  const [worthIt, setWorthIt] = useState(expenseToEdit ? !!expenseToEdit.worthIt : false);
-  const [currency, setCurrency] = useState(expenseToEdit ? expenseToEdit.currency : trip.localCurrency);
-  const [location, setLocation] = useState(expenseToEdit ? (expenseToEdit.location.split(" | ")[0] || "") : "");
-  const [tags, setTags] = useState((expenseToEdit && expenseToEdit.tags) || []);
+  const getDraft = () => {
+    if (typeof window === 'undefined') return null;
+    const draft = localStorage.getItem("tracker_expense_draft");
+    if (!draft) return null;
+    try {
+      return JSON.parse(draft);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const [amount, setAmount] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.amount;
+    const draft = getDraft();
+    return draft ? draft.amount : "";
+  });
+  const [note, setNote] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.note;
+    const draft = getDraft();
+    return draft ? draft.note : "";
+  });
+  const [category, setCategory] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.category;
+    const draft = getDraft();
+    return draft ? draft.category : "Everything Else";
+  });
+  const [worthIt, setWorthIt] = useState(() => {
+    if (expenseToEdit) return !!expenseToEdit.worthIt;
+    const draft = getDraft();
+    return draft ? !!draft.worthIt : false;
+  });
+  const [currency, setCurrency] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.currency;
+    const draft = getDraft();
+    if (draft && draft.currency) return draft.currency;
+    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
+    return lastUsed || trip.localCurrency;
+  });
+  const [location, setLocation] = useState(() => {
+    if (expenseToEdit) return (expenseToEdit.location.split(" | ")[0] || "");
+    const draft = getDraft();
+    return draft ? draft.location : "";
+  });
+  const [tags, setTags] = useState(() => {
+    if (expenseToEdit && expenseToEdit.tags) return expenseToEdit.tags;
+    const draft = getDraft();
+    return draft ? draft.tags : [];
+  });
   const [tagInput, setTagInput] = useState("");
   const [spreadExpense, setSpreadExpense] = useState(false);
   const getFutureDateString = (days) => {
@@ -2576,6 +2617,19 @@ function ManualEntryModal({
       );
     }
   }, [expenseToEdit, trip.localCurrency]);
+
+  // Auto-save draft as the user types (only for new expenses)
+  useEffect(() => {
+    if (!expenseToEdit) {
+      const draftObj = { amount, note, category, worthIt, currency, location, tags };
+      localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
+    }
+  }, [amount, note, category, worthIt, currency, location, tags, expenseToEdit]);
+
+  const handleCloseWithX = () => {
+    localStorage.removeItem("tracker_expense_draft");
+    onClose();
+  };
 
   const removeTag = (idx) => {
     setTags(tags.filter((_, i) => i !== idx));
@@ -2626,7 +2680,7 @@ function ManualEntryModal({
           </h3>
           <button 
             type="button"
-            onClick={onClose} 
+            onClick={handleCloseWithX} 
             style={{
               background: "none",
               border: "none",
@@ -2668,6 +2722,10 @@ function ManualEntryModal({
                 finalTimestamp = new Date(expenseDate + "T12:00:00").toISOString();
               }
             }
+
+            // Save last used currency and clear form draft on successful submit
+            localStorage.setItem("tracker_last_used_currency", currency);
+            localStorage.removeItem("tracker_expense_draft");
 
             onSave({
               amount: val,
