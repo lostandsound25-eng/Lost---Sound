@@ -1005,13 +1005,45 @@ export default function TrackerApp() {
             justifyContent: "space-between",
             alignItems: "flex-end"
           }}>
-            <div>
+            <div
+              onClick={() => setTodaySectionExpanded(!todaySectionExpanded)}
+              style={{
+                cursor: "pointer",
+                padding: "6px 12px",
+                marginLeft: "-12px",
+                borderRadius: "12px",
+                backgroundColor: todaySectionExpanded ? "rgba(133, 58, 81, 0.05)" : "transparent",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                if (!todaySectionExpanded) {
+                  e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.03)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!todaySectionExpanded) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }
+              }}
+            >
               <p style={{
-                fontSize: "0.85rem",
+                fontSize: "0.82rem",
                 color: "#6B7280",
-                fontWeight: 500,
-                marginBottom: "2px"
-              }}>Today's Spend</p>
+                fontWeight: 600,
+                marginBottom: "3px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}>
+                <span>Today</span>
+                <span style={{
+                  fontSize: "0.6rem",
+                  color: "#9CA3AF",
+                  transform: todaySectionExpanded ? "rotate(180deg)" : "none",
+                  transition: "transform 0.2s",
+                  display: "inline-block"
+                }}>▼</span>
+              </p>
               <h2 style={{
                 fontSize: "1.8rem",
                 fontWeight: 900,
@@ -1020,7 +1052,7 @@ export default function TrackerApp() {
                 fontFamily: "var(--font-heading)"
               }}>{formatMoney(todayTotal, trip.homeCurrency)}</h2>
             </div>
-            <div style={{ textAlign: "right" }}>
+            <div style={{ textAlign: "right", paddingBottom: "6px" }}>
               <p style={{
                 fontSize: "0.8rem",
                 color: "#6B7280",
@@ -1031,70 +1063,15 @@ export default function TrackerApp() {
                 fontSize: "1.1rem",
                 fontWeight: 800,
                 color: "var(--color-purple)",
-                fontFamily: "var(--font-heading)"
+                fontFamily: "var(--font-heading)",
+                lineHeight: 1
               }}>{formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}</p>
-            </div>
-          </div>
-        </header>
-
-        {/* Today Section */}
-        <section style={{ padding: "0 24px 24px" }}>
-          <div 
-            onClick={() => setTodaySectionExpanded(!todaySectionExpanded)}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              backgroundColor: "white",
-              borderRadius: "16px",
-              padding: "12px 16px",
-              cursor: "pointer",
-              boxShadow: "0 4px 10px rgba(0,0,0,0.02)",
-              border: "1px solid #F3F4F6",
-              transition: "all 0.2s"
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = "#F3F4F6"}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              <h3 style={{
-                fontSize: "1.02rem",
-                fontWeight: 700,
-                color: "#374151",
-                margin: 0,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>Today</h3>
-              <div style={{
-                fontSize: "0.82rem",
-                color: "#6B7280",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                fontWeight: 500
-              }}>
-                <span>Total: <strong>{formatMoney(todayTotal, trip.homeCurrency)}</strong></span>
-                {topCategoryToday && (
-                  <>
-                    <span style={{ color: "#D1D5DB" }}>•</span>
-                    <span>Top: {CATEGORY_EMOJIS[topCategoryToday.cat]} <strong>{topCategoryToday.cat}</strong></span>
-                  </>
-                )}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{
-                fontSize: "0.7rem",
-                color: "#9CA3AF",
-                transform: todaySectionExpanded ? "rotate(180deg)" : "none",
-                transition: "transform 0.2s"
-              }}>▼</span>
             </div>
           </div>
 
           {todaySectionExpanded && (
             <div style={{
-              marginTop: "12px",
+              marginTop: "16px",
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
               gap: "8px"
@@ -1222,7 +1199,7 @@ export default function TrackerApp() {
               })}
             </div>
           )}
-        </section>
+        </header>
 
         {/* Log */}
         <section style={{ padding: "0 24px" }}>
