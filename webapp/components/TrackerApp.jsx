@@ -721,72 +721,80 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
 
+  const handleMigrateDemoTrip = async (user) => {
+    setIsSyncing(true);
+    try {
+      const { data: tripData, error: tripErr } = await supabase
+        .from("trips")
+        .insert({
+          name: trip.name,
+          home_currency: trip.homeCurrency,
+          local_currency: trip.localCurrency,
+          current_location: trip.currentLocation,
+          created_by: user.id
+        })
+        .select()
+        .single();
+      if (tripErr) throw tripErr;
+
+      const { error: memErr } = await supabase
+        .from("trip_members")
+        .insert({
+          trip_id: tripData.id,
+          user_id: user.id,
+          email: user.email,
+          role: "owner"
+        });
+      if (memErr) throw memErr;
+
+      if (expenses.length > 0) {
+        const dbEntries = expenses.map((e) => ({
+          id: e.id,
+          trip_id: tripData.id,
+          created_by: user.id,
+          amount: e.amount,
+          currency: e.currency,
+          category: e.category,
+          note: e.note,
+          worth_it: e.worthIt,
+          location: e.location,
+          tags: e.tags,
+          created_at: e.timestamp
+        }));
+        const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
+        if (expErr) throw expErr;
+      }
+
+      localStorage.removeItem("tracker_trip_demo");
+      localStorage.removeItem("tracker_expenses_demo");
+
+      localStorage.setItem(`tracker_trip_${tripData.id}`, JSON.stringify({
+        id: tripData.id,
+        name: tripData.name,
+        homeCurrency: trip.homeCurrency,
+        localCurrency: trip.localCurrency,
+        currentLocation: trip.currentLocation
+      }));
+      localStorage.setItem(`tracker_expenses_${tripData.id}`, JSON.stringify(expenses));
+
+      alert("Trip saved to cloud successfully!");
+      window.location.href = `/tracker/trip/${tripData.id}`;
+    } catch (err) {
+      console.error("Migration failed:", err);
+      alert("Failed to migrate demo data to the cloud: " + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Local to cloud migration upon user login
   useEffect(() => {
     if (!isDemo || !supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        setIsSyncing(true);
-        try {
-          const { data: tripData, error: tripErr } = await supabase
-            .from("trips")
-            .insert({
-              name: trip.name,
-              created_by: session.user.id
-            })
-            .select()
-            .single();
-          if (tripErr) throw tripErr;
-
-          const { error: memErr } = await supabase
-            .from("trip_members")
-            .insert({
-              trip_id: tripData.id,
-              user_id: session.user.id,
-              email: session.user.email,
-              role: "owner"
-            });
-          if (memErr) throw memErr;
-
-          if (expenses.length > 0) {
-            const dbEntries = expenses.map((e) => ({
-              id: e.id,
-              trip_id: tripData.id,
-              created_by: session.user.id,
-              amount: e.amount,
-              currency: e.currency,
-              category: e.category,
-              note: e.note,
-              worth_it: e.worthIt,
-              location: e.location,
-              tags: e.tags,
-              created_at: e.timestamp
-            }));
-            const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
-            if (expErr) throw expErr;
-          }
-
-          localStorage.removeItem("tracker_trip_demo");
-          localStorage.removeItem("tracker_expenses_demo");
-
-          localStorage.setItem(`tracker_trip_${tripData.id}`, JSON.stringify({
-            id: tripData.id,
-            name: tripData.name,
-            homeCurrency: trip.homeCurrency,
-            localCurrency: trip.localCurrency,
-            currentLocation: trip.currentLocation
-          }));
-          localStorage.setItem(`tracker_expenses_${tripData.id}`, JSON.stringify(expenses));
-
-          alert("Trip saved to cloud successfully!");
-          window.location.href = `/tracker/trip/${tripData.id}`;
-        } catch (err) {
-          console.error("Migration failed:", err);
-          alert("Failed to migrate demo data to the cloud: " + err.message);
-        } finally {
-          setIsSyncing(false);
-        }
+        // Trigger migration if we detect user logs in/registers
+        handleMigrateDemoTrip(session.user);
       }
     });
 
@@ -1088,6 +1096,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     ? activeTotalsToday.sort((a, b) => b.total - a.total)[0] 
     : null;
 
+  const handleSaveSyncClick = async () => {
+    if (!supabase) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      handleMigrateDemoTrip(session.user);
+    } else {
+      setActiveModal("auth");
+    }
+  };
+
   const nameLength = trip.name ? trip.name.length : 0;
   const dynamicFontSize = nameLength > 24 
     ? "0.85rem" 
@@ -1145,56 +1163,80 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             marginBottom: "10px",
             gap: "12px"
           }}>
-            {isEditingName ? (
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                onBlur={saveTripName}
-                onKeyDown={(e) => e.key === "Enter" && saveTripName()}
-                autoFocus
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+              <button
+                type="button"
+                onClick={() => window.location.href = '/tracker/trips'}
                 style={{
-                  fontSize: dynamicFontSize,
-                  fontWeight: 800,
-                  color: "var(--color-purple)",
+                  background: "none",
                   border: "none",
-                  borderBottom: "1.5px solid var(--color-purple)",
-                  outline: "none",
-                  background: "transparent",
-                  flex: 1,
-                  minWidth: 0,
-                  padding: 0
-                }}
-              />
-            ) : (
-              <div 
-                onClick={() => setIsEditingName(true)}
-                style={{
-                  fontSize: dynamicFontSize,
-                  fontWeight: 800,
-                  color: "var(--color-purple)",
-                  margin: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                  minWidth: 0,
+                  fontSize: "1.15rem",
                   cursor: "pointer",
+                  color: "var(--color-purple)",
+                  padding: "4px 8px",
+                  borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px"
-                }} 
-                title={trip.name}
+                  justifyContent: "center",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  flexShrink: 0
+                }}
+                title="Back to My Trips"
               >
-                <span>{trip.name}</span>
-                <span style={{ fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 400 }}>✏️</span>
-              </div>
-            )}
+                ←
+              </button>
+
+              {isEditingName ? (
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onBlur={saveTripName}
+                  onKeyDown={(e) => e.key === "Enter" && saveTripName()}
+                  autoFocus
+                  style={{
+                    fontSize: dynamicFontSize,
+                    fontWeight: 800,
+                    color: "var(--color-purple)",
+                    border: "none",
+                    borderBottom: "1.5px solid var(--color-purple)",
+                    outline: "none",
+                    background: "transparent",
+                    flex: 1,
+                    minWidth: 0,
+                    padding: 0
+                  }}
+                />
+              ) : (
+                <div 
+                  onClick={() => setIsEditingName(true)}
+                  style={{
+                    fontSize: dynamicFontSize,
+                    fontWeight: 800,
+                    color: "var(--color-purple)",
+                    margin: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                    minWidth: 0,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }} 
+                  title={trip.name}
+                >
+                  <span>{trip.name}</span>
+                  <span style={{ fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 400 }}>✏️</span>
+                </div>
+              )}
+            </div>
             {supabase && (
               <div style={{ flexShrink: 0 }}>
                 {isDemo ? (
                   <button
-                    onClick={() => setActiveModal("auth")}
+                    onClick={handleSaveSyncClick}
                     style={{
                       fontSize: "0.75rem",
                       fontWeight: 700,
@@ -2040,15 +2082,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         </section>
       </main>
 
-      {/* Floating Action Buttons */}
+      {/* Floating Action Button */}
       <div style={{
         position: "fixed",
         bottom: "30px",
         left: "50%",
         transform: "translateX(-50%)",
-        display: "flex",
-        alignItems: "center",
-        gap: "20px",
         zIndex: 100
       }}>
         <button
@@ -2057,47 +2096,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             setActiveModal("manual");
           }}
           style={{
-            width: "56px",
-            height: "56px",
+            width: "68px",
+            height: "68px",
             borderRadius: "50%",
             backgroundColor: "var(--color-orange)",
             color: "white",
             border: "none",
-            boxShadow: "0 8px 24px rgba(232, 107, 50, 0.35)",
+            boxShadow: "0 10px 30px rgba(232, 107, 50, 0.4)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            transition: "transform 0.1s"
+            transition: "all 0.15s ease"
           }}
           onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
           onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           <PlusIcon />
-        </button>
-        <button
-          onClick={() => {
-            setEditingExpense(null);
-            startVoiceListening();
-          }}
-          style={{
-            width: "72px",
-            height: "72px",
-            borderRadius: "50%",
-            backgroundColor: "var(--color-purple)",
-            color: "white",
-            border: "none",
-            boxShadow: "0 10px 25px rgba(133, 58, 81, 0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "transform 0.1s"
-          }}
-          onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
-          onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          <MicIcon />
         </button>
       </div>
 

@@ -114,7 +114,7 @@ export default function TripsDashboard() {
       window.location.href = `/tracker/trip/${tripData.id}`;
     } catch (err) {
       console.error("Create trip error:", err);
-      alert("Failed to create trip. Please try again.");
+      alert(`Failed to create trip: ${err.message || JSON.stringify(err)}`);
     } finally {
       setCreating(false);
     }

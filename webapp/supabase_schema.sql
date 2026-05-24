@@ -90,6 +90,7 @@ CREATE POLICY "Allow public delete of entries by ID" ON public.trip_entries
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS home_currency TEXT DEFAULT 'USD' NOT NULL;
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS local_currency TEXT DEFAULT 'USD' NOT NULL;
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS current_location TEXT DEFAULT '';
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- Enable Realtime replication for collaborative updating safely
 DO $$
