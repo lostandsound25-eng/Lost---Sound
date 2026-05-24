@@ -111,6 +111,60 @@ const getDayLabel = (timestamp) => {
   }
 };
 
+const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
+  if (!query) return true;
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+
+  // 1. Comparison operator: >, >=, <, <=, =, ==
+  const opMatch = q.match(/^(>=|<=|>|<|==|=)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
+  if (opMatch) {
+    const op = opMatch[1];
+    const targetVal = parseFloat(opMatch[2]);
+    const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+    
+    if (op === ">") return amountInHome > targetVal;
+    if (op === ">=") return amountInHome >= targetVal;
+    if (op === "<") return amountInHome < targetVal;
+    if (op === "<=") return amountInHome <= targetVal;
+    if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
+  }
+
+  // 2. English comparisons: over, above, under, below, more than, less than
+  const phraseMatch = q.match(/^(over|above|under|below|more than|less than)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
+  if (phraseMatch) {
+    const direction = phraseMatch[1];
+    const targetVal = parseFloat(phraseMatch[2]);
+    const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+
+    if (["over", "above", "more than"].includes(direction)) {
+      return amountInHome > targetVal;
+    }
+    if (["under", "below", "less than"].includes(direction)) {
+      return amountInHome < targetVal;
+    }
+  }
+
+  // 3. Simple text search (note, category, location, currency, tags)
+  const note = (exp.note || "").toLowerCase();
+  const location = (exp.location || "").toLowerCase();
+  const category = (exp.category || "").toLowerCase();
+  const currency = (exp.currency || "").toLowerCase();
+  
+  if (q.startsWith("#")) {
+    const tag = q.slice(1);
+    return note.includes(q) || (exp.tags && exp.tags.some(t => t.toLowerCase() === tag));
+  }
+
+  return (
+    note.includes(q) || 
+    location.includes(q) || 
+    category.includes(q) || 
+    currency.includes(q) ||
+    (exp.tags && exp.tags.some(t => t.toLowerCase().includes(q)))
+  );
+};
+
 export default function TrackerApp() {
   const [expenses, setExpenses] = useState([]);
   const [trip, setTrip] = useState({
@@ -132,6 +186,7 @@ export default function TrackerApp() {
   const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
   const [logView, setLogView] = useState("recent"); // 'recent' or 'history'
   const [logLimit, setLogLimit] = useState(5);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
@@ -1205,7 +1260,11 @@ export default function TrackerApp() {
         <section style={{ padding: "0 24px" }}>
           {(() => {
             const hasFutureExpenses = expenses.some((e) => new Date(e.timestamp) > now);
-            const displayedExpenses = showFuture ? expenses : visibleExpenses;
+            const baseExpenses = showFuture ? expenses : visibleExpenses;
+            const filteredExpenses = searchQuery
+              ? baseExpenses.filter((e) => parseSearchQuery(searchQuery, e, trip.homeCurrency, convertCurrency, rates))
+              : baseExpenses;
+            const displayedExpenses = filteredExpenses;
             return (
               <>
                 <div style={{
@@ -1284,14 +1343,85 @@ export default function TrackerApp() {
                   )}
                 </div>
 
+                {/* Search Input Box */}
+                <div style={{
+                  position: "relative",
+                  marginBottom: "16px"
+                }}>
+                  <span style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontSize: "0.95rem",
+                    color: "#9CA3AF",
+                    pointerEvents: "none"
+                  }}>🔍</span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search note, tag, category, or operators (e.g. >100, over 50)..."
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px 10px 36px",
+                      borderRadius: "12px",
+                      border: "1.5px solid #E5E7EB",
+                      backgroundColor: "white",
+                      fontSize: "0.85rem",
+                      color: "#374151",
+                      outline: "none",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "var(--color-purple)";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(133, 58, 81, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#E5E7EB";
+                      e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.01)";
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "transparent",
+                        fontSize: "0.9rem",
+                        color: "#9CA3AF",
+                        cursor: "pointer",
+                        padding: "4px"
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
                 {displayedExpenses.length === 0 ? (
                   <div style={{
                     textAlign: "center",
                     padding: "40px 0",
                     color: "#9CA3AF"
                   }}>
-                    <p style={{ fontSize: "1rem", fontWeight: 500 }}>No expenses logged yet.</p>
-                    <p style={{ fontSize: "0.85rem", marginTop: "6px" }}>Tap the mic to add your first expense.</p>
+                    {searchQuery ? (
+                      <>
+                        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#4B5563" }}>No matching expenses found</p>
+                        <p style={{ fontSize: "0.82rem", marginTop: "6px" }}>Try searching for a different note, tag, or operator (e.g. &gt; 50)</p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: "1rem", fontWeight: 500 }}>No expenses logged yet.</p>
+                        <p style={{ fontSize: "0.85rem", marginTop: "6px" }}>Tap the mic to add your first expense.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div>
