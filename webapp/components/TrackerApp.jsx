@@ -424,10 +424,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         setTrip(parsedTrip = JSON.parse(savedTrip));
       } else {
         setTrip({
-          name: "Southeast Asia 2026",
+          name: "Demo Trip (Southeast Asia)",
           homeCurrency: "USD",
           localCurrency: "PHP",
-          currentLocation: ""
+          currentLocation: "Manila"
         });
       }
 
@@ -436,7 +436,54 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       if (savedExpenses) {
         setExpenses(parsedExpenses = JSON.parse(savedExpenses));
       } else {
-        setExpenses([]);
+        // Prepopulate with realistic example expenses to guide the user
+        const initialDemoExpenses = [
+          {
+            id: "demo-1",
+            amount: 75.00,
+            currency: "USD",
+            category: "Everything Else",
+            note: "Scuba Diving in El Nido",
+            worthIt: true,
+            location: "El Nido | Philippines",
+            tags: ["activities", "scuba"],
+            timestamp: new Date().toISOString()
+          },
+          {
+            id: "demo-2",
+            amount: 8.50,
+            currency: "USD",
+            category: "Food & Drink",
+            note: "Mango Sticky Rice & Fruit Shake",
+            worthIt: false,
+            location: "Manila | Philippines",
+            tags: ["food", "dessert"],
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "demo-3",
+            amount: 5.00,
+            currency: "USD",
+            category: "Transportation",
+            note: "Tuk Tuk ride around city",
+            worthIt: false,
+            location: "Manila | Philippines",
+            tags: ["transport"],
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "demo-4",
+            amount: 120.00,
+            currency: "USD",
+            category: "Accommodation",
+            note: "Beachfront Bungalow (2 nights)",
+            worthIt: true,
+            location: "El Nido | Philippines",
+            tags: ["accommodation", "hotel"],
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+        setExpenses(parsedExpenses = initialDemoExpenses);
       }
 
       if (parsedTrip && !parsedTrip.currentLocation && parsedExpenses.length > 0) {

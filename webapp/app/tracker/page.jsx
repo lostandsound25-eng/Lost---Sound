@@ -6,8 +6,17 @@ import TrackerApp from '../../components/TrackerApp';
 export default function TrackerLandingPage() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const forceDemo = params.get('demo') === 'true';
+    if (forceDemo) {
+      setIsDemoMode(true);
+      setLoading(false);
+      return;
+    }
+
     if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {

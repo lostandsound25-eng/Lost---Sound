@@ -234,6 +234,27 @@ export default function TripsDashboard() {
           >
             ✈️ Create New Trip
           </button>
+          <button
+            onClick={() => window.location.href = '/tracker?demo=true'}
+            style={{
+              backgroundColor: 'white',
+              color: 'var(--color-purple)',
+              border: '1.5px solid rgba(133, 58, 81, 0.15)',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontWeight: 750,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              marginTop: '10px'
+            }}
+          >
+            🎒 Play in Demo Trip
+          </button>
         </div>
 
         {/* Trips List */}
