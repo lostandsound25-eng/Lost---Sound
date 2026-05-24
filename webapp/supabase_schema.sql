@@ -4,6 +4,9 @@
 CREATE TABLE IF NOT EXISTS public.trips (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    home_currency TEXT DEFAULT 'USD' NOT NULL,
+    local_currency TEXT DEFAULT 'USD' NOT NULL,
+    current_location TEXT DEFAULT '',
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -83,7 +86,44 @@ DROP POLICY IF EXISTS "Allow public delete of entries by ID" ON public.trip_entr
 CREATE POLICY "Allow public delete of entries by ID" ON public.trip_entries 
     FOR DELETE USING (true);
 
--- Enable Realtime replication for collaborative updating
-ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_entries;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.trips;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_members;
+-- Migration helpers: Ensure columns exist on trips table if it was already created
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS home_currency TEXT DEFAULT 'USD' NOT NULL;
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS local_currency TEXT DEFAULT 'USD' NOT NULL;
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS current_location TEXT DEFAULT '';
+
+-- Enable Realtime replication for collaborative updating safely
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_rel pr
+    JOIN pg_publication p ON p.oid = pr.prpubid
+    JOIN pg_class c ON c.oid = pr.prrelid
+    WHERE p.pubname = 'supabase_realtime' AND c.relname = 'trip_entries'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_entries;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_rel pr
+    JOIN pg_publication p ON p.oid = pr.prpubid
+    JOIN pg_class c ON c.oid = pr.prrelid
+    WHERE p.pubname = 'supabase_realtime' AND c.relname = 'trips'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.trips;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_rel pr
+    JOIN pg_publication p ON p.oid = pr.prpubid
+    JOIN pg_class c ON c.oid = pr.prrelid
+    WHERE p.pubname = 'supabase_realtime' AND c.relname = 'trip_members'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_members;
+  END IF;
+END $$;

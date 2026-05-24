@@ -11,7 +11,6 @@ export default function TripsDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTripName, setNewTripName] = useState("");
   const [homeCurrency, setHomeCurrency] = useState("USD");
-  const [localCurrency, setLocalCurrency] = useState("USD");
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -93,7 +92,7 @@ export default function TripsDashboard() {
         .insert({
           name: newTripName.trim(),
           home_currency: homeCurrency,
-          local_currency: localCurrency,
+          local_currency: homeCurrency,
           created_by: session.user.id
         })
         .select()
@@ -358,51 +357,26 @@ export default function TripsDashboard() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
-                      Home Currency
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={homeCurrency}
-                      onChange={(e) => setHomeCurrency(e.target.value.toUpperCase())}
-                      maxLength={3}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: '1px solid #E5E7EB',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        textAlign: 'center',
-                        color: '#1F2937'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
-                      Local Currency
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={localCurrency}
-                      onChange={(e) => setLocalCurrency(e.target.value.toUpperCase())}
-                      maxLength={3}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: '1px solid #E5E7EB',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                        textAlign: 'center',
-                        color: '#1F2937'
-                      }}
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
+                    Home Currency (e.g. USD, EUR, PHP)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={homeCurrency}
+                    onChange={(e) => setHomeCurrency(e.target.value.toUpperCase())}
+                    maxLength={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: '1px solid #E5E7EB',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      color: '#1F2937'
+                    }}
+                  />
                 </div>
               </div>
 
