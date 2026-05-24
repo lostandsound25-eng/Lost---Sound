@@ -49,29 +49,37 @@ ALTER TABLE public.trip_entries ENABLE ROW LEVEL SECURITY;
 -- This is secure because UUIDv4 is mathematically unguessable.
 
 -- Trips RLS Policies
+DROP POLICY IF EXISTS "Allow public read of trips by ID" ON public.trips;
 CREATE POLICY "Allow public read of trips by ID" ON public.trips 
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow public insert of trips" ON public.trips;
 CREATE POLICY "Allow public insert of trips" ON public.trips 
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public update of trips by ID" ON public.trips;
 CREATE POLICY "Allow public update of trips by ID" ON public.trips 
     FOR UPDATE USING (true);
 
 -- Trip Members RLS Policies
+DROP POLICY IF EXISTS "Allow public access to trip members" ON public.trip_members;
 CREATE POLICY "Allow public access to trip members" ON public.trip_members 
     FOR ALL USING (true);
 
 -- Trip Entries RLS Policies
+DROP POLICY IF EXISTS "Allow public read of entries by trip ID" ON public.trip_entries;
 CREATE POLICY "Allow public read of entries by trip ID" ON public.trip_entries 
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow public insert of entries" ON public.trip_entries;
 CREATE POLICY "Allow public insert of entries" ON public.trip_entries 
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public update of entries by ID" ON public.trip_entries;
 CREATE POLICY "Allow public update of entries by ID" ON public.trip_entries 
     FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Allow public delete of entries by ID" ON public.trip_entries;
 CREATE POLICY "Allow public delete of entries by ID" ON public.trip_entries 
     FOR DELETE USING (true);
 

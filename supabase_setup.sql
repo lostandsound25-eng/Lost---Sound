@@ -1,7 +1,7 @@
 -- Run this in your Supabase SQL Editor to set up the database for Lost & Sound
 
 -- 1. Create the 'itineraries' table
-CREATE TABLE public.itineraries (
+CREATE TABLE IF NOT EXISTS public.itineraries (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   title text NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE public.itineraries (
 );
 
 -- 2. Create the 'leads' table for "Keep in Touch"
-CREATE TABLE public.leads (
+CREATE TABLE IF NOT EXISTS public.leads (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   email text NOT NULL UNIQUE,
@@ -29,11 +29,13 @@ CREATE TABLE public.leads (
 ALTER TABLE public.itineraries ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to published itineraries
+DROP POLICY IF EXISTS "Public can view published itineraries" ON public.itineraries;
 CREATE POLICY "Public can view published itineraries" 
 ON public.itineraries FOR SELECT 
 USING (is_published = true);
 
 -- Allow authenticated admins full access to itineraries
+DROP POLICY IF EXISTS "Admins can manage itineraries" ON public.itineraries;
 CREATE POLICY "Admins can manage itineraries" 
 ON public.itineraries FOR ALL 
 USING (auth.role() = 'authenticated');
@@ -42,36 +44,44 @@ USING (auth.role() = 'authenticated');
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
 -- Allow public to insert leads (anyone can sign up)
+DROP POLICY IF EXISTS "Public can insert leads" ON public.leads;
 CREATE POLICY "Public can insert leads" 
 ON public.leads FOR INSERT 
 WITH CHECK (true);
 
 -- Allow authenticated admins to view leads
+DROP POLICY IF EXISTS "Admins can view leads" ON public.leads;
 CREATE POLICY "Admins can view leads" 
 ON public.leads FOR SELECT 
 USING (auth.role() = 'authenticated');
 
 -- 4. Set up Storage for images
-INSERT INTO storage.buckets (id, name, public) VALUES ('itinerary-images', 'itinerary-images', true);
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('itinerary-images', 'itinerary-images', true)
+ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Public can view images" ON storage.objects;
 CREATE POLICY "Public can view images" 
 ON storage.objects FOR SELECT 
 USING (bucket_id = 'itinerary-images');
 
+DROP POLICY IF EXISTS "Admins can upload images" ON storage.objects;
 CREATE POLICY "Admins can upload images" 
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'itinerary-images' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Admins can update images" ON storage.objects;
 CREATE POLICY "Admins can update images" 
 ON storage.objects FOR UPDATE 
 USING (bucket_id = 'itinerary-images' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Admins can delete images" ON storage.objects;
 CREATE POLICY "Admins can delete images" 
 ON storage.objects FOR DELETE 
 USING (bucket_id = 'itinerary-images' AND auth.role() = 'authenticated');
 
 -- 5. Create the 'trips' table
-CREATE TABLE public.trips (
+CREATE TABLE IF NOT EXISTS public.trips (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   name text NOT NULL,
@@ -83,13 +93,14 @@ CREATE TABLE public.trips (
 -- Enable RLS on trips
 ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can manage trips" ON public.trips;
 CREATE POLICY "Anyone can manage trips" 
 ON public.trips FOR ALL 
 USING (true)
 WITH CHECK (true);
 
 -- 6. Create the 'expenses' table for Nomad Tracker
-CREATE TABLE public.expenses (
+CREATE TABLE IF NOT EXISTS public.expenses (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   date date DEFAULT current_date NOT NULL,
@@ -107,8 +118,8 @@ CREATE TABLE public.expenses (
 -- Enable RLS on expenses
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can manage expenses" ON public.expenses;
 CREATE POLICY "Anyone can manage expenses" 
 ON public.expenses FOR ALL 
 USING (true)
 WITH CHECK (true);
-
