@@ -2644,11 +2644,14 @@ function ManualEntryModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.4)",
+        backgroundColor: "rgba(15, 23, 42, 0.4)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
         zIndex: 2000,
         display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center"
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px"
       }}
     >
       <div 
@@ -2656,13 +2659,13 @@ function ManualEntryModal({
         style={{
           backgroundColor: "white",
           width: "100%",
-          maxWidth: "480px",
-          borderTopLeftRadius: "24px",
-          borderTopRightRadius: "24px",
-          padding: "24px",
-          animation: "slideUp 0.3s ease-out",
-          maxHeight: "90vh",
-          overflowY: "auto"
+          maxWidth: "400px",
+          borderRadius: "24px",
+          padding: "28px 24px",
+          animation: "fadeInUp 0.25s ease-out",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.12)"
         }}
       >
         <div style={{
@@ -2744,65 +2747,80 @@ function ManualEntryModal({
           }}
           style={{ display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            borderBottom: "2px solid #E5E7EB",
-            paddingBottom: "8px"
-          }}>
-            <SearchableCurrencySelect
-              value={currency}
-              onChange={setCurrency}
-              rates={rates}
-              customCurrencies={customCurrencies}
-              onAddCustomCurrency={onAddCustomCurrency}
-              style={{ fontSize: "1.4rem", marginRight: "10px" }}
-            />
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || parseFloat(val) >= 0) {
-                  setAmount(val);
-                }
-              }}
-              placeholder="0.00"
-              autoFocus={true}
-              style={{
-                flex: 1,
-                border: "none",
-                fontSize: "2.4rem",
-                fontWeight: 800,
-                outline: "none",
-                width: "100%",
-                color: "#111827"
-              }}
-            />
-            {onVoiceStart && (
-              <button
-                type="button"
-                onClick={onVoiceStart}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--color-purple)",
-                  cursor: "pointer",
-                  padding: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "50%",
-                  transition: "background-color 0.2s"
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <label style={{
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Amount</label>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "#F9F6ED",
+              borderRadius: "16px",
+              padding: "12px 18px",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)",
+              marginBottom: "8px"
+            }}>
+              <SearchableCurrencySelect
+                value={currency}
+                onChange={setCurrency}
+                rates={rates}
+                customCurrencies={customCurrencies}
+                onAddCustomCurrency={onAddCustomCurrency}
+                style={{ fontSize: "1.2rem", fontWeight: 700, marginRight: "8px" }}
+              />
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || parseFloat(val) >= 0) {
+                    setAmount(val);
+                  }
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.05)"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-              >
-                <MicIcon />
-              </button>
-            )}
+                placeholder="0.00"
+                autoFocus={true}
+                style={{
+                  flex: 1,
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "2.2rem",
+                  fontWeight: 900,
+                  outline: "none",
+                  width: "100%",
+                  color: "#111827",
+                  textAlign: "right",
+                  paddingRight: "8px"
+                }}
+              />
+              {onVoiceStart && (
+                <button
+                  type="button"
+                  onClick={onVoiceStart}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--color-purple)",
+                    cursor: "pointer",
+                    padding: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "50%",
+                    transition: "background-color 0.2s"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.05)"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                >
+                  <MicIcon />
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -3154,7 +3172,10 @@ function ManualEntryModal({
           </div>
         </form>
       </div>
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      <style>{`
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      `}</style>
     </div>
   );
 }

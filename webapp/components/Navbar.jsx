@@ -26,7 +26,7 @@ export default function Navbar() {
     setIsMenuOpen(false);
   }, [pathname]);
 
-  const isTracker = pathname === '/tracker';
+  const isTracker = pathname?.startsWith('/tracker');
   const isCollapsed = isTracker || isScrolled;
 
   return (

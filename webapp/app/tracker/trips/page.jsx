@@ -203,17 +203,20 @@ export default function TripsDashboard() {
   }
 
   return (
-    <div style={{
-      maxWidth: '480px',
-      margin: '0 auto',
-      minHeight: '100vh',
-      backgroundColor: '#F9F6ED',
-      fontFamily: 'var(--font-body), system-ui, sans-serif',
-      color: 'var(--color-text)',
-      display: 'flex',
-      flexDirection: 'column',
-      boxShadow: '0 0 40px rgba(0,0,0,0.05)'
-    }}>
+    <div 
+      className="tracker-container"
+      style={{
+        maxWidth: '480px',
+        margin: '0 auto',
+        minHeight: '100vh',
+        backgroundColor: '#F9F6ED',
+        fontFamily: 'var(--font-body), system-ui, sans-serif',
+        color: 'var(--color-text)',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 0 40px rgba(0,0,0,0.05)'
+      }}
+    >
       {/* Header */}
       <header style={{
         padding: '24px 20px',
