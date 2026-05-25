@@ -4181,7 +4181,14 @@ function CollaboratorsModal({ tripId, onClose }) {
               {loading ? "Inviting..." : "Invite"}
             </button>
           </div>
-          {success && <p style={{ color: "#10B981", fontSize: "0.8rem", marginTop: "6px", fontWeight: 500 }}>Partner added to editor list!</p>}
+          <span style={{ display: "block", fontSize: "0.72rem", color: "#6B7280", marginTop: "4px", lineHeight: "1.3" }}>
+            This whitelists their email address. Make sure to copy the invite link above and send it to them.
+          </span>
+          {success && (
+            <p style={{ color: "#10B981", fontSize: "0.8rem", marginTop: "8px", fontWeight: 600, lineHeight: "1.3" }}>
+              ✅ Whitelisted! Now copy the Invite Link above and send it to them (via WhatsApp or email) so they can log in.
+            </p>
+          )}
           {error && <p style={{ color: "#EF4444", fontSize: "0.8rem", marginTop: "6px", fontWeight: 500 }}>{error}</p>}
         </form>
 
