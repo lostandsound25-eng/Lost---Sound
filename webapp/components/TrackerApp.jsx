@@ -2432,6 +2432,44 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onClose={() => setActiveModal(null)}
         />
       )}
+      <style>{`
+        @keyframes shimmerSweep {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        
+        .worth-it-shimmer-modal {
+          background: linear-gradient(
+            90deg,
+            #FFFFFF 0%,
+            #FFFFFF 35%,
+            #FFFDF4 45%,
+            #FEF3C7 50%,
+            #FFFDF4 55%,
+            #FFFFFF 65%,
+            #FFFFFF 100%
+          ) !important;
+          background-size: 200% 100% !important;
+          animation: shimmerSweep 5s infinite linear !important;
+        }
+        
+        .worth-it-shimmer-card {
+          background: linear-gradient(
+            90deg,
+            #FFFDF6 0%,
+            #FFFDF6 35%,
+            #FFFBEB 45%,
+            #FEF3C7 50%,
+            #FFFBEB 55%,
+            #FFFDF6 65%,
+            #FFFDF6 100%
+          ) !important;
+          background-size: 200% 100% !important;
+          animation: shimmerSweep 5s infinite linear !important;
+          border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12) !important;
+        }
+      `}</style>
     </div>
   ) : (
     <div style={{ minHeight: "100vh", background: "#F9F6ED" }} />
@@ -2536,20 +2574,21 @@ function ExpenseCard({
             onEdit(expense);
           }
         }}
+        className={expense.worthIt ? "worth-it-shimmer-card" : ""}
         style={{
-          backgroundColor: expense.worthIt ? "#FFFDF6" : "white",
+          backgroundColor: expense.worthIt ? undefined : "white",
           borderRadius: "16px",
-          border: expense.worthIt ? "1.5px solid rgba(242, 174, 48, 0.35)" : "1.5px solid transparent",
+          border: expense.worthIt ? undefined : "1.5px solid transparent",
           padding: "15px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           position: "relative",
           zIndex: 2,
-          transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: isDragging ? "none" : "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
           transform: `translateX(-${offsetX}px)`,
           cursor: "pointer",
-          boxShadow: expense.worthIt ? "0 4px 16px rgba(242, 174, 48, 0.16)" : "0 4px 10px rgba(0,0,0,0.02)"
+          boxShadow: expense.worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)"
         }}
       >
         <div style={{
@@ -2696,8 +2735,10 @@ function ManualEntryModal({
   });
   const [note, setNote] = useState(() => {
     if (expenseToEdit) {
-      // Clean suffix note in UI
-      return expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      // Clean suffix note in UI and restore hashtags inline
+      const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
+      return cleanNote + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
     }
     const draft = getDraft();
     return draft ? draft.note : "";
@@ -2724,14 +2765,6 @@ function ManualEntryModal({
     const draft = getDraft();
     return draft ? draft.location : "";
   });
-  const [tags, setTags] = useState(() => {
-    if (expenseToEdit && expenseToEdit.tags) {
-      return expenseToEdit.tags.filter(t => !t.startsWith("spread-"));
-    }
-    const draft = getDraft();
-    return draft ? draft.tags : [];
-  });
-  const [tagInput, setTagInput] = useState("");
   const [spreadExpense, setSpreadExpense] = useState(() => {
     if (expenseToEdit && expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
       return true;
@@ -2786,13 +2819,15 @@ function ManualEntryModal({
   useEffect(() => {
     if (expenseToEdit) {
       const cleanNote = expenseToEdit.note !== undefined ? expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "") : "";
+      const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
+      const noteWithTags = cleanNote + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
+
       setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
-      setNote(cleanNote);
+      setNote(noteWithTags);
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
       setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
-      setTags(expenseToEdit.tags ? expenseToEdit.tags.filter(t => !t.startsWith("spread-")) : []);
       setExpenseDate(
         expenseToEdit.timestamp 
           ? new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA') 
@@ -2809,18 +2844,14 @@ function ManualEntryModal({
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
     if (!expenseToEdit) {
-      const draftObj = { amount, note, category, worthIt, currency, location, tags };
+      const draftObj = { amount, note, category, worthIt, currency, location };
       localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
     }
-  }, [amount, note, category, worthIt, currency, location, tags, expenseToEdit]);
+  }, [amount, note, category, worthIt, currency, location, expenseToEdit]);
 
   const handleCloseWithX = () => {
     localStorage.removeItem("tracker_expense_draft");
     onClose();
-  };
-
-  const removeTag = (idx) => {
-    setTags(tags.filter((_, i) => i !== idx));
   };
 
   const getDateLabel = () => {
@@ -2887,6 +2918,7 @@ function ManualEntryModal({
             document.activeElement.blur();
           }
         }}
+        className={worthIt ? "worth-it-shimmer-modal" : ""}
         style={{
           backgroundColor: "white",
           width: "100%",
@@ -2896,7 +2928,9 @@ function ManualEntryModal({
           animation: "fadeInUp 0.25s ease-out",
           maxHeight: "85vh",
           overflowY: "auto",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.12)"
+          boxShadow: worthIt ? "0 20px 50px rgba(245, 158, 11, 0.25)" : "0 20px 40px rgba(0,0,0,0.12)",
+          border: worthIt ? "2.5px solid #FCD34D" : "1.5px solid transparent",
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
         }}
       >
         <div style={{
@@ -2962,17 +2996,27 @@ function ManualEntryModal({
             localStorage.setItem("tracker_last_used_currency", currency);
             localStorage.removeItem("tracker_expense_draft");
 
+            // Extract tags from the note text
+            const hashtagRegex = /#([a-zA-Z0-9_-]+)/g;
+            const parsedTags = [];
+            let match;
+            while ((match = hashtagRegex.exec(note)) !== null) {
+              parsedTags.push(match[1].toLowerCase());
+            }
+            // Clean note by removing tags and formatting whitespaces
+            const cleanNote = note.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim() || category;
+
             const originalSpreadTags = expenseToEdit?.tags 
               ? expenseToEdit.tags.filter(t => t.startsWith("spread-") && !t.startsWith("spread-mode-") && !t.startsWith("spread-start-") && !t.startsWith("spread-end-") && !t.startsWith("spread-amount-")) 
               : [];
             
-            const finalTags = [...tags, ...originalSpreadTags];
+            const finalTags = [...parsedTags, ...originalSpreadTags];
 
             onSave({
               amount: val,
               currency,
               category,
-              note: note.trim() || category,
+              note: cleanNote,
               worthIt,
               location: "",
               tags: finalTags,
@@ -3420,7 +3464,7 @@ function ManualEntryModal({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Latte, Hostel name, scooter fuel, tags..."
+              placeholder="e.g. Latte #coffee, scooter rental #scooter..."
               style={{
                 padding: "10px 12px",
                 borderRadius: "12px",
@@ -3442,21 +3486,19 @@ function ManualEntryModal({
             }}>Worth It?</label>
             <div 
               onClick={() => setWorthIt(!worthIt)}
+              className={worthIt ? "worth-it-shimmer-card" : ""}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "10px 14px",
                 borderRadius: "14px",
-                border: "1.5px solid",
-                borderColor: worthIt ? "#FCD34D" : "#E5E7EB",
-                backgroundColor: worthIt ? "#FFFBEB" : "#F9FAFB",
+                border: worthIt ? undefined : "1.5px solid #E5E7EB",
+                backgroundColor: worthIt ? undefined : "#F9FAFB",
                 cursor: "pointer",
                 userSelect: "none",
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                boxShadow: worthIt 
-                  ? "0 4px 15px rgba(245, 158, 11, 0.1), inset 0 0 0 1px rgba(245, 158, 11, 0.05)" 
-                  : "none"
+                boxShadow: worthIt ? undefined : "none"
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -3508,77 +3550,6 @@ function ManualEntryModal({
                 }} />
               </div>
             </div>
-          </div>
-
-          {/* 5. Tags */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <label style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Tags (comma/enter to add)</label>
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "4px",
-              marginBottom: "2px"
-            }}>
-              {tags.map((t, idx) => (
-                <span
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "0.75rem",
-                    backgroundColor: "#F3F4F6",
-                    color: "#4B5563",
-                    padding: "3px 6px",
-                    borderRadius: "6px",
-                    fontWeight: 600
-                  }}
-                >
-                  #{t}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(idx)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#9CA3AF",
-                      cursor: "pointer",
-                      fontSize: "0.85rem",
-                      padding: 0
-                    }}
-                  >✕</button>
-                </span>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  const val = tagInput.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-                  if (val && !tags.includes(val)) {
-                    setTags([...tags, val]);
-                  }
-                  setTagInput("");
-                }
-              }}
-              placeholder="e.g. coffee, fuel, activity, souvenirs..."
-              style={{
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB",
-                fontSize: "15px",
-                outline: "none"
-              }}
-            />
           </div>
 
           {/* 6. Save / Delete Buttons */}
