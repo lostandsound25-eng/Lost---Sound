@@ -2732,7 +2732,13 @@ function ManualEntryModal({
     return draft ? draft.tags : [];
   });
   const [tagInput, setTagInput] = useState("");
-  const [spreadExpense, setSpreadExpense] = useState(false);
+  const [spreadExpense, setSpreadExpense] = useState(() => {
+    if (expenseToEdit && expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
+      return true;
+    }
+    return false;
+  });
+  const [isDateExpanded, setIsDateExpanded] = useState(false);
 
   const [spreadMode, setSpreadMode] = useState(() => {
     if (expenseToEdit) {
@@ -2792,6 +2798,11 @@ function ManualEntryModal({
           ? new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA') 
           : new Date().toLocaleDateString('en-CA')
       );
+      if (expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
+        setSpreadExpense(true);
+      } else {
+        setSpreadExpense(false);
+      }
     }
   }, [expenseToEdit, trip.localCurrency]);
 
@@ -2812,9 +2823,40 @@ function ManualEntryModal({
     setTags(tags.filter((_, i) => i !== idx));
   };
 
+  const getDateLabel = () => {
+    if (spreadExpense) {
+      const start = new Date(spreadStart + "T00:00:00");
+      const end = new Date(spreadEnd + "T00:00:00");
+      let days = 1;
+      if (!isNaN(start) && !isNaN(end) && end >= start) {
+        days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      }
+      return `${spreadMode === 'repeat' ? 'Repeat' : 'Spread'} (${days}d): ${spreadStart} to ${spreadEnd}`;
+    }
+    const today = new Date().toLocaleDateString('en-CA');
+    const yesterday = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      return d.toLocaleDateString('en-CA');
+    })();
+    if (expenseDate === today) {
+      return "Today";
+    } else if (expenseDate === yesterday) {
+      return "Yesterday";
+    } else {
+      return expenseDate;
+    }
+  };
+
   return (
     <div 
       onClick={onClose}
+      onTouchMove={() => {
+        if (typeof document !== 'undefined' && document.activeElement && 
+            (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+          document.activeElement.blur();
+        }
+      }}
       style={{
         position: "fixed",
         top: 0,
@@ -2828,17 +2870,29 @@ function ManualEntryModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px"
+        padding: "12px"
       }}
     >
       <div 
         onClick={(e) => e.stopPropagation()}
+        onScroll={() => {
+          if (typeof document !== 'undefined' && document.activeElement && 
+              (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+            document.activeElement.blur();
+          }
+        }}
+        onTouchMove={() => {
+          if (typeof document !== 'undefined' && document.activeElement && 
+              (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+            document.activeElement.blur();
+          }
+        }}
         style={{
           backgroundColor: "white",
           width: "100%",
           maxWidth: "400px",
           borderRadius: "24px",
-          padding: "28px 24px",
+          padding: "20px 18px",
           animation: "fadeInUp 0.25s ease-out",
           maxHeight: "85vh",
           overflowY: "auto",
@@ -2849,10 +2903,10 @@ function ManualEntryModal({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "20px"
+          marginBottom: "14px"
         }}>
           <h3 style={{
-            fontSize: "1.15rem",
+            fontSize: "1.1rem",
             fontWeight: 800,
             color: "var(--color-purple)"
           }}>
@@ -2864,9 +2918,10 @@ function ManualEntryModal({
             style={{
               background: "none",
               border: "none",
-              fontSize: "1.5rem",
+              fontSize: "1.3rem",
               color: "#9CA3AF",
-              cursor: "pointer"
+              cursor: "pointer",
+              padding: "4px"
             }}
           >✕</button>
         </div>
@@ -2931,11 +2986,11 @@ function ManualEntryModal({
               timestamp: !spreadExpense ? finalTimestamp : null
             });
           }}
-          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          style={{ display: "flex", flexDirection: "column", gap: "12px" }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <label style={{
-              fontSize: "0.8rem",
+              fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
@@ -2946,9 +3001,9 @@ function ManualEntryModal({
               alignItems: "center",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "12px 18px",
+              padding: "10px 14px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              marginBottom: "8px"
+              marginBottom: "4px"
             }}>
               <SearchableCurrencySelect
                 value={currency}
@@ -2975,7 +3030,7 @@ function ManualEntryModal({
                   flex: 1,
                   border: "none",
                   background: "transparent",
-                  fontSize: "2.2rem",
+                  fontSize: "2rem",
                   fontWeight: 900,
                   outline: "none",
                   width: "100%",
@@ -3011,23 +3066,23 @@ function ManualEntryModal({
 
           {isGroup && (
             <div style={{
-              padding: "14px",
+              padding: "12px",
               backgroundColor: "#FEF3C7",
               border: "1.5px solid #FCD34D",
               borderRadius: "16px",
-              marginBottom: "8px",
+              marginBottom: "4px",
               display: "flex",
               flexDirection: "column",
-              gap: "8px"
+              gap: "6px"
             }}>
-              <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#92400E", display: "flex", alignItems: "center", gap: "4px" }}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#92400E", display: "flex", alignItems: "center", gap: "4px" }}>
                 🗓️ Multi-Day Expense Group
               </span>
-              <span style={{ fontSize: "0.78rem", color: "#B45309", lineHeight: "1.3" }}>
+              <span style={{ fontSize: "0.75rem", color: "#B45309", lineHeight: "1.3" }}>
                 This entry belongs to a range from <strong>{origStart}</strong> to <strong>{origEnd}</strong>.
               </span>
-              <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", fontWeight: 700, color: "#92400E", cursor: "pointer" }}>
+              <div style={{ display: "flex", gap: "16px", marginTop: "2px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", fontWeight: 700, color: "#92400E", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="editGroupChoice"
@@ -3037,7 +3092,7 @@ function ManualEntryModal({
                   />
                   This day only
                 </label>
-                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", fontWeight: 700, color: "#92400E", cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", fontWeight: 700, color: "#92400E", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="editGroupChoice"
@@ -3051,9 +3106,311 @@ function ManualEntryModal({
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {/* 1. Category in 4-column row */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <label style={{
-              fontSize: "0.8rem",
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Category</label>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "6px"
+            }}>
+              {CATEGORIES.map((cat) => {
+                const shortLabels = {
+                  "Accommodation": "Stay",
+                  "Transportation": "Transit",
+                  "Food & Drink": "Food",
+                  "Everything Else": "Other"
+                };
+                const displayLabel = shortLabels[cat] || cat;
+                const isSelected = category === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "8px 4px",
+                      borderRadius: "12px",
+                      border: "1.5px solid",
+                      cursor: "pointer",
+                      backgroundColor: isSelected ? CATEGORY_COLORS[cat] : "white",
+                      borderColor: isSelected ? CATEGORY_COLORS[cat] : "#E5E7EB",
+                      color: isSelected ? "white" : "#4B5563",
+                      transition: "all 0.2s",
+                      minWidth: 0,
+                      flex: 1
+                    }}
+                  >
+                    <span style={{ fontSize: "1.15rem", marginBottom: "2px" }}>{CATEGORY_EMOJIS[cat]}</span>
+                    <span style={{ 
+                      fontSize: "0.68rem", 
+                      fontWeight: 700, 
+                      textAlign: "center", 
+                      width: "100%", 
+                      whiteSpace: "nowrap", 
+                      overflow: "hidden", 
+                      textOverflow: "ellipsis" 
+                    }}>
+                      {displayLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Collapsible Date(s) */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <label style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Date(s)</label>
+            <div 
+              onClick={() => setIsDateExpanded(!isDateExpanded)}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                backgroundColor: "white",
+                borderRadius: "12px",
+                padding: "10px 14px",
+                border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+            >
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--color-purple)" }}>
+                📅 {getDateLabel()}
+              </span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-orange)" }}>
+                {isDateExpanded ? "Collapse ✕" : "Change ✏️"}
+              </span>
+            </div>
+
+            {isDateExpanded && (
+              <div style={{
+                marginTop: "4px",
+                padding: "12px",
+                backgroundColor: "#F9F6ED",
+                borderRadius: "16px",
+                border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                animation: "fadeInUp 0.2s ease-out"
+              }}>
+                {/* Single Date Picker */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Single Date</span>
+                  <input
+                    type="date"
+                    value={expenseDate}
+                    onChange={(e) => {
+                      setExpenseDate(e.target.value);
+                      setSpreadExpense(false);
+                    }}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid #E5E7EB",
+                      outline: "none",
+                      fontSize: "15px",
+                      backgroundColor: "white",
+                      color: "#374151"
+                    }}
+                  />
+                </div>
+
+                {/* Range toggle checkbox */}
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  padding: "8px 0 0",
+                  borderTop: "1px dashed rgba(133, 58, 81, 0.15)"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={spreadExpense}
+                    onChange={(e) => setSpreadExpense(e.target.checked)}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      accentColor: "var(--color-orange)"
+                    }}
+                  />
+                  <span style={{
+                    fontSize: "0.8rem",
+                    color: "var(--color-purple)",
+                    fontWeight: 700
+                  }}>
+                    🗓️ Spread/Repeat across multiple days
+                  </span>
+                </label>
+
+                {spreadExpense && (
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    padding: "10px",
+                    backgroundColor: "rgba(30, 64, 175, 0.03)",
+                    borderRadius: "12px",
+                    borderLeft: "3px solid #BFDBFE"
+                  }}>
+                    {/* Mode selector */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setSpreadMode("divide")}
+                          style={{
+                            flex: 1,
+                            padding: "6px 8px",
+                            borderRadius: "8px",
+                            border: "1.5px solid",
+                            fontSize: "0.75rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
+                            borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
+                            color: spreadMode === "divide" ? "white" : "#1E40AF",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          ⚖️ Spread Evenly
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSpreadMode("repeat")}
+                          style={{
+                            flex: 1,
+                            padding: "6px 8px",
+                            borderRadius: "8px",
+                            border: "1.5px solid",
+                            fontSize: "0.75rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
+                            borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
+                            color: spreadMode === "repeat" ? "white" : "#1E40AF",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          🔄 Repeat Daily
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+                        <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
+                        <input
+                          type="date"
+                          value={spreadStart}
+                          onChange={(e) => setSpreadStart(e.target.value)}
+                          style={{
+                            padding: "6px 8px",
+                            borderRadius: "8px",
+                            border: "1px solid #BFDBFE",
+                            outline: "none",
+                            fontSize: "15px",
+                            fontWeight: 600,
+                            color: "#1E40AF",
+                            backgroundColor: "white",
+                            width: "100%",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+                        <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
+                        <input
+                          type="date"
+                          value={spreadEnd}
+                          onChange={(e) => setSpreadEnd(e.target.value)}
+                          style={{
+                            padding: "6px 8px",
+                            borderRadius: "8px",
+                            border: "1px solid #BFDBFE",
+                            outline: "none",
+                            fontSize: "15px",
+                            fontWeight: 600,
+                            color: "#1E40AF",
+                            backgroundColor: "white",
+                            width: "100%",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dynamic Explanation */}
+                    {(() => {
+                      const start = new Date(spreadStart + "T00:00:00");
+                      const end = new Date(spreadEnd + "T00:00:00");
+                      if (!isNaN(start) && !isNaN(end) && end >= start) {
+                        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                        const val = parseFloat(amount);
+                        const dailyPortion = !isNaN(val) && val > 0 
+                          ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
+                          : "0.00";
+                        const totalCost = !isNaN(val) && val > 0 
+                          ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
+                          : "0.00";
+                        return (
+                          <div style={{
+                            fontSize: "0.78rem",
+                            color: "#1E40AF",
+                            fontWeight: 600,
+                            backgroundColor: "#DBEAFE",
+                            padding: "8px 10px",
+                            borderRadius: "8px",
+                            marginTop: "4px",
+                            lineHeight: "1.3"
+                          }}>
+                            {spreadMode === "repeat" ? (
+                              <>
+                                Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
+                                Total cost will be <strong>{totalCost} {currency}</strong>.
+                              </>
+                            ) : (
+                              <>
+                                Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
+                              </>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Notes */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <label style={{
+              fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
@@ -3063,79 +3420,100 @@ function ManualEntryModal({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Latte, Establishment name, overpriced, etc."
+              placeholder="e.g. Latte, Hostel name, scooter fuel, tags..."
               style={{
-                padding: "12px",
+                padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #E5E7EB",
-                fontSize: "16px",
+                fontSize: "15px",
                 outline: "none"
               }}
             />
           </div>
 
-          {!spreadExpense && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <label style={{
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                color: "#4B5563",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>Date</label>
-              <input
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
-                  fontSize: "16px",
-                  outline: "none",
-                  backgroundColor: "white",
-                  color: "#374151"
-                }}
-              />
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {/* 4. Worth It? Signature Glowing Option Card */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <label style={{
-              fontSize: "0.8rem",
+              fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>Category</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: "20px",
-                    border: "1.5px solid",
-                    fontSize: "0.82rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    backgroundColor: category === cat ? CATEGORY_COLORS[cat] : "white",
-                    borderColor: category === cat ? CATEGORY_COLORS[cat] : "#E5E7EB",
-                    color: category === cat ? "white" : "#4B5563",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  {CATEGORY_EMOJIS[cat]} {cat}
-                </button>
-              ))}
+            }}>Worth It?</label>
+            <div 
+              onClick={() => setWorthIt(!worthIt)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderRadius: "14px",
+                border: "1.5px solid",
+                borderColor: worthIt ? "#FCD34D" : "#E5E7EB",
+                backgroundColor: worthIt ? "#FFFBEB" : "#F9FAFB",
+                cursor: "pointer",
+                userSelect: "none",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: worthIt 
+                  ? "0 4px 15px rgba(245, 158, 11, 0.1), inset 0 0 0 1px rgba(245, 158, 11, 0.05)" 
+                  : "none"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ 
+                  fontSize: "1.3rem",
+                  transform: worthIt ? "scale(1.15) rotate(6deg)" : "scale(1) rotate(0)",
+                  transition: "transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+                }}>
+                  {worthIt ? "🌟" : "💸"}
+                </span>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ 
+                    fontSize: "0.8rem", 
+                    fontWeight: worthIt ? 800 : 700, 
+                    color: worthIt ? "#92400E" : "#4B5563",
+                    transition: "color 0.2s"
+                  }}>
+                    {worthIt ? "HELL YES, WORTH IT!" : "Just a standard purchase"}
+                  </span>
+                  <span style={{ 
+                    fontSize: "0.7rem", 
+                    color: worthIt ? "#B45309" : "#9CA3AF",
+                    transition: "color 0.2s"
+                  }}>
+                    {worthIt ? "Adds joy to the adventure!" : "Necessary or standard spending"}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Custom sliding switch indicator */}
+              <div style={{
+                width: "38px",
+                height: "22px",
+                borderRadius: "11px",
+                backgroundColor: worthIt ? "#F59E0B" : "#D1D5DB",
+                position: "relative",
+                transition: "background-color 0.3s"
+              }}>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  borderRadius: "50%",
+                  backgroundColor: "white",
+                  position: "absolute",
+                  top: "3px",
+                  left: worthIt ? "19px" : "3px",
+                  transition: "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                }} />
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {/* 5. Tags */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <label style={{
-              fontSize: "0.8rem",
+              fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
@@ -3144,8 +3522,8 @@ function ManualEntryModal({
             <div style={{
               display: "flex",
               flexWrap: "wrap",
-              gap: "6px",
-              marginBottom: "4px"
+              gap: "4px",
+              marginBottom: "2px"
             }}>
               {tags.map((t, idx) => (
                 <span
@@ -3154,11 +3532,11 @@ function ManualEntryModal({
                     display: "flex",
                     alignItems: "center",
                     gap: "4px",
-                    fontSize: "0.78rem",
+                    fontSize: "0.75rem",
                     backgroundColor: "#F3F4F6",
                     color: "#4B5563",
-                    padding: "4px 8px",
-                    borderRadius: "8px",
+                    padding: "3px 6px",
+                    borderRadius: "6px",
                     fontWeight: 600
                   }}
                 >
@@ -3171,7 +3549,7 @@ function ManualEntryModal({
                       border: "none",
                       color: "#9CA3AF",
                       cursor: "pointer",
-                      fontSize: "0.9rem",
+                      fontSize: "0.85rem",
                       padding: 0
                     }}
                   >✕</button>
@@ -3192,401 +3570,22 @@ function ManualEntryModal({
                   setTagInput("");
                 }
               }}
-              placeholder="e.g. coffee, fuel, activity, souvenirs, etc."
+              placeholder="e.g. coffee, fuel, activity, souvenirs..."
               style={{
-                padding: "12px",
+                padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #E5E7EB",
-                fontSize: "16px",
+                fontSize: "15px",
                 outline: "none"
               }}
             />
           </div>
 
-          {!expenseToEdit?.id && (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              padding: "14px",
-              backgroundColor: "#EFF6FF",
-              borderRadius: "12px",
-              border: "1px solid #BFDBFE"
-            }}>
-              <label style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                cursor: "pointer",
-                userSelect: "none"
-              }}>
-                <input
-                  type="checkbox"
-                  checked={spreadExpense}
-                  onChange={(e) => setSpreadExpense(e.target.checked)}
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    accentColor: "#2563EB"
-                  }}
-                />
-                <span style={{
-                  fontSize: "0.95rem",
-                  color: "#1E40AF",
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px"
-                }}>
-                  🗓️ Spread across multiple days
-                </span>
-              </label>
-              {spreadExpense && (
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  marginTop: "8px",
-                  padding: "12px",
-                  backgroundColor: "rgba(30, 64, 175, 0.03)",
-                  borderRadius: "12px",
-                  borderLeft: "3px solid #BFDBFE"
-                }}>
-                  {/* Mode selector */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setSpreadMode("divide")}
-                        style={{
-                          flex: 1,
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          border: "1.5px solid",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
-                          borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
-                          color: spreadMode === "divide" ? "white" : "#1E40AF",
-                          transition: "all 0.2s"
-                        }}
-                      >
-                        ⚖️ Spread Evenly
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSpreadMode("repeat")}
-                        style={{
-                          flex: 1,
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          border: "1.5px solid",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
-                          borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
-                          color: spreadMode === "repeat" ? "white" : "#1E40AF",
-                          transition: "all 0.2s"
-                        }}
-                      >
-                        🔄 Repeat Daily
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Dates */}
-                  <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
-                      <input
-                        type="date"
-                        value={spreadStart}
-                        onChange={(e) => setSpreadStart(e.target.value)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          border: "1px solid #BFDBFE",
-                          outline: "none",
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#1E40AF",
-                          backgroundColor: "white",
-                          width: "100%",
-                          boxSizing: "border-box"
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
-                      <input
-                        type="date"
-                        value={spreadEnd}
-                        onChange={(e) => setSpreadEnd(e.target.value)}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          border: "1px solid #BFDBFE",
-                          outline: "none",
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#1E40AF",
-                          backgroundColor: "white",
-                          width: "100%",
-                          boxSizing: "border-box"
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Dynamic Explanation */}
-                  {(() => {
-                    const start = new Date(spreadStart + "T00:00:00");
-                    const end = new Date(spreadEnd + "T00:00:00");
-                    if (!isNaN(start) && !isNaN(end) && end >= start) {
-                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                      const val = parseFloat(amount);
-                      const dailyPortion = !isNaN(val) && val > 0 
-                        ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
-                        : "0.00";
-                      const totalCost = !isNaN(val) && val > 0 
-                        ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
-                        : "0.00";
-                      return (
-                        <div style={{
-                          fontSize: "0.82rem",
-                          color: "#1E40AF",
-                          fontWeight: 600,
-                          backgroundColor: "#DBEAFE",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          marginTop: "6px",
-                          lineHeight: "1.4"
-                        }}>
-                          {spreadMode === "repeat" ? (
-                            <>
-                              Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
-                              Total cost will be <strong>{totalCost} {currency}</strong>.
-                            </>
-                          ) : (
-                            <>
-                              Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
-                            </>
-                          )}
-                        </div>
-                      );
-                    } else if (end < start) {
-                      return (
-                        <div style={{ fontSize: "0.8rem", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
-                          ⚠️ End date must be on or after start date.
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {expenseToEdit?.id && editEntireGroup && (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              padding: "14px",
-              backgroundColor: "#EFF6FF",
-              borderRadius: "12px",
-              border: "1px solid #BFDBFE"
-            }}>
-              <span style={{ fontSize: "0.9rem", color: "#1E40AF", fontWeight: 700 }}>
-                🗓️ Edit Range Details
-              </span>
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                marginTop: "4px",
-                padding: "12px",
-                backgroundColor: "rgba(30, 64, 175, 0.03)",
-                borderRadius: "12px",
-                borderLeft: "3px solid #BFDBFE"
-              }}>
-                {/* Mode selector */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
-                  <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setSpreadMode("divide")}
-                      style={{
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        border: "1.5px solid",
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
-                        borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
-                        color: spreadMode === "divide" ? "white" : "#1E40AF",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      ⚖️ Spread Evenly
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSpreadMode("repeat")}
-                      style={{
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        border: "1.5px solid",
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
-                        borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
-                        color: spreadMode === "repeat" ? "white" : "#1E40AF",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      🔄 Repeat Daily
-                    </button>
-                  </div>
-                </div>
-
-                {/* Dates */}
-                <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
-                    <input
-                      type="date"
-                      value={spreadStart}
-                      onChange={(e) => setSpreadStart(e.target.value)}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #BFDBFE",
-                        outline: "none",
-                        fontSize: "16px",
-                        fontWeight: 600,
-                        color: "#1E40AF",
-                        backgroundColor: "white",
-                        width: "100%",
-                        boxSizing: "border-box"
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
-                    <input
-                      type="date"
-                      value={spreadEnd}
-                      onChange={(e) => setSpreadEnd(e.target.value)}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #BFDBFE",
-                        outline: "none",
-                        fontSize: "16px",
-                        fontWeight: 600,
-                        color: "#1E40AF",
-                        backgroundColor: "white",
-                        width: "100%",
-                        boxSizing: "border-box"
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Dynamic Explanation */}
-                {(() => {
-                  const start = new Date(spreadStart + "T00:00:00");
-                  const end = new Date(spreadEnd + "T00:00:00");
-                  if (!isNaN(start) && !isNaN(end) && end >= start) {
-                    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                    const val = parseFloat(amount);
-                    const dailyPortion = !isNaN(val) && val > 0 
-                      ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
-                      : "0.00";
-                    const totalCost = !isNaN(val) && val > 0 
-                      ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
-                      : "0.00";
-                    return (
-                      <div style={{
-                        fontSize: "0.82rem",
-                        color: "#1E40AF",
-                        fontWeight: 600,
-                        backgroundColor: "#DBEAFE",
-                        padding: "10px",
-                        borderRadius: "8px",
-                        marginTop: "6px",
-                        lineHeight: "1.4"
-                      }}>
-                        {spreadMode === "repeat" ? (
-                          <>
-                            Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
-                            Total cost will be <strong>{totalCost} {currency}</strong>.
-                          </>
-                        ) : (
-                          <>
-                            Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
-                          </>
-                        )}
-                      </div>
-                    );
-                  } else if (end < start) {
-                    return (
-                      <div style={{ fontSize: "0.8rem", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>
-                        ⚠️ End date must be on or after start date.
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-          )}
-
-          <label style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: "14px",
-            backgroundColor: "#FFFBEB",
-            borderRadius: "12px",
-            cursor: "pointer"
-          }}>
-            <input
-              type="checkbox"
-              checked={worthIt}
-              onChange={(e) => setWorthIt(e.target.checked)}
-              style={{
-                width: "20px",
-                height: "20px",
-                accentColor: "#F59E0B"
-              }}
-            />
-            <span style={{
-              fontSize: "0.95rem",
-              color: "#92400E",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}>
-              <StarIcon filled={worthIt} /> Mark as "Worth It"
-            </span>
-          </label>
-
+          {/* 6. Save / Delete Buttons */}
           <div style={{
             display: "flex",
             gap: "8px",
-            marginTop: "8px"
+            marginTop: "4px"
           }}>
             {expenseToEdit?.id && (
               <button
@@ -3600,11 +3599,11 @@ function ManualEntryModal({
                   }
                 }}
                 style={{
-                  padding: "16px",
+                  padding: "12px",
                   backgroundColor: "#FEE2E2",
                   color: "#EF4444",
-                  borderRadius: "16px",
-                  fontSize: "1.05rem",
+                  borderRadius: "14px",
+                  fontSize: "0.95rem",
                   fontWeight: 700,
                   border: "none",
                   cursor: "pointer",
@@ -3617,11 +3616,11 @@ function ManualEntryModal({
             <button
               type="submit"
               style={{
-                padding: "16px",
+                padding: "12px",
                 backgroundColor: "var(--color-purple)",
                 color: "white",
-                borderRadius: "16px",
-                fontSize: "1.05rem",
+                borderRadius: "14px",
+                fontSize: "0.95rem",
                 fontWeight: 700,
                 border: "none",
                 cursor: "pointer",
