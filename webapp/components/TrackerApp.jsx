@@ -2433,41 +2433,31 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         />
       )}
       <style>{`
-        @keyframes shimmerSweep {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
+        @keyframes goldGlowPulse {
+          0% {
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+            border-color: rgba(245, 158, 11, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.45);
+            border-color: rgba(245, 158, 11, 0.6);
+          }
+          100% {
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+            border-color: rgba(245, 158, 11, 0.3);
+          }
         }
         
         .worth-it-shimmer-modal {
-          background: linear-gradient(
-            90deg,
-            #FFFFFF 0%,
-            #FFFFFF 35%,
-            #FFFDF4 45%,
-            #FEF3C7 50%,
-            #FFFDF4 55%,
-            #FFFFFF 65%,
-            #FFFFFF 100%
-          ) !important;
-          background-size: 200% 100% !important;
-          animation: shimmerSweep 5s infinite linear !important;
+          background-color: #FFFDF9 !important;
+          border: 2px solid rgba(245, 158, 11, 0.4) !important;
+          animation: goldGlowPulse 4s infinite ease-in-out !important;
         }
         
         .worth-it-shimmer-card {
-          background: linear-gradient(
-            90deg,
-            #FFFDF6 0%,
-            #FFFDF6 35%,
-            #FFFBEB 45%,
-            #FEF3C7 50%,
-            #FFFBEB 55%,
-            #FFFDF6 65%,
-            #FFFDF6 100%
-          ) !important;
-          background-size: 200% 100% !important;
-          animation: shimmerSweep 5s infinite linear !important;
-          border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
-          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12) !important;
+          background-color: #FFFDF5 !important;
+          border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
+          animation: goldGlowPulse 4s infinite ease-in-out !important;
         }
       `}</style>
     </div>
@@ -2854,15 +2844,21 @@ function ManualEntryModal({
     onClose();
   };
 
+  const formatDateLabel = (dateStr) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const year = parts[0];
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthName = months[monthIdx] || parts[1];
+    return `${monthName} ${day}, ${year}`;
+  };
+
   const getDateLabel = () => {
     if (spreadExpense) {
-      const start = new Date(spreadStart + "T00:00:00");
-      const end = new Date(spreadEnd + "T00:00:00");
-      let days = 1;
-      if (!isNaN(start) && !isNaN(end) && end >= start) {
-        days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      }
-      return `${spreadMode === 'repeat' ? 'Repeat' : 'Spread'} (${days}d): ${spreadStart} to ${spreadEnd}`;
+      return `${formatDateLabel(spreadStart)} - ${formatDateLabel(spreadEnd)}`;
     }
     const today = new Date().toLocaleDateString('en-CA');
     const yesterday = (() => {
@@ -2875,7 +2871,7 @@ function ManualEntryModal({
     } else if (expenseDate === yesterday) {
       return "Yesterday";
     } else {
-      return expenseDate;
+      return formatDateLabel(expenseDate);
     }
   };
 
@@ -4192,7 +4188,14 @@ function CollaboratorsModal({ tripId, onClose }) {
         <div style={{ maxHeight: "150px", overflowY: "auto", marginBottom: "20px" }}>
           <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4B5563", marginBottom: "8px" }}>Members</p>
           {members.map(m => (
-            <div key={m.id} style={{ display: "flex", justifycontent: "space-between", fontSize: "0.8rem", padding: "6px 0", borderBottom: "1px solid #F3F4F6" }}>
+            <div key={m.id} style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center",
+              fontSize: "0.85rem", 
+              padding: "8px 0", 
+              borderBottom: "1px solid #F3F4F6" 
+            }}>
               <span style={{ color: "#374151" }}>{m.email}</span>
               <span style={{ fontWeight: 600, color: "var(--color-purple)", textTransform: "capitalize" }}>{m.role}</span>
             </div>
