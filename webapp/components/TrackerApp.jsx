@@ -76,6 +76,25 @@ const CURRENCY_SYMBOLS = {
   AUD: 'A$'
 };
 
+const evaluateMathExpression = (expr) => {
+  if (typeof expr === 'number') return expr.toString();
+  if (typeof expr !== 'string') return "";
+  let clean = expr.replace(/\s+/g, '');
+  if (!clean) return "";
+  if (!/^[0-9+\-*/().]+$/.test(clean)) {
+    return expr;
+  }
+  try {
+    const result = new Function(`return (${clean})`)();
+    if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+      return result >= 0 ? parseFloat(result.toFixed(2)).toString() : "0.00";
+    }
+  } catch (e) {
+    console.error("Math evaluation failed:", e);
+  }
+  return expr;
+};
+
 // Formatting & Conversion Helpers
 const formatMoney = (amount, currency) => {
   const symbol = CURRENCY_SYMBOLS[currency] || currency;
@@ -193,6 +212,202 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [logView, setLogView] = useState("recent"); // 'recent' or 'history'
   const [historyViewMode, setHistoryViewMode] = useState("cards"); // 'cards' or 'spreadsheet'
   const [drillDownExpenses, setDrillDownExpenses] = useState(null);
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+
+  const pushToUndo = (action) => {
+    setUndoStack(prev => [...prev, action]);
+    setRedoStack([]);
+  };
+
+  const executeUndoRedoAction = async (action, isUndo) => {
+    if (!action) return null;
+    const { type, data, oldData, newData } = action;
+    try {
+      if (type === 'insert') {
+        if (isUndo) {
+          setExpenses(prev => prev.filter(e => e.id !== data.id));
+          performCloudAction("delete", { id: data.id });
+          return { type: 'delete', data };
+        } else {
+          setExpenses(prev => [data, ...prev]);
+          performCloudAction("insert", {
+            id: data.id,
+            created_at: data.timestamp,
+            amount: data.amount,
+            currency: data.currency,
+            category: data.category,
+            note: data.note,
+            worth_it: data.worthIt,
+            location: data.location,
+            location_locale: data.locationLocale,
+            tags: data.tags,
+            trip_id: tripId,
+            photo_url: data.photoUrl || null
+          });
+          return { type: 'insert', data };
+        }
+      }
+
+      if (type === 'delete') {
+        if (isUndo) {
+          setExpenses(prev => [data, ...prev]);
+          performCloudAction("insert", {
+            id: data.id,
+            created_at: data.timestamp,
+            amount: data.amount,
+            currency: data.currency,
+            category: data.category,
+            note: data.note,
+            worth_it: data.worthIt,
+            location: data.location,
+            location_locale: data.locationLocale,
+            tags: data.tags,
+            trip_id: tripId,
+            photo_url: data.photoUrl || null
+          });
+          return { type: 'insert', data };
+        } else {
+          setExpenses(prev => prev.filter(e => e.id !== data.id));
+          performCloudAction("delete", { id: data.id });
+          return { type: 'delete', data };
+        }
+      }
+
+      if (type === 'update') {
+        const target = isUndo ? oldData : newData;
+        const reverseTarget = isUndo ? newData : oldData;
+        setExpenses(prev => prev.map(e => e.id === target.id ? target : e));
+        performCloudAction("update", {
+          id: target.id,
+          amount: target.amount,
+          currency: target.currency,
+          category: target.category,
+          note: target.note,
+          worth_it: target.worthIt,
+          location: target.location,
+          location_locale: target.locationLocale,
+          tags: target.tags,
+          created_at: target.timestamp,
+          photo_url: target.photoUrl || null
+        });
+        return { type: 'update', oldData: reverseTarget, newData: target };
+      }
+
+      if (type === 'insert_bulk') {
+        if (isUndo) {
+          const ids = data.map(e => e.id);
+          setExpenses(prev => prev.filter(e => !ids.includes(e.id)));
+          ids.forEach(id => {
+            performCloudAction("delete", { id });
+          });
+          return { type: 'delete_bulk', data };
+        } else {
+          setExpenses(prev => [...data, ...prev]);
+          data.forEach(e => {
+            performCloudAction("insert", {
+              id: e.id,
+              created_at: e.timestamp,
+              amount: e.amount,
+              currency: e.currency,
+              category: e.category,
+              note: e.note,
+              worth_it: e.worthIt,
+              location: e.location,
+              location_locale: e.locationLocale,
+              tags: e.tags,
+              trip_id: tripId,
+              photo_url: e.photoUrl || null
+            });
+          });
+          return { type: 'insert_bulk', data };
+        }
+      }
+
+      if (type === 'delete_bulk') {
+        if (isUndo) {
+          setExpenses(prev => [...data, ...prev]);
+          data.forEach(e => {
+            performCloudAction("insert", {
+              id: e.id,
+              created_at: e.timestamp,
+              amount: e.amount,
+              currency: e.currency,
+              category: e.category,
+              note: e.note,
+              worth_it: e.worthIt,
+              location: e.location,
+              location_locale: e.locationLocale,
+              tags: e.tags,
+              trip_id: tripId,
+              photo_url: e.photoUrl || null
+            });
+          });
+          return { type: 'insert_bulk', data };
+        } else {
+          const ids = data.map(e => e.id);
+          setExpenses(prev => prev.filter(e => !ids.includes(e.id)));
+          ids.forEach(id => {
+            performCloudAction("delete", { id });
+          });
+          return { type: 'delete_bulk', data };
+        }
+      }
+
+      if (type === 'update_bulk') {
+        const deleteItems = isUndo ? newData : oldData;
+        const insertItems = isUndo ? oldData : newData;
+        const deleteIds = deleteItems.map(e => e.id);
+        setExpenses(prev => {
+          const filtered = prev.filter(e => !deleteIds.includes(e.id));
+          return [...insertItems, ...filtered];
+        });
+        deleteIds.forEach(id => {
+          performCloudAction("delete", { id });
+        });
+        insertItems.forEach(e => {
+          performCloudAction("insert", {
+            id: e.id,
+            created_at: e.timestamp,
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+            note: e.note,
+            worth_it: e.worthIt,
+            location: e.location,
+            location_locale: e.locationLocale,
+            tags: e.tags,
+            trip_id: tripId,
+            photo_url: e.photoUrl || null
+          });
+        });
+        return { type: 'update_bulk', oldData: isUndo ? newData : oldData, newData: isUndo ? oldData : newData };
+      }
+    } catch (e) {
+      console.error("Error executing undo/redo:", e);
+    }
+    return null;
+  };
+
+  const handleUndo = async () => {
+    if (undoStack.length === 0) return;
+    const action = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    const redoAction = await executeUndoRedoAction(action, true);
+    if (redoAction) {
+      setRedoStack(prev => [...prev, redoAction]);
+    }
+  };
+
+  const handleRedo = async () => {
+    if (redoStack.length === 0) return;
+    const action = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    const undoAction = await executeUndoRedoAction(action, false);
+    if (undoAction) {
+      setUndoStack(prev => [...prev, undoAction]);
+    }
+  };
 
   const getDrillDownList = () => {
     if (!drillDownExpenses) return [];
@@ -1042,6 +1257,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (expense.delete) {
       if (expense.deleteEntireGroup && expense.groupTag) {
         const siblings = expenses.filter(e => e.tags && e.tags.includes(expense.groupTag));
+        pushToUndo({ type: 'delete_bulk', data: siblings });
         const siblingIds = siblings.map(s => s.id);
         setExpenses((prev) => prev.filter((e) => !siblingIds.includes(e.id)));
         if (!isDemo && tripId) {
@@ -1050,6 +1266,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           });
         }
       } else {
+        const oldExp = expenses.find(e => e.id === expense.id);
+        if (oldExp) {
+          pushToUndo({ type: 'delete', data: oldExp });
+        }
         setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
         if (!isDemo && tripId) {
           performCloudAction("delete", { id: expense.id });
@@ -1150,6 +1370,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           }
         }
 
+        pushToUndo({ type: 'update_bulk', oldData: siblings, newData: newExpenses });
         setExpenses((prev) => [...newExpenses, ...prev]);
 
         if (!isDemo && tripId && dbInserts.length > 0) {
@@ -1174,6 +1395,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "")
         };
 
+        const oldExp = expenses.find(e => e.id === expense.id);
+        if (oldExp) {
+          pushToUndo({ type: 'update', oldData: oldExp, newData: updatedExpense });
+        }
         setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...updatedExpense } : e)));
 
         if (!isDemo && tripId) {
@@ -1272,6 +1497,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           }
         }
 
+        pushToUndo({ type: 'insert_bulk', data: newExpenses });
         setExpenses((prev) => [...newExpenses, ...prev]);
 
         if (!isDemo && tripId && dbInserts.length > 0) {
@@ -1288,6 +1514,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           id: newId,
           timestamp: expense.timestamp || new Date().toISOString()
         };
+        pushToUndo({ type: 'insert', data: newExpense });
         setExpenses((prev) => [newExpense, ...prev]);
 
         if (!isDemo && tripId) {
@@ -1313,6 +1540,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const deleteExpense = async (id) => {
+    const oldExp = expenses.find(e => e.id === id);
+    if (oldExp) {
+      pushToUndo({ type: 'delete', data: oldExp });
+    }
     setExpenses((prev) => prev.filter((e) => e.id !== id));
     if (!isDemo && tripId) {
       performCloudAction("delete", { id });
@@ -1694,46 +1925,122 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <div style={{ flexShrink: 0 }}>
                 {isDemo ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <button
-                      onClick={handleSaveSyncClick}
-                      style={{
-                        fontSize: "0.68rem",
-                        fontWeight: 700,
-                        color: "white",
-                        backgroundColor: "var(--color-orange)",
-                        border: "none",
-                        borderRadius: "10px",
-                        padding: "4px 8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)"
-                      }}
-                    >
-                      ☁️ Save & Sync
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {undoStack.length > 0 && (
+                        <button
+                          onClick={handleUndo}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            fontSize: "1.1rem",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            outline: "none"
+                          }}
+                          title="Undo"
+                        >
+                          ↩️
+                        </button>
+                      )}
+                      {redoStack.length > 0 && (
+                        <button
+                          onClick={handleRedo}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            fontSize: "1.1rem",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            outline: "none"
+                          }}
+                          title="Redo"
+                        >
+                          ↪️
+                        </button>
+                      )}
+                      <button
+                        onClick={handleSaveSyncClick}
+                        style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 700,
+                          color: "white",
+                          backgroundColor: "var(--color-orange)",
+                          border: "none",
+                          borderRadius: "10px",
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)"
+                        }}
+                      >
+                        ☁️ Save & Sync
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <button
-                      onClick={() => setActiveModal("collaborators")}
-                      style={{
-                        fontSize: "0.68rem",
-                        fontWeight: 700,
-                        color: "var(--color-purple)",
-                        backgroundColor: "rgba(133, 58, 81, 0.08)",
-                        border: "none",
-                        borderRadius: "10px",
-                        padding: "4px 8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      👥 Share
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {undoStack.length > 0 && (
+                        <button
+                          onClick={handleUndo}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            fontSize: "1.1rem",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            outline: "none"
+                          }}
+                          title="Undo"
+                        >
+                          ↩️
+                        </button>
+                      )}
+                      {redoStack.length > 0 && (
+                        <button
+                          onClick={handleRedo}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            fontSize: "1.1rem",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            outline: "none"
+                          }}
+                          title="Redo"
+                        >
+                          ↪️
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setActiveModal("collaborators")}
+                        style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 700,
+                          color: "var(--color-purple)",
+                          backgroundColor: "rgba(133, 58, 81, 0.08)",
+                          border: "none",
+                          borderRadius: "10px",
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        👥 Share
+                      </button>
+                    </div>
                     {(() => {
                       let statusText = "Synced";
                       let statusEmoji = "🟢";
@@ -1902,86 +2209,62 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>✏️</span>
                 </div>
               ) : (
-                <div style={{ position: "relative", width: "100%", maxWidth: "300px" }}>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    <input
-                      type="text"
-                      value={localeSearchQuery}
-                      onChange={(e) => {
-                        setLocaleSearchQuery(e.target.value);
-                        searchLocaleNominatim(e.target.value);
-                      }}
-                      placeholder="Search town/city..."
-                      autoFocus
-                      style={{
-                        flex: 1,
-                        padding: "4px 8px",
-                        borderRadius: "10px",
-                        border: "1.5px solid var(--color-purple)",
-                        fontSize: "0.8rem",
-                        outline: "none",
-                        color: "#374151"
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={localeSearchQuery}
+                    onChange={(e) => setLocaleSearchQuery(e.target.value)}
+                    placeholder="Enter town/city (e.g. Siargao)..."
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updateLocation(localeSearchQuery.trim());
                         setIsEditingLocale(false);
-                        setLocaleSearchQuery("");
-                        setLocaleResults([]);
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#EF4444",
-                        fontSize: "0.8rem",
-                        cursor: "pointer",
-                        fontWeight: 700
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {localeResults.length > 0 && (
-                    <div style={{
-                      position: "absolute",
-                      top: "32px",
-                      left: 0,
-                      right: 0,
-                      backgroundColor: "white",
-                      border: "1px solid #E5E7EB",
+                      }
+                    }}
+                    style={{
+                      padding: "4px 8px",
                       borderRadius: "10px",
-                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                      zIndex: 100,
-                      maxHeight: "150px",
-                      overflowY: "auto"
-                    }}>
-                      {localeResults.map((res, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => {
-                            updateLocation(res.name);
-                            setIsEditingLocale(false);
-                            setLocaleSearchQuery("");
-                            setLocaleResults([]);
-                          }}
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: "0.8rem",
-                            borderBottom: idx === localeResults.length - 1 ? "none" : "1px solid #F3F4F6",
-                            cursor: "pointer",
-                            whiteSpace: "normal",
-                            wordBreak: "break-word",
-                            color: "#374151"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                        >
-                          <strong>{res.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.7rem" }}>({res.display_name})</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                      border: "1.5px solid var(--color-purple)",
+                      fontSize: "0.8rem",
+                      outline: "none",
+                      color: "#374151",
+                      width: "150px"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateLocation(localeSearchQuery.trim());
+                      setIsEditingLocale(false);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#10B981",
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                      fontWeight: 700
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingLocale(false);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#EF4444",
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                      fontWeight: 700
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               )}
             </div>
@@ -2505,70 +2788,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         }
 
                         if (historyViewMode === "spreadsheet") {
-                          const renderCell = (group, cat, label) => {
-                            const catData = group.categories[cat];
-                            const amt = catData ? catData.total : 0;
-                            
-                            if (amt === 0) {
-                              return (
-                                <td style={{ padding: "12px 12px", textAlign: "right", color: "#D1D5DB" }}>
-                                  -
-                                </td>
-                              );
-                            }
-                            
-                            return (
-                              <td 
-                                onClick={() => setDrillDownExpenses({
-                                  title: `${label} on ${group.dateDisplay}`,
-                                  dateKey: group.dateKey,
-                                  category: cat
-                                })}
-                                style={{ 
-                                  padding: "12px 12px", 
-                                  textAlign: "right", 
-                                  fontWeight: 700, 
-                                  color: CATEGORY_COLORS[cat] || "var(--color-purple)",
-                                  cursor: "pointer",
-                                  textDecoration: "underline",
-                                  textDecorationStyle: "dotted",
-                                  textUnderlineOffset: "3px"
-                                }}
-                                title="Click to view details"
-                              >
-                                {formatMoney(amt, trip.homeCurrency)}
-                              </td>
-                            );
-                          };
-
                           return (
                             <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                              <div style={{ fontSize: "0.75rem", color: "#6B7280", display: "flex", alignItems: "center", gap: "4px", padding: "0 4px" }}>
-                                <span>💡 Scroll horizontally. Tap underlined amounts to drill down.</span>
-                              </div>
                               <div style={{
                                 width: "100%",
-                                overflowX: "auto",
                                 borderRadius: "16px",
                                 border: "1.5px solid #E5E7EB",
                                 backgroundColor: "white",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
-                                WebkitOverflowScrolling: "touch"
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.01)"
                               }}>
-                                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "550px", fontSize: "0.82rem", textAlign: "left" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
                                   <thead>
                                     <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563" }}>Date</th>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563" }}>Location(s)</th>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Stay</th>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Transit</th>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Food</th>
-                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Other</th>
+                                      <th style={{ padding: "10px 10px", fontWeight: 700, color: "#4B5563" }}>Date & Location</th>
+                                      <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Stay</th>
+                                      <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Transit</th>
+                                      <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Food</th>
+                                      <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Other</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {olderGroupsArray.map((group) => {
-                                      const locString = group.locationsList.map(loc => `📍 ${loc}`).join(" ") || "-";
                                       return (
                                         <tr key={group.dateKey} style={{ borderBottom: "1px solid #F3F4F6", transition: "background-color 0.15s" }}>
                                           <td 
@@ -2578,29 +2818,31 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                               category: "ALL"
                                             })}
                                             style={{ 
-                                              padding: "12px 12px", 
-                                              fontWeight: 700, 
-                                              color: "#374151",
+                                              padding: "10px 10px", 
                                               cursor: "pointer",
                                               textDecoration: "underline",
                                               textDecorationStyle: "dotted",
-                                              textUnderlineOffset: "3px",
-                                              whiteSpace: "nowrap"
+                                              textUnderlineOffset: "3px"
                                             }}
                                             title="Click to view all expenses"
                                           >
-                                            {group.dateDisplay}
-                                          </td>
-                                          <td style={{ 
-                                            padding: "12px 12px", 
-                                            color: group.locationsList.length > 0 ? "var(--color-orange)" : "#9CA3AF", 
-                                            fontWeight: group.locationsList.length > 0 ? 600 : 400,
-                                            maxWidth: "180px",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap"
-                                          }}>
-                                            {locString}
+                                            <div style={{ fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>
+                                              {group.dateDisplay}
+                                            </div>
+                                            {group.locationsList.length > 0 && (
+                                              <div style={{
+                                                fontSize: "0.7rem",
+                                                color: "var(--color-orange)",
+                                                fontWeight: 700,
+                                                marginTop: "2px",
+                                                whiteSpace: "nowrap",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                maxWidth: "100px"
+                                              }}>
+                                                📍 {group.locationsList[0]}
+                                              </div>
+                                            )}
                                           </td>
                                           {renderCell(group, "Accommodation", "Stay")}
                                           {renderCell(group, "Transportation", "Transit")}
@@ -3195,15 +3437,8 @@ function ExpenseCard({
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
 
-  // Parse custom note suffix for spread/repeat details if present: e.g. "Hotel Booking (Day 1/7, May 23 - May 29)"
-  const spreadMatch = expense.note ? expense.note.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
-  const displayNote = spreadMatch ? spreadMatch[1].trim() : (expense.note || expense.category);
-  const isRepeat = expense.tags?.includes("spread-mode-repeat");
-  const spreadInfo = spreadMatch 
-    ? `${isRepeat ? "Repeat" : "Spread"}: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` 
-    : null;
-
-  const truncatedNote = displayNote.length > 30 ? `${displayNote.slice(0, 30)}...` : displayNote;
+  const firstLineNote = displayNote.split("\n")[0].trim();
+  const truncatedNote = firstLineNote.length > 30 ? `${firstLineNote.slice(0, 30)}...` : firstLineNote;
 
   return (
     <div 
@@ -3417,7 +3652,6 @@ function ExpenseCard({
   );
 }
 
-
 // Modal for adding or editing expenses manually
 function ManualEntryModal({
   onClose,
@@ -3456,61 +3690,17 @@ function ManualEntryModal({
 
   const fileInputRef = useRef(null);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
-  const [showLocSearchInput, setShowLocSearchInput] = useState(false);
-  const [locSearchQuery, setLocSearchQuery] = useState("");
-  const [locSearchResults, setLocSearchResults] = useState([]);
-  const [searchingLoc, setSearchingLoc] = useState(false);
-  const [coords, setCoords] = useState(null);
+  const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
+    return expenseToEdit && expenseToEdit.location ? true : false;
+  });
+  const [isMounting, setIsMounting] = useState(true);
 
-  // Get user geolocation coordinates to restrict search within 50km
   useEffect(() => {
-    if (typeof window !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCoords({
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude
-          });
-        },
-        (err) => {
-          console.warn("Geolocation permission denied or error:", err);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    }
+    const timer = setTimeout(() => {
+      setIsMounting(false);
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
-
-  const searchEstablishmentBounded = async (query) => {
-    if (!query || query.trim().length < 2) {
-      setLocSearchResults([]);
-      return;
-    }
-    setSearchingLoc(true);
-    try {
-      let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`;
-      if (coords) {
-        const latDiff = 50 / 111.0;
-        const lonDiff = 50 / (111.0 * Math.cos(coords.lat * Math.PI / 180));
-        const left = coords.lon - lonDiff;
-        const right = coords.lon + lonDiff;
-        const top = coords.lat + latDiff;
-        const bottom = coords.lat - latDiff;
-        url += `&viewbox=${left},${top},${right},${bottom}&bounded=1`;
-      }
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setLocSearchResults(data.map(item => ({
-          display_name: item.display_name,
-          name: item.name || item.display_name.split(",")[0]
-        })));
-      }
-    } catch (err) {
-      console.error("Error searching establishment:", err);
-    } finally {
-      setSearchingLoc(false);
-    }
-  };
 
   const tripHashtags = (() => {
     const tagsSet = new Set();
@@ -3527,17 +3717,15 @@ function ManualEntryModal({
   })();
 
   const [amount, setAmount] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.amount;
+    if (expenseToEdit) return expenseToEdit.amount.toString();
     const draft = getDraft();
-    return draft ? draft.amount : "";
+    return draft ? (draft.amount !== undefined ? draft.amount.toString() : "") : "";
   });
   const [title, setTitle] = useState(() => {
     if (expenseToEdit) {
       const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
-      const baseTitle = parts[0];
-      const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
-      return baseTitle + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
+      return parts[0];
     }
     const draft = getDraft();
     return draft ? draft.title || "" : "";
@@ -3634,12 +3822,10 @@ function ManualEntryModal({
       const cleanNote = expenseToEdit.note !== undefined ? expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "") : "";
       const parts = cleanNote.split("\n\n");
       const baseTitle = parts[0];
-      const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
-      const titleWithTags = baseTitle + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
       const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
-      setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
-      setTitle(titleWithTags);
+      setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount.toString() : "");
+      setTitle(baseTitle);
       setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
@@ -3736,26 +3922,6 @@ function ManualEntryModal({
     reader.readAsDataURL(file);
   };
 
-  const searchLocation = async () => {
-    if (!location || !location.trim()) return;
-    setSearchingMap(true);
-    setMapResults([]);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=5`);
-      if (res.ok) {
-        const data = await res.json();
-        setMapResults(data.map(item => ({
-          display_name: item.display_name,
-          name: item.name || item.display_name.split(",")[0]
-        })));
-      }
-    } catch (err) {
-      console.error("Error searching location:", err);
-    } finally {
-      setSearchingMap(false);
-    }
-  };
-
   return (
     <div 
       onClick={onClose}
@@ -3802,7 +3968,7 @@ function ManualEntryModal({
           maxWidth: "400px",
           borderRadius: "24px",
           padding: "20px 18px",
-          animation: "fadeInUp 0.25s ease-out",
+          animation: isMounting ? "fadeInUp 0.25s ease-out" : "none",
           maxHeight: "85vh",
           overflowY: "auto",
           boxShadow: worthIt ? "0 20px 50px rgba(245, 158, 11, 0.25)" : "0 20px 40px rgba(0,0,0,0.12)",
@@ -3840,7 +4006,8 @@ function ManualEntryModal({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const val = parseFloat(amount);
+            const evaluatedAmount = evaluateMathExpression(amount);
+            const val = parseFloat(evaluatedAmount);
             if (!amount || isNaN(val) || val <= 0) {
               alert("Please enter a valid positive amount.");
               return;
@@ -3920,88 +4087,29 @@ function ManualEntryModal({
               textTransform: "uppercase",
               letterSpacing: "0.5px"
             }}>Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Coffee before train"
-              required
-              style={{
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB",
-                fontSize: "15px",
-                outline: "none"
-              }}
-            />
-          </div>
-
-          {/* Amount input block below Title */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <label style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Amount</label>
             <div style={{
               display: "flex",
               alignItems: "center",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "6px 10px",
-              border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              marginBottom: "4px"
+              padding: "6px 12px",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)"
             }}>
-              <SearchableCurrencySelect
-                value={currency}
-                onChange={setCurrency}
-                rates={rates}
-                customCurrencies={customCurrencies}
-                onAddCustomCurrency={onAddCustomCurrency}
-                style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
-              />
-              {(() => {
-                const val = parseFloat(amount);
-                const showConversion = currency !== trip.homeCurrency && !isNaN(val) && val > 0;
-                const convertedVal = showConversion ? convertCurrency(val, currency, trip.homeCurrency, rates) : 0;
-                if (!showConversion) return null;
-                return (
-                  <span style={{
-                    fontSize: "0.82rem",
-                    color: "#6B7280",
-                    fontWeight: 600,
-                    marginLeft: "4px",
-                    whiteSpace: "nowrap"
-                  }}>
-                    ≈ {formatMoney(convertedVal, trip.homeCurrency)}
-                  </span>
-                );
-              })()}
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "" || parseFloat(val) >= 0) {
-                    setAmount(val);
-                  }
-                }}
-                placeholder="0.00"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Coffee before train"
+                required
                 style={{
                   flex: 1,
                   border: "none",
                   background: "transparent",
-                  fontSize: "1.4rem",
-                  fontWeight: 800,
+                  fontSize: "15px",
                   outline: "none",
                   width: "100%",
                   color: "#111827",
-                  textAlign: "right",
-                  paddingRight: "6px"
+                  padding: "4px 0"
                 }}
               />
               
@@ -4052,9 +4160,85 @@ function ManualEntryModal({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Amount input block below Title */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <label style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Amount</label>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "#F9F6ED",
+              borderRadius: "16px",
+              padding: "6px 12px",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)",
+              marginBottom: "4px"
+            }}>
+              <SearchableCurrencySelect
+                value={currency}
+                onChange={setCurrency}
+                rates={rates}
+                customCurrencies={customCurrencies}
+                onAddCustomCurrency={onAddCustomCurrency}
+                style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
+              />
+              {(() => {
+                const cleanAmt = evaluateMathExpression(amount);
+                const val = parseFloat(cleanAmt);
+                const showConversion = currency !== trip.homeCurrency && !isNaN(val) && val > 0;
+                const convertedVal = showConversion ? convertCurrency(val, currency, trip.homeCurrency, rates) : 0;
+                if (!showConversion) return null;
+                return (
+                  <span style={{
+                    fontSize: "0.82rem",
+                    color: "#6B7280",
+                    fontWeight: 600,
+                    marginLeft: "4px",
+                    whiteSpace: "nowrap"
+                  }}>
+                    ≈ {formatMoney(convertedVal, trip.homeCurrency)}
+                  </span>
+                );
+              })()}
+              <input
+                type="text"
+                value={amount}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[0-9+\-*/().\s]*$/.test(val)) {
+                    setAmount(val);
+                  }
+                }}
+                onBlur={() => {
+                  const evaluated = evaluateMathExpression(amount);
+                  setAmount(evaluated);
+                }}
+                placeholder="0.00"
+                style={{
+                  flex: 1,
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
+                  outline: "none",
+                  width: "100%",
+                  color: "#111827",
+                  textAlign: "right",
+                  paddingRight: "6px",
+                  padding: "4px 0"
+                }}
+              />
+            </div>
             
             {/* Rates time and refresh inside manual entry modal */}
             {(() => {
+              if (currency === trip.homeCurrency) return null;
               const lastRates = localStorage.getItem("tracker_rates_last_updated");
               if (!lastRates) return null;
               const diffMs = Date.now() - parseInt(lastRates, 10);
@@ -4065,7 +4249,7 @@ function ManualEntryModal({
               const inverseRateVal = rateVal > 0 ? 1 / rateVal : 0;
               
               let rateText = "";
-              if (currency !== trip.homeCurrency && rateVal > 0) {
+              if (rateVal > 0) {
                 if (rateVal >= 1) {
                   rateText = `1 ${currency} ≈ ${rateVal.toFixed(2)} ${trip.homeCurrency}`;
                 } else {
@@ -4295,17 +4479,16 @@ function ManualEntryModal({
             </div>
 
             {/* Worth It Column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
               <label style={{
                 fontSize: "0.72rem",
                 fontWeight: 700,
-                color: worthIt ? "#B45309" : "#4B5563",
+                color: "#4B5563",
                 textTransform: "uppercase",
                 letterSpacing: "0.5px"
-              }}>
-                {worthIt ? "Worth it." : "Worth it?"}
-              </label>
-              <div 
+              }}>Worth it?</label>
+              <button
+                type="button"
                 onClick={() => {
                   const newValue = !worthIt;
                   setWorthIt(newValue);
@@ -4314,34 +4497,25 @@ function ManualEntryModal({
                   }
                 }}
                 style={{
-                  width: "52px",
-                  height: "28px",
-                  borderRadius: "15px",
-                  backgroundColor: worthIt ? "#F59E0B" : "#D1D5DB",
-                  padding: "3px",
-                  cursor: "pointer",
-                  transition: "background-color 0.25s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  boxShadow: worthIt ? "0 2px 8px rgba(245, 158, 11, 0.3)" : "none"
-                }}
-              >
-                <div style={{
-                  width: "22px",
-                  height: "22px",
-                  borderRadius: "50%",
-                  backgroundColor: "white",
-                  transform: worthIt ? "translateX(24px)" : "translateX(0)",
-                  transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "0.75rem",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.15)"
-                }}>
-                  {worthIt ? "🌟" : "💸"}
-                </div>
-              </div>
+                  backgroundColor: worthIt ? "#FFFBEB" : "white",
+                  borderRadius: "14px",
+                  padding: "10px 12px",
+                  border: worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: worthIt ? "#B45309" : "#6B7280",
+                  outline: "none",
+                  width: "100%",
+                  textAlign: "center",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                {worthIt ? "🌟 Worth it." : "💸 Worth it?"}
+              </button>
             </div>
           </div>
 
@@ -4513,7 +4687,8 @@ function ManualEntryModal({
                     const end = new Date(spreadEnd + "T00:00:00");
                     if (!isNaN(start) && !isNaN(end) && end >= start) {
                       const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                      const val = parseFloat(amount);
+                      const evaluatedAmt = evaluateMathExpression(amount);
+                      const val = parseFloat(evaluatedAmt);
                       const dailyPortion = !isNaN(val) && val > 0 
                         ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
                         : "0.00";
@@ -4551,8 +4726,6 @@ function ManualEntryModal({
             </div>
           )}
 
-
-
           {/* Notes Input at the bottom */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{
@@ -4563,57 +4736,67 @@ function ManualEntryModal({
               letterSpacing: "0.5px"
             }}>Notes</label>
             
-            <textarea
-              value={extraNotes}
-              onChange={(e) => setExtraNotes(e.target.value)}
-              placeholder="Any additional details or thoughts..."
-              rows={2}
-              style={{
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB",
-                fontSize: "15px",
-                outline: "none",
-                resize: "none",
-                fontFamily: "inherit"
-              }}
-            />
-
-            <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "2px" }}>
-              <button
-                type="button"
-                onClick={() => setShowHashtagsDropdown(!showHashtagsDropdown)}
+            <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+              <textarea
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                placeholder="Any additional details or thoughts..."
+                rows={2}
                 style={{
-                  backgroundColor: "#F3F4F6",
-                  border: "1px solid #D1D5DB",
-                  borderRadius: "8px",
-                  padding: "4px 10px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  color: "var(--color-purple)",
-                  fontWeight: "bold",
-                  outline: "none"
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid #E5E7EB",
+                  fontSize: "15px",
+                  outline: "none",
+                  resize: "none",
+                  fontFamily: "inherit"
                 }}
-                title="Attach tag"
-              >
-                #
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowLocSearchInput(!showLocSearchInput)}
-                style={{
-                  backgroundColor: "#F3F4F6",
-                  border: "1px solid #D1D5DB",
-                  borderRadius: "8px",
-                  padding: "4px 10px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  outline: "none"
-                }}
-                title="Attach establishment"
-              >
-                📍
-              </button>
+              />
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowHashtagsDropdown(!showHashtagsDropdown)}
+                  style={{
+                    backgroundColor: "#F3F4F6",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    width: "36px",
+                    height: "36px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "0.95rem",
+                    color: "var(--color-purple)",
+                    fontWeight: "bold",
+                    outline: "none"
+                  }}
+                  title="Attach tag"
+                >
+                  #
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLocSearchInput(!showLocSearchInput)}
+                  style={{
+                    backgroundColor: "#F3F4F6",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    width: "36px",
+                    height: "36px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "0.95rem",
+                    outline: "none"
+                  }}
+                  title="Attach establishment"
+                >
+                  📍
+                </button>
+              </div>
             </div>
 
             {/* Hashtags Dropdown */}
@@ -4670,126 +4853,35 @@ function ManualEntryModal({
               </div>
             )}
 
-            {/* Location Autocomplete Search */}
+            {/* Plain Text Location/Establishment Input */}
             {showLocSearchInput && (
               <div style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "6px",
-                marginTop: "4px",
-                padding: "10px",
-                backgroundColor: "#F9FAFB",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB"
+                gap: "3px",
+                marginTop: "4px"
               }}>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <input
-                    type="text"
-                    value={locSearchQuery}
-                    onChange={(e) => {
-                      setLocSearchQuery(e.target.value);
-                      searchEstablishmentBounded(e.target.value);
-                    }}
-                    placeholder="Search establishment (e.g. Common Ground Cafe)..."
-                    autoFocus
-                    style={{
-                      flex: 1,
-                      padding: "8px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid #D1D5DB",
-                      fontSize: "14px",
-                      outline: "none"
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLocSearchInput(false);
-                      setLocSearchQuery("");
-                      setLocSearchResults([]);
-                    }}
-                    style={{
-                      backgroundColor: "transparent",
-                      border: "none",
-                      color: "#9CA3AF",
-                      fontSize: "0.85rem",
-                      cursor: "pointer",
-                      fontWeight: 600
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {locSearchResults.length > 0 && (
-                  <div style={{
-                    backgroundColor: "white",
-                    border: "1px solid #E5E7EB",
-                    borderRadius: "8px",
-                    maxHeight: "150px",
-                    overflowY: "auto"
-                  }}>
-                    {locSearchResults.map((result, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => {
-                          setEstablishment(result.name);
-                          setShowLocSearchInput(false);
-                          setLocSearchQuery("");
-                          setLocSearchResults([]);
-                        }}
-                        style={{
-                          padding: "8px 12px",
-                          fontSize: "0.82rem",
-                          borderBottom: idx === locSearchResults.length - 1 ? "none" : "1px solid #F3F4F6",
-                          cursor: "pointer",
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                          lineHeight: "1.3"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                      >
-                        <strong>{result.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.75rem" }}>({result.display_name})</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {searchingLoc && (
-                  <div style={{ fontSize: "0.75rem", color: "#6B7280", paddingLeft: "4px" }}>Searching...</div>
-                )}
-              </div>
-            )}
-
-            {establishment && (
-              <div style={{ display: "flex", marginTop: "4px" }}>
-                <span style={{
-                  fontSize: "0.8rem",
+                <label style={{
+                  fontSize: "0.72rem",
                   fontWeight: 700,
-                  color: "#B45309",
-                  backgroundColor: "#FEF3C7",
-                  padding: "4px 10px",
-                  borderRadius: "8px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px"
-                }}>
-                  📍 {establishment}
-                  <button
-                    type="button"
-                    onClick={() => setEstablishment("")}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#B45309",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      padding: 0,
-                      fontSize: "0.85rem"
-                    }}
-                  >
-                    [✕]
-                  </button>
-                </span>
+                  color: "#4B5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>Location / Establishment</label>
+                <input
+                  type="text"
+                  value={establishment}
+                  onChange={(e) => setEstablishment(e.target.value)}
+                  placeholder="e.g. Common Ground Cafe, Siargao"
+                  autoFocus
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "12px",
+                    border: "1px solid #E5E7EB",
+                    fontSize: "15px",
+                    outline: "none"
+                  }}
+                />
               </div>
             )}
           </div>
