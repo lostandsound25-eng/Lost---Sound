@@ -5510,6 +5510,7 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [emailError, setEmailError] = useState(null);
   const [currentUserEmail, setCurrentUserEmail] = useState("");
 
   useEffect(() => {
@@ -5570,6 +5571,7 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
     setLoading(true);
     setError(null);
     setSuccess(false);
+    setEmailError(null);
     try {
       const cleanEmail = email.trim().toLowerCase();
       const { error: inviteErr } = await supabase
@@ -5587,7 +5589,7 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
         const inviterEmail = session?.user?.email || "Your travel partner";
         const origin = typeof window !== "undefined" ? window.location.origin : "https://lostandsound.org";
 
-        await fetch("/api/invite", {
+        const res = await fetch("/api/invite", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -5600,8 +5602,13 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
             origin
           })
         });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          setEmailError(errData.error || "Failed to send email");
+        }
       } catch (emailErr) {
         console.error("Invite email send error:", emailErr);
+        setEmailError(emailErr.message || "Network error");
       }
 
       setSuccess(true);
@@ -5718,8 +5725,15 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
             This whitelists their email address. Make sure to copy the invite link above and send it to them.
           </span>
           {success && (
-            <p style={{ color: "#10B981", fontSize: "0.8rem", marginTop: "8px", fontWeight: 600, lineHeight: "1.3" }}>
-              ✅ Whitelisted and invite email sent! They can click the link in their email to join.
+            <p style={{ color: emailError ? "#D97706" : "#10B981", fontSize: "0.8rem", marginTop: "8px", fontWeight: 600, lineHeight: "1.3" }}>
+              {emailError ? (
+                <>
+                  ⚠️ Whitelisted successfully, but the invite email could not be sent: <span style={{ fontWeight: 700 }}>{emailError}</span>.
+                  <br />Please copy and send the private invite link above manually.
+                </>
+              ) : (
+                "✅ Whitelisted and invite email sent! They can click the link in their email to join."
+              )}
             </p>
           )}
           {error && <p style={{ color: "#EF4444", fontSize: "0.8rem", marginTop: "6px", fontWeight: 500 }}>{error}</p>}
