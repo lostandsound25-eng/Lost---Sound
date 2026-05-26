@@ -2788,6 +2788,42 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         }
 
                         if (historyViewMode === "spreadsheet") {
+                          const renderCell = (group, cat, label) => {
+                            const catData = group.categories[cat];
+                            const amt = catData ? catData.total : 0;
+                            
+                            if (amt === 0) {
+                              return (
+                                <td style={{ padding: "10px 8px", textAlign: "right", color: "#D1D5DB" }}>
+                                  -
+                                </td>
+                              );
+                            }
+                            
+                            return (
+                              <td 
+                                onClick={() => setDrillDownExpenses({
+                                  title: `${label} on ${group.dateDisplay}`,
+                                  dateKey: group.dateKey,
+                                  category: cat
+                                })}
+                                style={{ 
+                                  padding: "10px 8px", 
+                                  textAlign: "right", 
+                                  fontWeight: 700, 
+                                  color: CATEGORY_COLORS[cat] || "var(--color-purple)",
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                  textDecorationStyle: "dotted",
+                                  textUnderlineOffset: "3px"
+                                }}
+                                title="Click to view details"
+                              >
+                                {formatMoney(amt, trip.homeCurrency)}
+                              </td>
+                            );
+                          };
+
                           return (
                             <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
                               <div style={{
@@ -3437,6 +3473,14 @@ function ExpenseCard({
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
 
+  // Parse custom note suffix for spread/repeat details if present: e.g. "Hotel Booking (Day 1/7, May 23 - May 29)"
+  const spreadMatch = expense.note ? expense.note.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
+  const displayNote = expense.note ? (spreadMatch ? spreadMatch[1].trim() : expense.note) : (expense.category || "");
+  const isRepeat = expense.tags?.includes("spread-mode-repeat");
+  const spreadInfo = spreadMatch 
+    ? `${isRepeat ? "Repeat" : "Spread"}: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` 
+    : null;
+
   const firstLineNote = displayNote.split("\n")[0].trim();
   const truncatedNote = firstLineNote.length > 30 ? `${firstLineNote.slice(0, 30)}...` : firstLineNote;
 
@@ -3717,22 +3761,26 @@ function ManualEntryModal({
   })();
 
   const [amount, setAmount] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.amount.toString();
+    if (expenseToEdit && expenseToEdit.amount !== undefined && expenseToEdit.amount !== null) {
+      return expenseToEdit.amount.toString();
+    }
     const draft = getDraft();
-    return draft ? (draft.amount !== undefined ? draft.amount.toString() : "") : "";
+    return draft && draft.amount !== undefined && draft.amount !== null ? draft.amount.toString() : "";
   });
   const [title, setTitle] = useState(() => {
     if (expenseToEdit) {
-      const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      const rawNote = expenseToEdit.note || "";
+      const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
-      return parts[0];
+      return parts[0] || "";
     }
     const draft = getDraft();
     return draft ? draft.title || "" : "";
   });
   const [extraNotes, setExtraNotes] = useState(() => {
     if (expenseToEdit) {
-      const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      const rawNote = expenseToEdit.note || "";
+      const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
       return parts.length > 1 ? parts.slice(1).join("\n\n") : "";
     }
@@ -3745,7 +3793,7 @@ function ManualEntryModal({
     return draft ? draft.photoUrl || "" : "";
   });
   const [category, setCategory] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.category;
+    if (expenseToEdit) return expenseToEdit.category || "Everything Else";
     const draft = getDraft();
     return draft ? draft.category : "Everything Else";
   });
@@ -3755,16 +3803,19 @@ function ManualEntryModal({
     return draft ? !!draft.worthIt : false;
   });
   const [currency, setCurrency] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.currency;
+    if (expenseToEdit) return expenseToEdit.currency || trip.localCurrency;
     const draft = getDraft();
     if (draft && draft.currency) return draft.currency;
     const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
     return lastUsed || trip.localCurrency;
   });
   const [establishment, setEstablishment] = useState(() => {
-    if (expenseToEdit) return (expenseToEdit.location.split(" | ")[0] || "");
+    if (expenseToEdit) {
+      const dbLoc = expenseToEdit.location || "";
+      return (dbLoc.split(" | ")[0] || "");
+    }
     const draft = getDraft();
-    return draft ? draft.location : "";
+    return draft ? draft.location || "" : "";
   });
   const [spreadExpense, setSpreadExpense] = useState(() => {
     if (expenseToEdit && expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
@@ -3799,11 +3850,16 @@ function ManualEntryModal({
     return getFutureDateString(6);
   });
 
-  const [expenseDate, setExpenseDate] = useState(
-    expenseToEdit 
-      ? new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA') 
-      : new Date().toLocaleDateString('en-CA')
-  );
+  const [expenseDate, setExpenseDate] = useState(() => {
+    if (expenseToEdit && expenseToEdit.timestamp) {
+      try {
+        return new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA');
+      } catch (e) {
+        return new Date().toLocaleDateString('en-CA');
+      }
+    }
+    return new Date().toLocaleDateString('en-CA');
+  });
 
   // Sync editEntireGroup changes
   useEffect(() => {
@@ -3819,12 +3875,13 @@ function ManualEntryModal({
   // Sync inputs with expenseToEdit changes (e.g. from async speech parser)
   useEffect(() => {
     if (expenseToEdit) {
-      const cleanNote = expenseToEdit.note !== undefined ? expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "") : "";
+      const rawNote = expenseToEdit.note || "";
+      const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
-      const baseTitle = parts[0];
+      const baseTitle = parts[0] || "";
       const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
-      setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount.toString() : "");
+      setAmount(expenseToEdit.amount !== undefined && expenseToEdit.amount !== null ? expenseToEdit.amount.toString() : "");
       setTitle(baseTitle);
       setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
@@ -3832,11 +3889,17 @@ function ManualEntryModal({
       setCurrency(expenseToEdit.currency || trip.localCurrency);
       setEstablishment(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
       setPhotoUrl(expenseToEdit.photoUrl || "");
-      setExpenseDate(
-        expenseToEdit.timestamp 
-          ? new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA') 
-          : new Date().toLocaleDateString('en-CA')
-      );
+
+      let initialDateStr = new Date().toLocaleDateString('en-CA');
+      if (expenseToEdit.timestamp) {
+        try {
+          initialDateStr = new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA');
+        } catch (e) {
+          console.error("Invalid expenseToEdit timestamp sync:", e);
+        }
+      }
+      setExpenseDate(initialDateStr);
+
       if (expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
         setSpreadExpense(true);
       } else {
