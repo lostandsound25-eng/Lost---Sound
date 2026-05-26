@@ -3776,7 +3776,10 @@ function ManualEntryModal({
     const top5Recent = uniqueTags.slice(0, 5);
     top5Recent.sort((a, b) => tagCounts[b] - tagCounts[a]);
     
-    return top5Recent;
+    return {
+      top5: top5Recent,
+      all: Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a])
+    };
   })();
 
   const [amount, setAmount] = useState(() => {
@@ -4941,8 +4944,8 @@ function ManualEntryModal({
             {/* Hashtags Dropdown */}
             {(() => {
               const filteredHashtags = hashtagFilter
-                ? tripHashtags.filter(tag => tag.toLowerCase().includes(hashtagFilter.toLowerCase()))
-                : tripHashtags;
+                ? (tripHashtags.all || []).filter(tag => tag.toLowerCase().includes(hashtagFilter.toLowerCase()))
+                : (tripHashtags.top5 || []);
               
               if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
 
