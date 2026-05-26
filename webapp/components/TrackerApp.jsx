@@ -3735,6 +3735,7 @@ function ManualEntryModal({
   const fileInputRef = useRef(null);
   const notesInputRef = useRef(null);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
+  const [hashtagFilter, setHashtagFilter] = useState("");
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
     return expenseToEdit && expenseToEdit.location ? true : false;
   });
@@ -4846,7 +4847,21 @@ function ManualEntryModal({
               <textarea
                 ref={notesInputRef}
                 value={extraNotes}
-                onChange={(e) => setExtraNotes(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setExtraNotes(val);
+                  
+                  const selStart = e.target.selectionStart;
+                  const textBeforeCursor = val.substring(0, selStart);
+                  const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                  if (hashtagMatch) {
+                    setShowHashtagsDropdown(true);
+                    setHashtagFilter(hashtagMatch[1]);
+                  } else {
+                    setShowHashtagsDropdown(false);
+                    setHashtagFilter("");
+                  }
+                }}
                 placeholder="Add details, or use # to further categorize your spending"
                 rows={2}
                 style={{
@@ -4872,6 +4887,7 @@ function ManualEntryModal({
                       if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return prev + "#";
                       return prev + " #";
                     });
+                    setHashtagFilter("");
                     setTimeout(() => {
                       if (notesInputRef.current) {
                         notesInputRef.current.focus();
@@ -4923,38 +4939,78 @@ function ManualEntryModal({
             </div>
 
             {/* Hashtags Dropdown */}
-            {showHashtagsDropdown && (
-              <div style={{ position: "relative" }}>
-                <div style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  right: 0,
-                  backgroundColor: "white",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "12px",
-                  boxShadow: "0 10px 25 rgba(0, 0, 0, 0.1)",
-                  zIndex: 200,
-                  maxHeight: "150px",
-                  overflowY: "auto",
-                  padding: "6px",
-                  marginTop: "4px"
-                }}>
-                  {tripHashtags.length === 0 ? (
-                    <div style={{ padding: "8px", fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center" }}>
-                      No tags used yet. Type #tag manually!
-                    </div>
-                  ) : (
+            {(() => {
+              const filteredHashtags = hashtagFilter
+                ? tripHashtags.filter(tag => tag.toLowerCase().includes(hashtagFilter.toLowerCase()))
+                : tripHashtags;
+              
+              if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
+
+              return (
+                <div style={{ position: "relative" }}>
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "white",
+                    border: "1px solid #E5E7EB",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+                    zIndex: 200,
+                    maxHeight: "150px",
+                    overflowY: "auto",
+                    padding: "6px",
+                    marginTop: "4px"
+                  }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px" }}>
-                      {tripHashtags.map((tag) => (
+                      {filteredHashtags.map((tag) => (
                         <button
                           key={tag}
                           type="button"
                           onClick={() => {
-                            if (!extraNotes.includes(`#${tag}`)) {
-                              setExtraNotes(prev => prev.trim() + ` #${tag}`);
+                            if (notesInputRef.current) {
+                              const el = notesInputRef.current;
+                              const val = el.value;
+                              const selStart = el.selectionStart;
+                              
+                              const textBeforeCursor = val.substring(0, selStart);
+                              const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                              
+                              if (hashtagMatch) {
+                                const matchIndex = hashtagMatch.index;
+                                const beforeMatch = textBeforeCursor.substring(0, matchIndex);
+                                const afterCursor = val.substring(selStart);
+                                const newVal = beforeMatch + `#${tag}` + afterCursor;
+                                setExtraNotes(newVal);
+                                
+                                setTimeout(() => {
+                                  el.focus();
+                                  const newCursorPos = beforeMatch.length + tag.length + 1;
+                                  el.setSelectionRange(newCursorPos, newCursorPos);
+                                }, 50);
+                              } else {
+                                if (!val.includes(`#${tag}`)) {
+                                  const trimmed = val.trim();
+                                  if (trimmed.length === 0) setExtraNotes(`#${tag}`);
+                                  else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) setExtraNotes(trimmed + `#${tag}`);
+                                  else setExtraNotes(trimmed + ` #${tag}`);
+                                }
+                              }
+                            } else {
+                              setExtraNotes(prev => {
+                                const trimmed = prev || "";
+                                if (trimmed.endsWith("#")) return trimmed.slice(0, -1) + `#${tag}`;
+                                if (!trimmed.includes(`#${tag}`)) {
+                                  if (trimmed.length === 0) return `#${tag}`;
+                                  if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return trimmed + `#${tag}`;
+                                  return trimmed + ` #${tag}`;
+                                }
+                                return prev;
+                              });
                             }
                             setShowHashtagsDropdown(false);
+                            setHashtagFilter("");
                           }}
                           style={{
                             padding: "4px 8px",
@@ -4971,10 +5027,10 @@ function ManualEntryModal({
                         </button>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Plain Text Location/Establishment Input */}
             {showLocSearchInput && (
