@@ -13,6 +13,13 @@ const MicIcon = () => (
   </svg>
 );
 
+const CameraIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+
 const PlusIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19" />
@@ -184,6 +191,33 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [showFuture, setShowFuture] = useState(false);
   const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
   const [logView, setLogView] = useState("recent"); // 'recent' or 'history'
+  const [historyViewMode, setHistoryViewMode] = useState("cards"); // 'cards' or 'spreadsheet'
+  const [drillDownExpenses, setDrillDownExpenses] = useState(null);
+
+  const getDrillDownList = () => {
+    if (!drillDownExpenses) return [];
+    const { tag, dateKey, category, list } = drillDownExpenses;
+    const nowLimit = new Date();
+    if (tag) {
+      return expenses.filter(e => {
+        const cleanTags = e.tags ? e.tags.filter(t => !t.startsWith("spread-")) : [];
+        return cleanTags.includes(tag) && new Date(e.timestamp) <= nowLimit;
+      });
+    }
+    if (dateKey) {
+      return expenses.filter(e => {
+        const d = new Date(e.timestamp);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const matchesDate = k === dateKey && d <= nowLimit;
+        if (!matchesDate) return false;
+        if (category && category !== "ALL") {
+          return e.category === category;
+        }
+        return true;
+      });
+    }
+    return list || [];
+  };
   const [logLimit, setLogLimit] = useState(5);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -496,10 +530,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     } else if (tripId && supabase) {
       // Load from local cache first for instant loading
       const cacheTrip = localStorage.getItem(`tracker_trip_${tripId}`);
-      if (cacheTrip) setTrip(JSON.parse(cacheTrip));
-      
       const cacheExpenses = localStorage.getItem(`tracker_expenses_${tripId}`);
-      if (cacheExpenses) setExpenses(JSON.parse(cacheExpenses));
+      if (cacheTrip) {
+        setTrip(JSON.parse(cacheTrip));
+        if (cacheExpenses) {
+          setExpenses(JSON.parse(cacheExpenses));
+        }
+        setIsMounted(true);
+      }
 
       loadTripFromCloud(tripId);
     } else {
@@ -579,34 +617,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const processSyncQueue = async () => {
     if (isDemo || syncQueue.length === 0 || !navigator.onLine || !supabase) return;
-
+    setIsSyncing(true);
     const queue = [...syncQueue];
     let successCount = 0;
 
-    for (const op of queue) {
-      try {
-        let error = null;
-        if (op.type === "insert") {
-          const { error: err } = await supabase.from("trip_entries").insert(op.payload);
-          error = err;
-        } else if (op.type === "update") {
-          const { error: err } = await supabase.from("trip_entries").update(op.payload).eq("id", op.payload.id);
-          error = err;
-        } else if (op.type === "delete") {
-          const { error: err } = await supabase.from("trip_entries").delete().eq("id", op.payload.id);
-          error = err;
+    try {
+      for (const op of queue) {
+        try {
+          let error = null;
+          if (op.type === "insert") {
+            const { error: err } = await supabase.from("trip_entries").insert(op.payload);
+            error = err;
+          } else if (op.type === "update") {
+            const { error: err } = await supabase.from("trip_entries").update(op.payload).eq("id", op.payload.id);
+            error = err;
+          } else if (op.type === "delete") {
+            const { error: err } = await supabase.from("trip_entries").delete().eq("id", op.payload.id);
+            error = err;
+          }
+          if (error) throw error;
+          successCount++;
+        } catch (err) {
+          console.error("Queue execution error:", err);
+          break; // Stop sequencing to maintain order of operations
         }
-        if (error) throw error;
-        successCount++;
-      } catch (err) {
-        console.error("Queue execution error:", err);
-        break; // Stop sequencing to maintain order of operations
       }
-    }
 
-    setSyncQueue((prev) => prev.slice(successCount));
-    if (successCount === queue.length) {
-      setSyncError(null);
+      setSyncQueue((prev) => prev.slice(successCount));
+      if (successCount === queue.length) {
+        setSyncError(null);
+      }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -660,7 +702,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: newRow.note || "",
               worthIt: newRow.worth_it,
               location: newRow.location || "",
-              tags: newRow.tags || []
+              tags: newRow.tags || [],
+              photoUrl: newRow.photo_url || ""
             };
             setExpenses((prev) => {
               if (prev.some(e => e.id === mapped.id)) return prev;
@@ -676,7 +719,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: newRow.note || "",
               worthIt: newRow.worth_it,
               location: newRow.location || "",
-              tags: newRow.tags || []
+              tags: newRow.tags || [],
+              photoUrl: newRow.photo_url || ""
             };
             setExpenses((prev) => prev.map(e => e.id === mapped.id ? mapped : e));
           } else if (eventType === "DELETE") {
@@ -759,7 +803,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           worth_it: e.worthIt,
           location: e.location,
           tags: e.tags,
-          created_at: e.timestamp
+          created_at: e.timestamp,
+          photo_url: e.photoUrl || null
         }));
         const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
         if (expErr) throw expErr;
@@ -803,7 +848,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     };
   }, [isDemo, trip, expenses]);
 
-  const fetchLatestRates = async () => {
+  const fetchLatestRates = async (force = false) => {
+    const lastUpdated = localStorage.getItem("tracker_rates_last_updated");
+    const now = Date.now();
+    // 3 hours cache time
+    if (!force && lastUpdated && (now - parseInt(lastUpdated, 10) < 3 * 60 * 60 * 1000)) {
+      return;
+    }
     try {
       const res = await fetch("https://open.er-api.com/v6/latest/USD");
       if (res.ok) {
@@ -815,11 +866,34 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         setRates((prev) => {
           const merged = { ...prev, ...updatedRates };
           localStorage.setItem("tracker_rates", JSON.stringify(merged));
+          localStorage.setItem("tracker_rates_last_updated", now.toString());
           return merged;
         });
       }
     } catch (e) {
       console.error("Error fetching latest rates:", e);
+    }
+  };
+
+  const handleAutoSubscribe = async (userEmail) => {
+    if (!userEmail) return;
+    const cacheKey = `tracker_subscribed_${userEmail}`;
+    if (localStorage.getItem(cacheKey) === "true") return;
+
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+      if (res.ok) {
+        localStorage.setItem(cacheKey, "true");
+        console.log("Automatically subscribed collaborator to mailer list:", userEmail);
+      }
+    } catch (err) {
+      console.error("Auto-subscribe error:", err);
     }
   };
 
@@ -859,12 +933,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         note: e.note || "",
         worthIt: e.worth_it,
         location: e.location || "",
-        tags: e.tags || []
+        tags: e.tags || [],
+        photoUrl: e.photo_url || ""
       }));
       setExpenses(mappedExpenses);
 
       localStorage.setItem(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
       localStorage.setItem(`tracker_expenses_${tripId}`, JSON.stringify(mappedExpenses));
+      
+      // Auto-subscribe to mailer list on successful trip load
+      const { data: { session: currentSess } } = await supabase.auth.getSession();
+      if (currentSess?.user?.email) {
+        handleAutoSubscribe(currentSess.user.email);
+      }
     } catch (e) {
       console.error("Supabase sync failed, loading locally.", e);
       setSyncError("Cloud connection error. Working offline.");
@@ -992,8 +1073,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
 
-          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
-          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
+          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const baseNote = expense.note || expense.category;
           const cleanBaseNote = baseNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
 
@@ -1019,7 +1100,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location: finalLocation,
             tags: entryTags,
             id: newId,
-            timestamp: timestamp
+            timestamp: timestamp,
+            photoUrl: expense.photoUrl || ""
           };
 
           newExpenses.push(singleExpense);
@@ -1035,7 +1117,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               worth_it: singleExpense.worthIt,
               location: singleExpense.location,
               tags: singleExpense.tags,
-              trip_id: tripId
+              trip_id: tripId,
+              photo_url: singleExpense.photoUrl || null
             });
           }
         }
@@ -1061,7 +1144,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           note: cleanNote,
           tags: baseTags,
           location: finalLocation,
-          timestamp: expense.timestamp || editingExpense?.timestamp
+          timestamp: expense.timestamp || editingExpense?.timestamp,
+          photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "")
         };
 
         setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...updatedExpense } : e)));
@@ -1077,7 +1161,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location: finalLocation,
             tags: updatedExpense.tags,
             created_at: expense.timestamp || editingExpense?.timestamp,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            photo_url: updatedExpense.photoUrl || null
           });
         }
       }
@@ -1111,8 +1196,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
 
-          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
-          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' }) : "";
+          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const baseNote = expense.note || expense.category;
           const noteWithSuffix = startStr && endStr 
             ? `${baseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
@@ -1136,7 +1221,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location: finalLocation,
             tags: entryTags,
             id: newId,
-            timestamp: timestamp
+            timestamp: timestamp,
+            photoUrl: expense.photoUrl || ""
           };
 
           newExpenses.push(singleExpense);
@@ -1152,7 +1238,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               worth_it: singleExpense.worthIt,
               location: singleExpense.location,
               tags: singleExpense.tags,
-              trip_id: tripId
+              trip_id: tripId,
+              photo_url: singleExpense.photoUrl || null
             });
           }
         }
@@ -1185,7 +1272,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             worth_it: newExpense.worthIt,
             location: newExpense.location,
             tags: newExpense.tags,
-            trip_id: tripId
+            trip_id: tripId,
+            photo_url: newExpense.photoUrl || null
           });
         }
       }
@@ -1228,6 +1316,200 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     } else {
       setActiveModal("auth");
     }
+  };
+
+  const renderInsights = () => {
+    if (visibleExpenses.length === 0) {
+      return (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "#9CA3AF" }}>
+          <p style={{ fontSize: "1rem", fontWeight: 600 }}>No data to generate insights.</p>
+          <p style={{ fontSize: "0.85rem", marginTop: "6px" }}>Add some expenses to see a breakdown of your spending!</p>
+        </div>
+      );
+    }
+
+    // Calculations
+    const categoryTotals = CATEGORIES.map((cat) => {
+      const catExpenses = visibleExpenses.filter((e) => e.category === cat);
+      const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+      return { cat, total: catTotal };
+    });
+    const sortedCategories = [...categoryTotals].sort((a, b) => b.total - a.total);
+    const topCategory = sortedCategories[0];
+
+    const daySpends = {};
+    visibleExpenses.forEach((e) => {
+      const dStr = new Date(e.timestamp).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+      const amt = convertCurrency(e.amount, e.currency, trip.homeCurrency, rates);
+      daySpends[dStr] = (daySpends[dStr] || 0) + amt;
+    });
+    let maxDayStr = "-";
+    let maxDayAmt = 0;
+    Object.entries(daySpends).forEach(([day, total]) => {
+      if (total > maxDayAmt) {
+        maxDayAmt = total;
+        maxDayStr = day;
+      }
+    });
+
+    const tagSpends = {};
+    const tagExpenses = {};
+    visibleExpenses.forEach((e) => {
+      const amt = convertCurrency(e.amount, e.currency, trip.homeCurrency, rates);
+      const cleanTags = e.tags ? e.tags.filter(t => !t.startsWith("spread-")) : [];
+      cleanTags.forEach((tag) => {
+        tagSpends[tag] = (tagSpends[tag] || 0) + amt;
+        if (!tagExpenses[tag]) tagExpenses[tag] = [];
+        tagExpenses[tag].push(e);
+      });
+    });
+    const sortedTags = Object.entries(tagSpends)
+      .map(([tag, spend]) => ({ tag, spend }))
+      .sort((a, b) => b.spend - a.spend);
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
+        {/* Main Stats Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          {/* Card 1: Total Spend */}
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Spend</span>
+            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", marginTop: "4px", marginBottom: "2px" }}>
+              {formatMoney(allExpensesTotal, trip.homeCurrency)}
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {daysActive} days</span>
+          </div>
+
+          {/* Card 2: Daily Average */}
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Daily Average</span>
+            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-orange)", marginTop: "4px", marginBottom: "2px" }}>
+              {formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>per day average</span>
+          </div>
+
+          {/* Card 3: Top Category */}
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Top Category</span>
+            <h4 style={{ fontSize: "1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+              {topCategory && topCategory.total > 0 ? (
+                <>
+                  <span>{CATEGORY_EMOJIS[topCategory.cat]}</span>
+                  <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                    {topCategory.cat === "Accommodation" ? "Stay" : topCategory.cat === "Transportation" ? "Transit" : topCategory.cat === "Food & Drink" ? "Food" : "Other"}
+                  </span>
+                </>
+              ) : "-"}
+            </h4>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+              {topCategory && topCategory.total > 0 ? formatMoney(topCategory.total, trip.homeCurrency) : ""}
+            </span>
+          </div>
+
+          {/* Card 4: Most Expensive Day */}
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Peak Day</span>
+            <h4 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+              {maxDayStr}
+            </h4>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+              {maxDayAmt > 0 ? formatMoney(maxDayAmt, trip.homeCurrency) : "-"}
+            </span>
+          </div>
+        </div>
+
+        {/* Category Breakdown list */}
+        <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+          <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
+            Category Breakdown
+          </h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {sortedCategories.map((item) => {
+              const pct = allExpensesTotal > 0 ? (item.total / allExpensesTotal) * 100 : 0;
+              const shortLabels = {
+                "Accommodation": "Stay",
+                "Transportation": "Transit",
+                "Food & Drink": "Food",
+                "Everything Else": "Other"
+              };
+              const label = shortLabels[item.cat] || item.cat;
+              return (
+                <div key={item.cat} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700, color: "#4B5563" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span>{CATEGORY_EMOJIS[item.cat]}</span>
+                      <span>{label}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <span>{formatMoney(item.total, trip.homeCurrency)}</span>
+                      <span style={{ color: "#9CA3AF", fontWeight: 500 }}>({pct.toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                  {/* Progress bar background */}
+                  <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%",
+                      borderRadius: "4px",
+                      backgroundColor: CATEGORY_COLORS[item.cat] || "#9CA3AF",
+                      width: `${pct}%`,
+                      transition: "width 0.5s ease"
+                    }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tag Spend Breakdown */}
+        <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)", marginBottom: "12px" }}>
+          <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
+            Spend by Tags (#)
+          </h4>
+          {sortedTags.length === 0 ? (
+            <p style={{ fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center", padding: "10px 0" }}>
+              No hashtags found. Add #tag in your expense titles to track specific items (e.g. #coffee, #scooter).
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {sortedTags.map((item) => {
+                const pct = allExpensesTotal > 0 ? (item.spend / allExpensesTotal) * 100 : 0;
+                return (
+                  <div 
+                    key={item.tag} 
+                    onClick={() => setDrillDownExpenses({
+                      title: `Expenses for #${item.tag}`,
+                      tag: item.tag
+                    })}
+                    style={{ display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}
+                    title="Click to view transactions"
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700, color: "#4B5563" }}>
+                      <span style={{ color: "var(--color-purple)" }}>#{item.tag}</span>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <span>{formatMoney(item.spend, trip.homeCurrency)}</span>
+                        <span style={{ color: "#9CA3AF", fontWeight: 500 }}>({pct.toFixed(0)}%)</span>
+                      </div>
+                    </div>
+                    {/* Progress bar background */}
+                    <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%",
+                        borderRadius: "4px",
+                        backgroundColor: "var(--color-orange)",
+                        width: `${pct}%`,
+                        transition: "width 0.5s ease"
+                      }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const nameLength = trip.name ? trip.name.length : 0;
@@ -1359,110 +1641,154 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             {supabase && (
               <div style={{ flexShrink: 0 }}>
                 {isDemo ? (
-                  <button
-                    onClick={handleSaveSyncClick}
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      color: "white",
-                      backgroundColor: "var(--color-orange)",
-                      border: "none",
-                      borderRadius: "12px",
-                      padding: "6px 12px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      boxShadow: "0 2px 8px rgba(232, 107, 50, 0.25)"
-                    }}
-                  >
-                    ☁️ Save & Sync
-                  </button>
-                ) : (
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
                     <button
-                      onClick={() => setActiveModal("collaborators")}
+                      onClick={handleSaveSyncClick}
                       style={{
                         fontSize: "0.75rem",
                         fontWeight: 700,
-                        color: "var(--color-purple)",
-                        backgroundColor: "rgba(133, 58, 81, 0.08)",
+                        color: "white",
+                        backgroundColor: "var(--color-orange)",
                         border: "none",
                         borderRadius: "12px",
-                        padding: "6px 10px",
+                        padding: "6px 12px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px"
+                        gap: "4px",
+                        boxShadow: "0 2px 8px rgba(232, 107, 50, 0.25)"
                       }}
                     >
-                      👥 Share
+                      ☁️ Save & Sync
                     </button>
-                    <span style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      color: "#10B981",
-                      backgroundColor: "#ECFDF5",
-                      padding: "4px 8px",
-                      borderRadius: "12px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}>
-                      ● Live
-                    </span>
+                    {(() => {
+                      const lastRates = localStorage.getItem("tracker_rates_last_updated");
+                      if (!lastRates) return null;
+                      const diffMs = Date.now() - parseInt(lastRates, 10);
+                      const diffMin = Math.round(diffMs / 60000);
+                      const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
+                      return (
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.65rem", color: "#6B7280" }}>
+                          <span>Rates: {ratesTimeText}</span>
+                          {isOnline && (
+                            <button
+                              type="button"
+                              onClick={() => fetchLatestRates(true)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                                cursor: "pointer",
+                                fontSize: "0.7rem",
+                                color: "var(--color-purple)",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                              title="Refresh exchange rates"
+                            >
+                              🔄
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <button
+                        onClick={() => setActiveModal("collaborators")}
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          color: "var(--color-purple)",
+                          backgroundColor: "rgba(133, 58, 81, 0.08)",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        👥 Share
+                      </button>
+                      {(() => {
+                        let statusText = "Synced";
+                        let statusEmoji = "🟢";
+                        let badgeColor = "#10B981";
+                        let badgeBg = "#ECFDF5";
+                        let glow = "0 0 6px rgba(16, 185, 129, 0.4)";
+                        
+                        if (!isOnline) {
+                          statusText = "Offline";
+                          statusEmoji = "✈️";
+                          badgeColor = "#D97706";
+                          badgeBg = "#FEF3C7";
+                          glow = "0 0 6px rgba(217, 119, 6, 0.4)";
+                        } else if (isSyncing || syncQueue.length > 0) {
+                          statusText = "Syncing...";
+                          statusEmoji = "🔄";
+                          badgeColor = "#2563EB";
+                          badgeBg = "#EFF6FF";
+                          glow = "0 0 6px rgba(37, 99, 235, 0.4)";
+                        }
+                        
+                        return (
+                          <span style={{
+                            fontSize: "0.75rem",
+                            fontWeight: 700,
+                            color: badgeColor,
+                            backgroundColor: badgeBg,
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            boxShadow: glow,
+                            transition: "all 0.3s ease"
+                          }}>
+                            {statusEmoji} {statusText}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    {(() => {
+                      const lastRates = localStorage.getItem("tracker_rates_last_updated");
+                      if (!lastRates) return null;
+                      const diffMs = Date.now() - parseInt(lastRates, 10);
+                      const diffMin = Math.round(diffMs / 60000);
+                      const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
+                      return (
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.65rem", color: "#6B7280" }}>
+                          <span>Rates: {ratesTimeText}</span>
+                          {isOnline && (
+                            <button
+                              type="button"
+                              onClick={() => fetchLatestRates(true)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                                cursor: "pointer",
+                                fontSize: "0.7rem",
+                                color: "var(--color-purple)",
+                                display: "flex",
+                                alignItems: "center"
+                              }}
+                              title="Refresh exchange rates"
+                            >
+                              🔄
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
             )}
-          </div>
-
-          {/* Currency selectors */}
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            fontSize: "0.85rem",
-            backgroundColor: "#F3F4F6",
-            padding: "6px 12px",
-            borderRadius: "20px",
-            width: "fit-content",
-            marginBottom: "12px"
-          }}>
-            <label style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              color: "#4B5563"
-            }}>
-              Home:
-              <SearchableCurrencySelect
-                value={trip.homeCurrency}
-                onChange={updateHomeCurrency}
-                rates={rates}
-                customCurrencies={customCurrencies}
-                onAddCustomCurrency={addCustomCurrency}
-              />
-            </label>
-            <span style={{ color: "#D1D5DB" }}>|</span>
-            <label style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              color: "#4B5563"
-            }}>
-              Local:
-              <SearchableCurrencySelect
-                value={trip.localCurrency}
-                onChange={updateLocalCurrency}
-                rates={rates}
-                customCurrencies={customCurrencies}
-                onAddCustomCurrency={addCustomCurrency}
-              />
-            </label>
           </div>
 
           {/* Location input */}
@@ -1792,10 +2118,28 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     >
                       History
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setLogView("insights")}
+                      style={{
+                        fontSize: "0.82rem",
+                        fontWeight: logView === "insights" ? 700 : 500,
+                        color: logView === "insights" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "insights" ? "white" : "transparent",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        boxShadow: logView === "insights" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      Insights
+                    </button>
                   </div>
 
                   {/* Future filter toggle */}
-                  {hasFutureExpenses && (
+                  {hasFutureExpenses && logView !== "insights" && (
                     <button
                       type="button"
                       onClick={() => setShowFuture(!showFuture)}
@@ -1816,69 +2160,116 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   )}
                 </div>
 
-                {/* Search Input Box */}
-                <div style={{
-                  position: "relative",
-                  marginBottom: "16px"
-                }}>
-                  <span style={{
-                    position: "absolute",
-                    left: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    fontSize: "0.95rem",
-                    color: "#9CA3AF",
-                    pointerEvents: "none"
-                  }}>🔍</span>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search note, tag, category, or operators (e.g. >100, over 50)..."
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px 10px 36px",
-                      borderRadius: "12px",
-                      border: "1.5px solid #E5E7EB",
-                      backgroundColor: "white",
-                      fontSize: "0.85rem",
-                      color: "#374151",
-                      outline: "none",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
-                      transition: "all 0.2s"
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = "var(--color-purple)";
-                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(133, 58, 81, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "#E5E7EB";
-                      e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.01)";
-                    }}
-                  />
-                  {searchQuery && (
+                {/* History Mode Selector */}
+                {logView === "history" && (
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginBottom: "12px",
+                    gap: "6px"
+                  }}>
                     <button
                       type="button"
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => setHistoryViewMode("cards")}
                       style={{
-                        position: "absolute",
-                        right: "12px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
+                        fontSize: "0.75rem",
+                        fontWeight: historyViewMode === "cards" ? 700 : 500,
+                        color: historyViewMode === "cards" ? "white" : "#6B7280",
+                        backgroundColor: historyViewMode === "cards" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
                         border: "none",
-                        background: "transparent",
-                        fontSize: "0.9rem",
-                        color: "#9CA3AF",
+                        borderRadius: "16px",
+                        padding: "4px 12px",
                         cursor: "pointer",
-                        padding: "4px"
+                        transition: "all 0.15s"
                       }}
                     >
-                      ✕
+                      🗂️ Cards
                     </button>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryViewMode("spreadsheet")}
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: historyViewMode === "spreadsheet" ? 700 : 500,
+                        color: historyViewMode === "spreadsheet" ? "white" : "#6B7280",
+                        backgroundColor: historyViewMode === "spreadsheet" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                        border: "none",
+                        borderRadius: "16px",
+                        padding: "4px 12px",
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      📊 Spreadsheet
+                    </button>
+                  </div>
+                )}
 
-                {displayedExpenses.length === 0 ? (
+                {/* Search Input Box */}
+                {logView !== "insights" && (
+                  <div style={{
+                    position: "relative",
+                    marginBottom: "16px"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: "0.95rem",
+                      color: "#9CA3AF",
+                      pointerEvents: "none"
+                    }}>🔍</span>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search note, tag, category, or operators (e.g. >100, over 50)..."
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px 10px 36px",
+                        borderRadius: "12px",
+                        border: "1.5px solid #E5E7EB",
+                        backgroundColor: "white",
+                        fontSize: "0.85rem",
+                        color: "#374151",
+                        outline: "none",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
+                        transition: "all 0.2s"
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "var(--color-purple)";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(133, 58, 81, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#E5E7EB";
+                        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.01)";
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          border: "none",
+                          background: "transparent",
+                          fontSize: "0.9rem",
+                          color: "#9CA3AF",
+                          cursor: "pointer",
+                          padding: "4px"
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {logView !== "insights" && displayedExpenses.length === 0 ? (
                   <div style={{
                     textAlign: "center",
                     padding: "40px 0",
@@ -1899,6 +2290,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 ) : (
                   <div>
                     {(() => {
+                      if (logView === "insights") {
+                        return renderInsights();
+                      }
+
                       const sortedExpenses = [...displayedExpenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                       if (logView === "recent") {
@@ -1916,7 +2311,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const label = getDayLabel(exp.timestamp);
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
-
                                   const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
                                   const dayLocation = sameDayExpenses.map(e => e.location ? (e.location.split(" | ")[1] || "") : "").find(loc => loc) || "";
 
@@ -2012,7 +2406,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                               dateKey: dateKey,
                               totalSpend: 0,
                               categories: {},
-                              location: ""
+                              locationsList: []
                             };
                           }
 
@@ -2025,10 +2419,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           olderGroups[dateKey].categories[exp.category].total += amtInHome;
                           olderGroups[dateKey].categories[exp.category].list.push(exp);
 
-                          const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || "") : "";
-                          if (highLevelLoc && !olderGroups[dateKey].location) {
-                            olderGroups[dateKey].location = highLevelLoc;
+                          const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || exp.location.split(" | ")[0] || "") : "";
+                          if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
+                            olderGroups[dateKey].locationsList.push(highLevelLoc);
                           }
+                        });
+
+                        // Set backward compatible single location for card rendering
+                        Object.keys(olderGroups).forEach(k => {
+                          olderGroups[k].location = olderGroups[k].locationsList[0] || "";
                         });
 
                         const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
@@ -2037,6 +2436,118 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           return (
                             <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
                               <p style={{ fontSize: "1rem", fontWeight: 500 }}>No history yet.</p>
+                            </div>
+                          );
+                        }
+
+                        if (historyViewMode === "spreadsheet") {
+                          const renderCell = (group, cat, label) => {
+                            const catData = group.categories[cat];
+                            const amt = catData ? catData.total : 0;
+                            
+                            if (amt === 0) {
+                              return (
+                                <td style={{ padding: "12px 12px", textAlign: "right", color: "#D1D5DB" }}>
+                                  -
+                                </td>
+                              );
+                            }
+                            
+                            return (
+                              <td 
+                                onClick={() => setDrillDownExpenses({
+                                  title: `${label} on ${group.dateDisplay}`,
+                                  dateKey: group.dateKey,
+                                  category: cat
+                                })}
+                                style={{ 
+                                  padding: "12px 12px", 
+                                  textAlign: "right", 
+                                  fontWeight: 700, 
+                                  color: CATEGORY_COLORS[cat] || "var(--color-purple)",
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                  textDecorationStyle: "dotted",
+                                  textUnderlineOffset: "3px"
+                                }}
+                                title="Click to view details"
+                              >
+                                {formatMoney(amt, trip.homeCurrency)}
+                              </td>
+                            );
+                          };
+
+                          return (
+                            <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                              <div style={{ fontSize: "0.75rem", color: "#6B7280", display: "flex", alignItems: "center", gap: "4px", padding: "0 4px" }}>
+                                <span>💡 Scroll horizontally. Tap underlined amounts to drill down.</span>
+                              </div>
+                              <div style={{
+                                width: "100%",
+                                overflowX: "auto",
+                                borderRadius: "16px",
+                                border: "1.5px solid #E5E7EB",
+                                backgroundColor: "white",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
+                                WebkitOverflowScrolling: "touch"
+                              }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "550px", fontSize: "0.82rem", textAlign: "left" }}>
+                                  <thead>
+                                    <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563" }}>Date</th>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563" }}>Location(s)</th>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Stay</th>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Transit</th>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Food</th>
+                                      <th style={{ padding: "10px 12px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Other</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {olderGroupsArray.map((group) => {
+                                      const locString = group.locationsList.map(loc => `📍 ${loc}`).join(" ") || "-";
+                                      return (
+                                        <tr key={group.dateKey} style={{ borderBottom: "1px solid #F3F4F6", transition: "background-color 0.15s" }}>
+                                          <td 
+                                            onClick={() => setDrillDownExpenses({
+                                              title: `Expenses on ${group.dateDisplay}`,
+                                              dateKey: group.dateKey,
+                                              category: "ALL"
+                                            })}
+                                            style={{ 
+                                              padding: "12px 12px", 
+                                              fontWeight: 700, 
+                                              color: "#374151",
+                                              cursor: "pointer",
+                                              textDecoration: "underline",
+                                              textDecorationStyle: "dotted",
+                                              textUnderlineOffset: "3px",
+                                              whiteSpace: "nowrap"
+                                            }}
+                                            title="Click to view all expenses"
+                                          >
+                                            {group.dateDisplay}
+                                          </td>
+                                          <td style={{ 
+                                            padding: "12px 12px", 
+                                            color: group.locationsList.length > 0 ? "var(--color-orange)" : "#9CA3AF", 
+                                            fontWeight: group.locationsList.length > 0 ? 600 : 400,
+                                            maxWidth: "180px",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap"
+                                          }}>
+                                            {locString}
+                                          </td>
+                                          {renderCell(group, "Accommodation", "Stay")}
+                                          {renderCell(group, "Transportation", "Transit")}
+                                          {renderCell(group, "Food & Drink", "Food")}
+                                          {renderCell(group, "Everything Else", "Other")}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           );
                         }
@@ -2258,6 +2769,141 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         />
       )}
 
+      {drillDownExpenses && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          zIndex: 1500,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px"
+        }}
+        onClick={() => setDrillDownExpenses(null)}
+        >
+          <div style={{
+            backgroundColor: "white",
+            borderRadius: "24px",
+            width: "100%",
+            maxWidth: "420px",
+            maxHeight: "85vh",
+            maxHeight: "85dvh",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+            border: "1px solid #E5E7EB",
+            overflow: "hidden",
+            animation: "fadeInUp 0.25s ease-out"
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: "18px 20px",
+              borderBottom: "1px solid #F3F4F6",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexShrink: 0
+            }}>
+              <h3 style={{
+                fontSize: "1.1rem",
+                fontWeight: 800,
+                color: "var(--color-purple)",
+                margin: 0,
+                fontFamily: "var(--font-heading)"
+              }}>
+                {drillDownExpenses.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDrillDownExpenses(null)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "1.15rem",
+                  color: "#9CA3AF",
+                  cursor: "pointer",
+                  padding: "4px"
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* List Content */}
+            <div style={{
+              overflowY: "auto",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              flex: 1,
+              backgroundColor: "#F9F6ED"
+            }}>
+              {(() => {
+                const list = getDrillDownList();
+                if (list.length === 0) {
+                  return (
+                    <div style={{ textAlign: "center", padding: "40px 20px", color: "#9CA3AF" }}>
+                      <p style={{ fontSize: "0.9rem", fontWeight: 500 }}>No transactions found.</p>
+                    </div>
+                  );
+                }
+                return list.map((exp) => (
+                  <ExpenseCard
+                    key={exp.id}
+                    expense={exp}
+                    onEdit={(e) => {
+                      setEditingExpense(e);
+                      setActiveModal("manual");
+                    }}
+                    onDelete={deleteExpense}
+                    formatMoney={formatMoney}
+                    convertCurrency={convertCurrency}
+                    homeCurrency={trip.homeCurrency}
+                    rates={rates}
+                  />
+                ));
+              })()}
+            </div>
+
+            {/* Footer Close Button */}
+            <div style={{
+              padding: "14px 20px",
+              borderTop: "1px solid #F3F4F6",
+              display: "flex",
+              justifyContent: "flex-end",
+              flexShrink: 0
+            }}>
+              <button
+                type="button"
+                onClick={() => setDrillDownExpenses(null)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "10px",
+                  border: "1px solid #E5E7EB",
+                  backgroundColor: "white",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#4B5563",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isVoiceListening && (
         <div style={{
           position: "fixed",
@@ -2429,6 +3075,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       {activeModal === "collaborators" && (
         <CollaboratorsModal
           tripId={tripId}
+          tripName={trip.name}
           onClose={() => setActiveModal(null)}
         />
       )}
@@ -2491,197 +3138,207 @@ function ExpenseCard({
     ? `${isRepeat ? "Repeat" : "Spread"}: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` 
     : null;
 
-  return (
-    <div style={{
-      position: "relative",
-      overflow: "hidden",
-      borderRadius: "16px",
-      marginBottom: "12px"
-    }}>
-      {/* Delete button revealed by swiping */}
-      <div
-        onClick={() => onDelete(expense.id)}
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "80px",
-          backgroundColor: "#FCA5A5",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#B91C1C",
-          fontWeight: 700,
-          fontSize: "0.85rem",
-          cursor: "pointer",
-          zIndex: 1,
-          borderTopRightRadius: "16px",
-          borderBottomRightRadius: "16px",
-          boxShadow: "inset 4px 0 10px rgba(0,0,0,0.05)"
-        }}
-      >
-        ✕ Delete
-      </div>
+  const truncatedNote = displayNote.length > 30 ? `${displayNote.slice(0, 30)}...` : displayNote;
 
-      <div
-        onTouchStart={(e) => {
-          setStartX(e.touches[0].clientX);
-          setIsDragging(true);
-        }}
-        onTouchMove={(e) => {
-          if (!isDragging) return;
-          const diff = startX - e.touches[0].clientX;
-          if (diff > 0) {
-            setOffsetX(Math.min(isSwipedOpen ? 80 + diff : diff, 120));
-          } else if (isSwipedOpen && diff < 0) {
-            setOffsetX(Math.max(80 + diff, 0));
-          }
-        }}
-        onTouchEnd={() => {
-          setIsDragging(false);
-          if (isSwipedOpen) {
-            if (offsetX < 40) {
+  return (
+    <div 
+      className={expense.worthIt ? "worth-it-shimmer-card" : ""}
+      style={{
+        borderRadius: "16px",
+        marginBottom: "12px",
+        boxShadow: expense.worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+      }}
+    >
+      <div style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "16px"
+      }}>
+        {/* Delete button revealed by swiping */}
+        <div
+          onClick={() => onDelete(expense.id)}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: "80px",
+            backgroundColor: "#FCA5A5",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#B91C1C",
+            fontWeight: 700,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            zIndex: 1,
+            borderTopRightRadius: "16px",
+            borderBottomRightRadius: "16px",
+            boxShadow: "inset 4px 0 10px rgba(0,0,0,0.05)"
+          }}
+        >
+          ✕ Delete
+        </div>
+
+        <div
+          onTouchStart={(e) => {
+            setStartX(e.touches[0].clientX);
+            setIsDragging(true);
+          }}
+          onTouchMove={(e) => {
+            if (!isDragging) return;
+            const diff = startX - e.touches[0].clientX;
+            if (diff > 0) {
+              setOffsetX(Math.min(isSwipedOpen ? 80 + diff : diff, 120));
+            } else if (isSwipedOpen && diff < 0) {
+              setOffsetX(Math.max(80 + diff, 0));
+            }
+          }}
+          onTouchEnd={() => {
+            setIsDragging(false);
+            if (isSwipedOpen) {
+              if (offsetX < 40) {
+                setOffsetX(0);
+                setIsSwipedOpen(false);
+              } else {
+                setOffsetX(80);
+              }
+            } else {
+              if (offsetX > 45) {
+                setOffsetX(80);
+                setIsSwipedOpen(true);
+              } else {
+                setOffsetX(0);
+              }
+            }
+          }}
+          onClick={() => {
+            if (isSwipedOpen) {
               setOffsetX(0);
               setIsSwipedOpen(false);
             } else {
-              setOffsetX(80);
+              onEdit(expense);
             }
-          } else {
-            if (offsetX > 45) {
-              setOffsetX(80);
-              setIsSwipedOpen(true);
-            } else {
-              setOffsetX(0);
-            }
-          }
-        }}
-        onClick={() => {
-          if (isSwipedOpen) {
-            setOffsetX(0);
-            setIsSwipedOpen(false);
-          } else {
-            onEdit(expense);
-          }
-        }}
-        className={expense.worthIt ? "worth-it-shimmer-card" : ""}
-        style={{
-          backgroundColor: expense.worthIt ? undefined : "white",
-          borderRadius: "16px",
-          border: expense.worthIt ? undefined : "1.5px solid transparent",
-          padding: "15px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "relative",
-          zIndex: 2,
-          transition: isDragging ? "none" : "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-          transform: `translateX(-${offsetX}px)`,
-          cursor: "pointer",
-          boxShadow: expense.worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)"
-        }}
-      >
-        <div style={{
-          width: "4px",
-          height: "100%",
-          backgroundColor: CATEGORY_COLORS[expense.category] || "#6B7280",
-          position: "absolute",
-          left: 0,
-          top: 0
-        }} />
-
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-          paddingLeft: "8px"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{
-              fontWeight: 700,
-              color: "#111827",
-              fontSize: "1rem"
-            }}>{displayNote}</span>
-            {expense.worthIt && <StarIcon filled={true} />}
-          </div>
-          {spreadInfo && (
-            <div style={{
-              fontSize: "0.78rem",
-              color: "var(--color-orange)",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              marginTop: "-2px"
-            }}>
-              🗓️ {spreadInfo}
-            </div>
-          )}
+          }}
+          style={{
+            backgroundColor: expense.worthIt ? "transparent" : "white",
+            borderRadius: "16px",
+            border: "1.5px solid transparent",
+            padding: "15px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            position: "relative",
+            zIndex: 2,
+            transition: isDragging ? "none" : "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+            transform: `translateX(-${offsetX}px)`,
+            cursor: "pointer"
+          }}
+        >
+          <div style={{
+            width: "4px",
+            height: "100%",
+            backgroundColor: CATEGORY_COLORS[expense.category] || "#6B7280",
+            position: "absolute",
+            left: 0,
+            top: 0
+          }} />
 
           <div style={{
             display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            flexWrap: "wrap"
+            flexDirection: "column",
+            gap: "4px",
+            paddingLeft: "8px"
           }}>
-            <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
-              {CATEGORY_EMOJIS[expense.category] || "📦"} {expense.category}
-            </span>
-            {expense.location && expense.location.split(" | ")[0] && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <span style={{
+                fontWeight: 700,
+                color: "#111827",
+                fontSize: "1rem"
+              }}>{truncatedNote}</span>
+              {expense.worthIt && <StarIcon filled={true} />}
+            </div>
+            {spreadInfo && (
+              <div style={{
                 fontSize: "0.78rem",
-                color: "#9CA3AF",
+                color: "var(--color-orange)",
+                fontWeight: 600,
                 display: "flex",
                 alignItems: "center",
-                gap: "2px"
+                gap: "4px",
+                marginTop: "-2px"
               }}>
-                📍 {expense.location.split(" | ")[0]}
+                🗓️ {spreadInfo}
+              </div>
+            )}
+
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap"
+            }}>
+              <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
+                {CATEGORY_EMOJIS[expense.category] || "📦"} {expense.category}
               </span>
+              {expense.location && expense.location.split(" | ")[0] && (
+                <span style={{
+                  fontSize: "0.78rem",
+                  color: "#9CA3AF",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2px"
+                }}>
+                  📍 {expense.location.split(" | ")[0]}
+                </span>
+              )}
+            </div>
+
+            {expense.tags && expense.tags.filter(t => !t.startsWith("spread-")).length > 0 && (
+              <div style={{
+                display: "flex",
+                gap: "4px",
+                marginTop: "4px",
+                flexWrap: "wrap"
+              }}>
+                {expense.tags.filter(t => !t.startsWith("spread-")).map((tag, tIdx) => (
+                  <span
+                    key={tIdx}
+                    style={{
+                      fontSize: "0.7rem",
+                      backgroundColor: "#F3F4F6",
+                      color: "#6B7280",
+                      padding: "2px 6px",
+                      borderRadius: "6px",
+                      fontWeight: 600
+                    }}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
 
-          {expense.tags && expense.tags.filter(t => !t.startsWith("spread-")).length > 0 && (
+          <div style={{ textAlign: "right" }}>
             <div style={{
-              display: "flex",
-              gap: "4px",
-              marginTop: "4px",
-              flexWrap: "wrap"
-            }}>
-              {expense.tags.filter(t => !t.startsWith("spread-")).map((tag, tIdx) => (
-                <span
-                  key={tIdx}
-                  style={{
-                    fontSize: "0.7rem",
-                    backgroundColor: "#F3F4F6",
-                    color: "#6B7280",
-                    padding: "2px 6px",
-                    borderRadius: "6px",
-                    fontWeight: 600
-                  }}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ textAlign: "right" }}>
-          <div style={{
-            fontWeight: 800,
-            fontSize: "1.05rem",
-            color: "#111827"
-          }}>{formatMoney(convertedAmount, homeCurrency)}</div>
-          {expense.currency !== homeCurrency && (
-            <div style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>
-              {expense.amount.toFixed(2)} {expense.currency}
-            </div>
-          )}
+              fontWeight: 800,
+              fontSize: "1.05rem",
+              color: "#111827"
+            }}>{formatMoney(convertedAmount, homeCurrency)}</div>
+            {expense.currency !== homeCurrency && (
+              <div style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>
+                {expense.amount.toFixed(2)} {expense.currency}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 // Modal for adding or editing expenses manually
 function ManualEntryModal({
@@ -2718,20 +3375,39 @@ function ManualEntryModal({
 
   const [editEntireGroup, setEditEntireGroup] = useState(false);
 
+  const fileInputRef = useRef(null);
+  const [mapResults, setMapResults] = useState([]);
+  const [searchingMap, setSearchingMap] = useState(false);
+
   const [amount, setAmount] = useState(() => {
     if (expenseToEdit) return expenseToEdit.amount;
     const draft = getDraft();
     return draft ? draft.amount : "";
   });
-  const [note, setNote] = useState(() => {
+  const [title, setTitle] = useState(() => {
     if (expenseToEdit) {
-      // Clean suffix note in UI and restore hashtags inline
       const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      const parts = cleanNote.split("\n\n");
+      const baseTitle = parts[0];
       const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
-      return cleanNote + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
+      return baseTitle + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
     }
     const draft = getDraft();
-    return draft ? draft.note : "";
+    return draft ? draft.title || "" : "";
+  });
+  const [extraNotes, setExtraNotes] = useState(() => {
+    if (expenseToEdit) {
+      const cleanNote = expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+      const parts = cleanNote.split("\n\n");
+      return parts.length > 1 ? parts.slice(1).join("\n\n") : "";
+    }
+    const draft = getDraft();
+    return draft ? draft.extraNotes || "" : "";
+  });
+  const [photoUrl, setPhotoUrl] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.photoUrl || "";
+    const draft = getDraft();
+    return draft ? draft.photoUrl || "" : "";
   });
   const [category, setCategory] = useState(() => {
     if (expenseToEdit) return expenseToEdit.category;
@@ -2809,15 +3485,20 @@ function ManualEntryModal({
   useEffect(() => {
     if (expenseToEdit) {
       const cleanNote = expenseToEdit.note !== undefined ? expenseToEdit.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "") : "";
+      const parts = cleanNote.split("\n\n");
+      const baseTitle = parts[0];
       const editTags = expenseToEdit.tags?.filter(t => !t.startsWith("spread-")) || [];
-      const noteWithTags = cleanNote + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
+      const titleWithTags = baseTitle + (editTags.length > 0 ? " " + editTags.map(t => `#${t}`).join(" ") : "");
+      const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
       setAmount(expenseToEdit.amount !== undefined ? expenseToEdit.amount : "");
-      setNote(noteWithTags);
+      setTitle(titleWithTags);
+      setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
       setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
+      setPhotoUrl(expenseToEdit.photoUrl || "");
       setExpenseDate(
         expenseToEdit.timestamp 
           ? new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA') 
@@ -2834,10 +3515,10 @@ function ManualEntryModal({
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
     if (!expenseToEdit) {
-      const draftObj = { amount, note, category, worthIt, currency, location };
+      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location, photoUrl };
       localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
     }
-  }, [amount, note, category, worthIt, currency, location, expenseToEdit]);
+  }, [amount, title, extraNotes, category, worthIt, currency, location, photoUrl, expenseToEdit]);
 
   const handleCloseWithX = () => {
     localStorage.removeItem("tracker_expense_draft");
@@ -2872,6 +3553,59 @@ function ManualEntryModal({
       return "Yesterday";
     } else {
       return formatDateLabel(expenseDate);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress as JPEG with 0.7 quality
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        setPhotoUrl(compressedBase64);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const searchLocation = async () => {
+    if (!location || !location.trim()) return;
+    setSearchingMap(true);
+    setMapResults([]);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setMapResults(data.map(item => ({
+          display_name: item.display_name,
+          name: item.name || item.display_name.split(",")[0]
+        })));
+      }
+    } catch (err) {
+      console.error("Error searching location:", err);
+    } finally {
+      setSearchingMap(false);
     }
   };
 
@@ -2992,15 +3726,16 @@ function ManualEntryModal({
             localStorage.setItem("tracker_last_used_currency", currency);
             localStorage.removeItem("tracker_expense_draft");
 
-            // Extract tags from the note text
+            // Combine title and extra notes for full text
+            const fullNoteText = extraNotes.trim() ? `${title.trim()}\n\n${extraNotes.trim()}` : title.trim();
+
+            // Extract tags from the note text (do not strip them!)
             const hashtagRegex = /#([a-zA-Z0-9_-]+)/g;
             const parsedTags = [];
             let match;
-            while ((match = hashtagRegex.exec(note)) !== null) {
+            while ((match = hashtagRegex.exec(fullNoteText)) !== null) {
               parsedTags.push(match[1].toLowerCase());
             }
-            // Clean note by removing tags and formatting whitespaces
-            const cleanNote = note.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim() || category;
 
             const originalSpreadTags = expenseToEdit?.tags 
               ? expenseToEdit.tags.filter(t => t.startsWith("spread-") && !t.startsWith("spread-mode-") && !t.startsWith("spread-start-") && !t.startsWith("spread-end-") && !t.startsWith("spread-amount-")) 
@@ -3012,9 +3747,10 @@ function ManualEntryModal({
               amount: val,
               currency,
               category,
-              note: cleanNote,
+              note: fullNoteText || category,
               worthIt,
-              location: "",
+              location: location, // Pass parsed location
+              photoUrl: photoUrl,
               tags: finalTags,
               id: expenseToEdit?.id,
               editEntireGroup,
@@ -3028,6 +3764,32 @@ function ManualEntryModal({
           }}
           style={{ display: "flex", flexDirection: "column", gap: "12px" }}
         >
+          {/* Title (Notes Description) at the very top */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <label style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Expense Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Latte #coffee, scooter rental #scooter..."
+              required
+              style={{
+                padding: "10px 12px",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB",
+                fontSize: "15px",
+                outline: "none"
+              }}
+            />
+          </div>
+
+          {/* Amount input block below Title */}
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <label style={{
               fontSize: "0.75rem",
@@ -3041,7 +3803,7 @@ function ManualEntryModal({
               alignItems: "center",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "10px 14px",
+              padding: "6px 10px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               marginBottom: "4px"
             }}>
@@ -3051,7 +3813,7 @@ function ManualEntryModal({
                 rates={rates}
                 customCurrencies={customCurrencies}
                 onAddCustomCurrency={onAddCustomCurrency}
-                style={{ fontSize: "1.2rem", fontWeight: 700, marginRight: "8px" }}
+                style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
               />
               <input
                 type="number"
@@ -3065,20 +3827,47 @@ function ManualEntryModal({
                   }
                 }}
                 placeholder="0.00"
-                autoFocus={true}
                 style={{
                   flex: 1,
                   border: "none",
                   background: "transparent",
-                  fontSize: "2rem",
-                  fontWeight: 900,
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
                   outline: "none",
                   width: "100%",
                   color: "#111827",
                   textAlign: "right",
-                  paddingRight: "8px"
+                  paddingRight: "6px"
                 }}
               />
+              
+              {/* Photo attachment camera button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-purple)",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "50%",
+                  marginRight: "4px"
+                }}
+              >
+                <CameraIcon />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
+
               {onVoiceStart && (
                 <button
                   type="button"
@@ -3088,20 +3877,53 @@ function ManualEntryModal({
                     border: "none",
                     color: "var(--color-purple)",
                     cursor: "pointer",
-                    padding: "6px",
+                    padding: "4px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderRadius: "50%",
-                    transition: "background-color 0.2s"
+                    borderRadius: "50%"
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.05)"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
                   <MicIcon />
                 </button>
               )}
             </div>
+            
+            {/* Compressed photo preview */}
+            {photoUrl && (
+              <div style={{
+                position: "relative",
+                width: "80px",
+                height: "80px",
+                borderRadius: "12px",
+                overflow: "hidden",
+                border: "1px solid #E5E7EB",
+                marginTop: "4px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+              }}>
+                <img src={photoUrl} alt="Receipt" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <button
+                  type="button"
+                  onClick={() => setPhotoUrl("")}
+                  style={{
+                    position: "absolute",
+                    top: "4px",
+                    right: "4px",
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "20px",
+                    height: "20px",
+                    fontSize: "10px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >✕</button>
+              </div>
+            )}
           </div>
 
           {isGroup && (
@@ -3209,245 +4031,379 @@ function ManualEntryModal({
             </div>
           </div>
 
-          {/* 2. Collapsible Date(s) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          {/* 2. Side-by-Side Row: When? and Worth it */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "10px"
+          }}>
+            {/* When? Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+              <label style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#4B5563",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
+              }}>When?</label>
+              <button
+                type="button"
+                onClick={() => setIsDateExpanded(!isDateExpanded)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "white",
+                  borderRadius: "14px",
+                  padding: "10px 12px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: "var(--color-purple)",
+                  outline: "none",
+                  width: "100%",
+                  textAlign: "center"
+                }}
+              >
+                📅 {getDateLabel()}
+              </button>
+            </div>
+
+            {/* Worth It Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+              <label style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#4B5563",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
+              }}>Worth it.</label>
+              <button
+                type="button"
+                onClick={() => setWorthIt(!worthIt)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  backgroundColor: worthIt ? "#FFFBEB" : "white",
+                  borderRadius: "14px",
+                  padding: "10px 12px",
+                  border: worthIt ? "1.5px solid #F59E0B" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  color: worthIt ? "#B45309" : "#4B5563",
+                  outline: "none",
+                  width: "100%",
+                  boxShadow: worthIt ? "0 0 10px rgba(245, 158, 11, 0.15)" : "none",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <span style={{
+                  transform: worthIt ? "scale(1.2) rotate(8deg)" : "scale(1)",
+                  transition: "transform 0.2s"
+                }}>{worthIt ? "🌟" : "💸"}</span>
+                {worthIt ? "Worth it." : "Worth it?"}
+              </button>
+            </div>
+          </div>
+
+          {/* Collapsible Date Picker */}
+          {isDateExpanded && (
+            <div style={{
+              padding: "12px",
+              backgroundColor: "#F9F6ED",
+              borderRadius: "16px",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              animation: "fadeInUp 0.2s ease-out"
+            }}>
+              {/* Single Date Picker */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ fontSize: "0.72rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Single Date</span>
+                <input
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => {
+                    setExpenseDate(e.target.value);
+                    setSpreadExpense(false);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    border: "1px solid #E5E7EB",
+                    outline: "none",
+                    fontSize: "15px",
+                    backgroundColor: "white",
+                    color: "#374151"
+                  }}
+                />
+              </div>
+
+              {/* Range toggle checkbox */}
+              <label style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                cursor: "pointer",
+                userSelect: "none",
+                padding: "8px 0 0",
+                borderTop: "1px dashed rgba(133, 58, 81, 0.15)"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={spreadExpense}
+                  onChange={(e) => setSpreadExpense(e.target.checked)}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    accentColor: "var(--color-orange)"
+                  }}
+                />
+                <span style={{
+                  fontSize: "0.8rem",
+                  color: "var(--color-purple)",
+                  fontWeight: 700
+                }}>
+                  🗓️ Spread/Repeat across multiple days
+                </span>
+              </label>
+
+              {spreadExpense && (
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  padding: "10px",
+                  backgroundColor: "rgba(30, 64, 175, 0.03)",
+                  borderRadius: "12px",
+                  borderLeft: "3px solid #BFDBFE"
+                }}>
+                  {/* Mode selector */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
+                    <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setSpreadMode("divide")}
+                        style={{
+                          flex: 1,
+                          padding: "6px 8px",
+                          borderRadius: "8px",
+                          border: "1.5px solid",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
+                          borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
+                          color: spreadMode === "divide" ? "white" : "#1E40AF",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        ⚖️ Spread Evenly
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSpreadMode("repeat")}
+                        style={{
+                          flex: 1,
+                          padding: "6px 8px",
+                          borderRadius: "8px",
+                          border: "1.5px solid",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
+                          borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
+                          color: spreadMode === "repeat" ? "white" : "#1E40AF",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        🔄 Repeat Daily
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
+                      <input
+                        type="date"
+                        value={spreadStart}
+                        onChange={(e) => setSpreadStart(e.target.value)}
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "8px",
+                          border: "1px solid #BFDBFE",
+                          outline: "none",
+                          fontSize: "15px",
+                          fontWeight: 600,
+                          color: "#1E40AF",
+                          backgroundColor: "white",
+                          width: "100%",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
+                      <input
+                        type="date"
+                        value={spreadEnd}
+                        onChange={(e) => setSpreadEnd(e.target.value)}
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "8px",
+                          border: "1px solid #BFDBFE",
+                          outline: "none",
+                          fontSize: "15px",
+                          fontWeight: 600,
+                          color: "#1E40AF",
+                          backgroundColor: "white",
+                          width: "100%",
+                          boxSizing: "border-box"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dynamic Explanation */}
+                  {(() => {
+                    const start = new Date(spreadStart + "T00:00:00");
+                    const end = new Date(spreadEnd + "T00:00:00");
+                    if (!isNaN(start) && !isNaN(end) && end >= start) {
+                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                      const val = parseFloat(amount);
+                      const dailyPortion = !isNaN(val) && val > 0 
+                        ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
+                        : "0.00";
+                      const totalCost = !isNaN(val) && val > 0 
+                        ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
+                        : "0.00";
+                      return (
+                        <div style={{
+                          fontSize: "0.78rem",
+                          color: "#1E40AF",
+                          fontWeight: 600,
+                          backgroundColor: "#DBEAFE",
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          marginTop: "4px",
+                          lineHeight: "1.3"
+                        }}>
+                          {spreadMode === "repeat" ? (
+                            <>
+                              Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
+                              Total cost will be <strong>{totalCost} {currency}</strong>.
+                            </>
+                          ) : (
+                            <>
+                              Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
+                            </>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Location input + Nominatim Search */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px", position: "relative" }}>
             <label style={{
               fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>Date(s)</label>
-            <div 
-              onClick={() => setIsDateExpanded(!isDateExpanded)}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "10px 14px",
-                border: "1.5px solid rgba(133, 58, 81, 0.12)",
-                cursor: "pointer",
-                userSelect: "none"
-              }}
-            >
-              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--color-purple)" }}>
-                📅 {getDateLabel()}
-              </span>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-orange)" }}>
-                {isDateExpanded ? "Collapse ✕" : "Change ✏️"}
-              </span>
-            </div>
-
-            {isDateExpanded && (
-              <div style={{
-                marginTop: "4px",
-                padding: "12px",
-                backgroundColor: "#F9F6ED",
-                borderRadius: "16px",
-                border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                animation: "fadeInUp 0.2s ease-out"
-              }}>
-                {/* Single Date Picker */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "0.72rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Single Date</span>
-                  <input
-                    type="date"
-                    value={expenseDate}
-                    onChange={(e) => {
-                      setExpenseDate(e.target.value);
-                      setSpreadExpense(false);
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid #E5E7EB",
-                      outline: "none",
-                      fontSize: "15px",
-                      backgroundColor: "white",
-                      color: "#374151"
-                    }}
-                  />
-                </div>
-
-                {/* Range toggle checkbox */}
-                <label style={{
+            }}>Location</label>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Common Ground Cafe, El Nido..."
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid #E5E7EB",
+                  fontSize: "15px",
+                  outline: "none"
+                }}
+              />
+              <button
+                type="button"
+                onClick={searchLocation}
+                disabled={searchingMap}
+                style={{
+                  backgroundColor: "#F3F4F6",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "12px",
+                  width: "42px",
+                  height: "42px",
+                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  padding: "8px 0 0",
-                  borderTop: "1px dashed rgba(133, 58, 81, 0.15)"
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={spreadExpense}
-                    onChange={(e) => setSpreadExpense(e.target.checked)}
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      accentColor: "var(--color-orange)"
+                  justifyContent: "center",
+                  fontSize: "1.1rem"
+                }}
+                title="Search nearby locations"
+              >
+                {searchingMap ? "⌛" : "📍"}
+              </button>
+            </div>
+
+            {/* Nominatim Search Dropdown results */}
+            {mapResults.length > 0 && (
+              <div style={{
+                position: "absolute",
+                top: "64px",
+                left: 0,
+                right: 0,
+                backgroundColor: "white",
+                border: "1px solid #E5E7EB",
+                borderRadius: "12px",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                zIndex: 100,
+                maxHeight: "180px",
+                overflowY: "auto"
+              }}>
+                {mapResults.map((result, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setLocation(result.name);
+                      setMapResults([]);
                     }}
-                  />
-                  <span style={{
-                    fontSize: "0.8rem",
-                    color: "var(--color-purple)",
-                    fontWeight: 700
-                  }}>
-                    🗓️ Spread/Repeat across multiple days
-                  </span>
-                </label>
-
-                {spreadExpense && (
-                  <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                    padding: "10px",
-                    backgroundColor: "rgba(30, 64, 175, 0.03)",
-                    borderRadius: "12px",
-                    borderLeft: "3px solid #BFDBFE"
-                  }}>
-                    {/* Mode selector */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
-                      <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
-                        <button
-                          type="button"
-                          onClick={() => setSpreadMode("divide")}
-                          style={{
-                            flex: 1,
-                            padding: "6px 8px",
-                            borderRadius: "8px",
-                            border: "1.5px solid",
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
-                            borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
-                            color: spreadMode === "divide" ? "white" : "#1E40AF",
-                            transition: "all 0.2s"
-                          }}
-                        >
-                          ⚖️ Spread Evenly
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSpreadMode("repeat")}
-                          style={{
-                            flex: 1,
-                            padding: "6px 8px",
-                            borderRadius: "8px",
-                            border: "1.5px solid",
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
-                            borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
-                            color: spreadMode === "repeat" ? "white" : "#1E40AF",
-                            transition: "all 0.2s"
-                          }}
-                        >
-                          🔄 Repeat Daily
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Dates */}
-                    <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                        <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
-                        <input
-                          type="date"
-                          value={spreadStart}
-                          onChange={(e) => setSpreadStart(e.target.value)}
-                          style={{
-                            padding: "6px 8px",
-                            borderRadius: "8px",
-                            border: "1px solid #BFDBFE",
-                            outline: "none",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            color: "#1E40AF",
-                            backgroundColor: "white",
-                            width: "100%",
-                            boxSizing: "border-box"
-                          }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                        <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
-                        <input
-                          type="date"
-                          value={spreadEnd}
-                          onChange={(e) => setSpreadEnd(e.target.value)}
-                          style={{
-                            padding: "6px 8px",
-                            borderRadius: "8px",
-                            border: "1px solid #BFDBFE",
-                            outline: "none",
-                            fontSize: "15px",
-                            fontWeight: 600,
-                            color: "#1E40AF",
-                            backgroundColor: "white",
-                            width: "100%",
-                            boxSizing: "border-box"
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Dynamic Explanation */}
-                    {(() => {
-                      const start = new Date(spreadStart + "T00:00:00");
-                      const end = new Date(spreadEnd + "T00:00:00");
-                      if (!isNaN(start) && !isNaN(end) && end >= start) {
-                        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                        const val = parseFloat(amount);
-                        const dailyPortion = !isNaN(val) && val > 0 
-                          ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
-                          : "0.00";
-                        const totalCost = !isNaN(val) && val > 0 
-                          ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
-                          : "0.00";
-                        return (
-                          <div style={{
-                            fontSize: "0.78rem",
-                            color: "#1E40AF",
-                            fontWeight: 600,
-                            backgroundColor: "#DBEAFE",
-                            padding: "8px 10px",
-                            borderRadius: "8px",
-                            marginTop: "4px",
-                            lineHeight: "1.3"
-                          }}>
-                            {spreadMode === "repeat" ? (
-                              <>
-                                Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
-                                Total cost will be <strong>{totalCost} {currency}</strong>.
-                              </>
-                            ) : (
-                              <>
-                                Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
-                              </>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    style={{
+                      padding: "10px 14px",
+                      fontSize: "0.85rem",
+                      borderBottom: idx === mapResults.length - 1 ? "none" : "1px solid #F3F4F6",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    <strong>{result.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.75rem" }}>({result.display_name})</span>
                   </div>
-                )}
+                ))}
               </div>
             )}
           </div>
 
-          {/* 3. Notes */}
+          {/* Notes Input at the bottom */}
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <label style={{
               fontSize: "0.75rem",
@@ -3455,97 +4411,22 @@ function ManualEntryModal({
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>Notes</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Latte #coffee, scooter rental #scooter..."
+            }}>Extra Notes</label>
+            <textarea
+              value={extraNotes}
+              onChange={(e) => setExtraNotes(e.target.value)}
+              placeholder="Any additional details or thoughts..."
+              rows={2}
               style={{
                 padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #E5E7EB",
                 fontSize: "15px",
-                outline: "none"
+                outline: "none",
+                resize: "none",
+                fontFamily: "inherit"
               }}
             />
-          </div>
-
-          {/* 4. Worth It? Signature Glowing Option Card */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <label style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Worth It?</label>
-            <div 
-              onClick={() => setWorthIt(!worthIt)}
-              className={worthIt ? "worth-it-shimmer-card" : ""}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                borderRadius: "14px",
-                border: worthIt ? undefined : "1.5px solid #E5E7EB",
-                backgroundColor: worthIt ? undefined : "#F9FAFB",
-                cursor: "pointer",
-                userSelect: "none",
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                boxShadow: worthIt ? undefined : "none"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ 
-                  fontSize: "1.3rem",
-                  transform: worthIt ? "scale(1.15) rotate(6deg)" : "scale(1) rotate(0)",
-                  transition: "transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-                }}>
-                  {worthIt ? "🌟" : "💸"}
-                </span>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ 
-                    fontSize: "0.8rem", 
-                    fontWeight: worthIt ? 800 : 700, 
-                    color: worthIt ? "#92400E" : "#4B5563",
-                    transition: "color 0.2s"
-                  }}>
-                    {worthIt ? "HELL YES, WORTH IT!" : "Just a standard purchase"}
-                  </span>
-                  <span style={{ 
-                    fontSize: "0.7rem", 
-                    color: worthIt ? "#B45309" : "#9CA3AF",
-                    transition: "color 0.2s"
-                  }}>
-                    {worthIt ? "Adds joy to the adventure!" : "Necessary or standard spending"}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Custom sliding switch indicator */}
-              <div style={{
-                width: "38px",
-                height: "22px",
-                borderRadius: "11px",
-                backgroundColor: worthIt ? "#F59E0B" : "#D1D5DB",
-                position: "relative",
-                transition: "background-color 0.3s"
-              }}>
-                <div style={{
-                  width: "16px",
-                  height: "16px",
-                  borderRadius: "50%",
-                  backgroundColor: "white",
-                  position: "absolute",
-                  top: "3px",
-                  left: worthIt ? "19px" : "3px",
-                  transition: "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
-                }} />
-              </div>
-            </div>
           </div>
 
           {/* 6. Save / Delete Buttons */}
@@ -3876,82 +4757,37 @@ function AuthModal({ onClose, onSuccess }) {
         </h3>
         
         {sent ? (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", alignItems: "center" }}>
+            <span style={{ fontSize: "2.5rem", margin: "10px 0" }}>✉️</span>
             <p style={{
               fontSize: "0.85rem",
               color: "#4B5563",
               lineHeight: "1.5",
-              marginBottom: "16px"
+              margin: 0
             }}>
-              We sent a secure magic login link and code to <strong>{email}</strong>.
+              We sent a secure magic login link to <strong>{email}</strong>.
             </p>
             <p style={{
-              fontSize: "0.82rem",
+              fontSize: "0.8rem",
               color: "#6B7280",
-              marginBottom: "16px",
-              lineHeight: "1.4"
+              lineHeight: "1.4",
+              margin: 0
             }}>
-              Click the link in your email, or enter the <strong>6-digit verification code</strong> below to log in directly:
+              Please check your email inbox (and spam folder) on your device and click the link to log in directly.
             </p>
             
-            <form onSubmit={handleOtpVerify} style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
-              <input
-                type="text"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                required
-                value={otpToken}
-                onChange={(e) => setOtpToken(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="123456"
-                maxLength={6}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: "12px",
-                  border: "1.5px solid #E5E7EB",
-                  fontSize: "1.2rem",
-                  letterSpacing: "4px",
-                  outline: "none",
-                  textAlign: "center",
-                  fontWeight: 800,
-                  color: "#1F2937"
-                }}
-              />
-              {error && (
-                <p style={{
-                  color: "#EF4444",
-                  fontSize: "0.8rem",
-                  fontWeight: 500,
-                  margin: "0 0 8px 0"
-                }}>{error}</p>
-              )}
-              <button
-                type="submit"
-                disabled={verifying}
-                className="btn btn-primary"
-                style={{
-                  width: "100%",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  fontWeight: 700
-                }}
-              >
-                {verifying ? "Verifying..." : "Verify Code"}
-              </button>
-            </form>
-
             <button
               onClick={onClose}
+              className="btn btn-primary"
               style={{
-                background: "transparent",
-                border: "none",
-                color: "#9CA3AF",
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                padding: "8px"
+                width: "100%",
+                borderRadius: "12px",
+                padding: "12px",
+                fontWeight: 700,
+                marginTop: "12px"
               }}
             >
-              Cancel
+              Okay, I'll check my email
             </button>
           </div>
         ) : (
@@ -4029,7 +4865,7 @@ function AuthModal({ onClose, onSuccess }) {
   );
 }
 
-function CollaboratorsModal({ tripId, onClose }) {
+function CollaboratorsModal({ tripId, tripName, onClose }) {
   const [email, setEmail] = useState("");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -4063,14 +4899,39 @@ function CollaboratorsModal({ tripId, onClose }) {
     setError(null);
     setSuccess(false);
     try {
+      const cleanEmail = email.trim().toLowerCase();
       const { error: inviteErr } = await supabase
         .from("trip_members")
         .insert({
           trip_id: tripId,
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
           role: "editor"
         });
       if (inviteErr) throw inviteErr;
+
+      // Trigger invitation email via Resend API route
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const inviterEmail = session?.user?.email || "Your travel partner";
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://lostandsound.org";
+
+        await fetch("/api/invite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: cleanEmail,
+            tripId,
+            tripName,
+            inviterEmail,
+            origin
+          })
+        });
+      } catch (emailErr) {
+        console.error("Invite email send error:", emailErr);
+      }
+
       setSuccess(true);
       setEmail("");
       fetchMembers();
@@ -4186,7 +5047,7 @@ function CollaboratorsModal({ tripId, onClose }) {
           </span>
           {success && (
             <p style={{ color: "#10B981", fontSize: "0.8rem", marginTop: "8px", fontWeight: 600, lineHeight: "1.3" }}>
-              ✅ Whitelisted! Now copy the Invite Link above and send it to them (via WhatsApp or email) so they can log in.
+              ✅ Whitelisted and invite email sent! They can click the link in their email to join.
             </p>
           )}
           {error && <p style={{ color: "#EF4444", fontSize: "0.8rem", marginTop: "6px", fontWeight: 500 }}>{error}</p>}
@@ -4201,10 +5062,22 @@ function CollaboratorsModal({ tripId, onClose }) {
               alignItems: "center",
               fontSize: "0.85rem", 
               padding: "8px 0", 
-              borderBottom: "1px solid #F3F4F6" 
+              borderBottom: "1px solid #F3F4F6",
+              gap: "10px"
             }}>
-              <span style={{ color: "#374151" }}>{m.email}</span>
-              <span style={{ fontWeight: 600, color: "var(--color-purple)", textTransform: "capitalize" }}>{m.role}</span>
+              <span style={{ 
+                color: "#374151",
+                textOverflow: "ellipsis",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                flex: 1
+              }} title={m.email}>{m.email}</span>
+              <span style={{ 
+                fontWeight: 600, 
+                color: "var(--color-purple)", 
+                textTransform: "capitalize",
+                flexShrink: 0
+              }}>{m.role}</span>
             </div>
           ))}
         </div>

@@ -24,25 +24,35 @@ export default function TripsDashboard() {
       setLoading(true);
     }
 
+    const demoTripMock = {
+      id: "demo",
+      name: "My Local Trip (Demo)",
+      role: "demo",
+      created_at: new Date().toISOString()
+    };
+
     const handleAuthSession = (session) => {
       if (session) {
         setSession(session);
         fetchTrips(session.user);
       } else {
-        window.location.href = '/tracker';
+        setSession(null);
+        setTrips([demoTripMock]);
+        setLoading(false);
       }
     };
 
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (!error && data?.session) {
-          // Remove code from URL
           const newUrl = window.location.pathname;
           window.history.replaceState({}, document.title, newUrl);
           handleAuthSession(data.session);
         } else {
           console.error("Code exchange failed:", error);
-          window.location.href = '/tracker';
+          setSession(null);
+          setTrips([demoTripMock]);
+          setLoading(false);
         }
       });
       return;
@@ -51,16 +61,20 @@ export default function TripsDashboard() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         handleAuthSession(session);
-      } else if (!isAuthCallback) {
-        window.location.href = '/tracker';
+      } else {
+        setSession(null);
+        setTrips([demoTripMock]);
+        setLoading(false);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         handleAuthSession(session);
-      } else if (!isAuthCallback) {
-        window.location.href = '/tracker';
+      } else {
+        setSession(null);
+        setTrips([demoTripMock]);
+        setLoading(false);
       }
     });
 
@@ -235,24 +249,42 @@ export default function TripsDashboard() {
             lineHeight: 1.1
           }}>My Trips</h1>
           <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: '2px' }}>
-            Logged in as {session?.user?.email}
+            {session ? `Logged in as ${session.user.email}` : "Viewing as Guest"}
           </p>
         </div>
-        <button
-          onClick={handleSignOut}
-          style={{
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: '#9CA3AF',
-            background: 'none',
-            border: '1px solid #E5E7EB',
-            borderRadius: '8px',
-            padding: '6px 12px',
-            cursor: 'pointer'
-          }}
-        >
-          Sign Out
-        </button>
+        {session ? (
+          <button
+            onClick={handleSignOut}
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#9CA3AF',
+              background: 'none',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              cursor: 'pointer'
+            }}
+          >
+            Sign Out
+          </button>
+        ) : (
+          <button
+            onClick={() => window.location.href = '/tracker'}
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: 'white',
+              backgroundColor: 'var(--color-purple)',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              cursor: 'pointer'
+            }}
+          >
+            Sign In
+          </button>
+        )}
       </header>
 
       {/* Main Content */}
@@ -274,7 +306,14 @@ export default function TripsDashboard() {
             Create a collaborative cloud trip to track your budget with a travel partner in real-time.
           </p>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              if (session) {
+                setShowCreateModal(true);
+              } else {
+                alert("Please sign in or create an account to start tracking your own cloud trips!");
+                window.location.href = '/tracker';
+              }
+            }}
             style={{
               backgroundColor: 'var(--color-orange)',
               color: 'white',
@@ -317,6 +356,42 @@ export default function TripsDashboard() {
           </button>
         </div>
 
+        {/* Guest Sign In Prompt Card */}
+        {!session && (
+          <div style={{
+            backgroundColor: 'rgba(133, 58, 81, 0.03)',
+            borderRadius: '20px',
+            padding: '20px',
+            border: '1.5px solid rgba(133, 58, 81, 0.1)',
+            marginBottom: '24px',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-purple)', marginBottom: '6px' }}>
+              ☁️ Save & Share Your Trips
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '16px', lineHeight: '1.4' }}>
+              Sign up with your email to unlock real-time collaboration with travel partners, cloud backup, and multi-device syncing.
+            </p>
+            <button
+              onClick={() => window.location.href = '/tracker'}
+              style={{
+                backgroundColor: 'var(--color-purple)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 20px',
+                fontWeight: 750,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+                width: '100%'
+              }}
+            >
+              Sign In / Create Account
+            </button>
+          </div>
+        )}
+
         {/* Trips List */}
         <div>
           <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
@@ -341,7 +416,13 @@ export default function TripsDashboard() {
               {trips.map(trip => (
                 <div
                   key={trip.id}
-                  onClick={() => window.location.href = `/tracker/trip/${trip.id}`}
+                  onClick={() => {
+                    if (trip.id === 'demo') {
+                      window.location.href = '/tracker?demo=true';
+                    } else {
+                      window.location.href = `/tracker/trip/${trip.id}`;
+                    }
+                  }}
                   style={{
                     backgroundColor: 'white',
                     borderRadius: '20px',
