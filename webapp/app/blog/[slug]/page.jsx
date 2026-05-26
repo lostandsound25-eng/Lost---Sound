@@ -5,11 +5,13 @@ import LightboxWrapper from '../../../components/LightboxWrapper';
 // Enable ISR: Revalidate the post every 60 seconds
 export const revalidate = 60;
 
+import { fetchWithTimeout } from '../../../lib/fetch';
+
 async function getPost(slug) {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts/slug:${encodeURIComponent(slug)}`,
-      { next: { revalidate: 60 } }
+      { next: { revalidate: 60 }, timeout: 5000 }
     );
     
     if (!res.ok) {

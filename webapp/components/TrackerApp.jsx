@@ -235,6 +235,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   // Editable trip name state
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [isEditingLocale, setIsEditingLocale] = useState(false);
+  const [localeSearchQuery, setLocaleSearchQuery] = useState("");
+  const [localeResults, setLocaleResults] = useState([]);
 
   // Offline background queue state
   const [syncQueue, setSyncQueue] = useState([]);
@@ -702,6 +706,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: newRow.note || "",
               worthIt: newRow.worth_it,
               location: newRow.location || "",
+              locationLocale: newRow.location_locale || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || ""
             };
@@ -719,6 +724,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: newRow.note || "",
               worthIt: newRow.worth_it,
               location: newRow.location || "",
+              locationLocale: newRow.location_locale || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || ""
             };
@@ -933,6 +939,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         note: e.note || "",
         worthIt: e.worth_it,
         location: e.location || "",
+        locationLocale: e.location_locale || "",
         tags: e.tags || [],
         photoUrl: e.photo_url || ""
       }));
@@ -963,6 +970,25 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       } catch (e) {
         console.error("Failed to sync location to cloud:", e);
       }
+    }
+  };
+
+  const searchLocaleNominatim = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setLocaleResults([]);
+      return;
+    }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setLocaleResults(data.map(item => ({
+          display_name: item.display_name,
+          name: item.name || item.display_name.split(",")[0]
+        })));
+      }
+    } catch (err) {
+      console.error("Error searching locale:", err);
     }
   };
 
@@ -1061,9 +1087,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
 
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
-        const finalLocation = expense.location 
-          ? `${expense.location} | ${trip.currentLocation}` 
-          : (trip.currentLocation ? `| ${trip.currentLocation}` : "");
+        const finalLocation = expense.location || "";
+        const finalLocale = trip.currentLocation || "";
 
         for (let i = 0; i < N; i++) {
           const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
@@ -1098,6 +1123,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             note: noteWithSuffix,
             worthIt: expense.worthIt,
             location: finalLocation,
+            locationLocale: finalLocale,
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
@@ -1116,6 +1142,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: singleExpense.note,
               worth_it: singleExpense.worthIt,
               location: singleExpense.location,
+              location_locale: singleExpense.locationLocale,
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null
@@ -1134,16 +1161,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
         const cleanNote = expense.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
         
-        const originalHighLevel = editingExpense?.location ? (editingExpense.location.split(" | ")[1] || "") : "";
-        const finalLocation = originalHighLevel 
-          ? (expense.location ? `${expense.location} | ${originalHighLevel}` : `| ${originalHighLevel}`) 
-          : (expense.location ? `${expense.location} | ${trip.currentLocation}` : (trip.currentLocation ? `| ${trip.currentLocation}` : ""));
+        const finalLocation = expense.location || "";
+        const finalLocale = editingExpense?.locationLocale || trip.currentLocation || "";
 
         const updatedExpense = {
           ...expense,
           note: cleanNote,
           tags: baseTags,
           location: finalLocation,
+          locationLocale: finalLocale,
           timestamp: expense.timestamp || editingExpense?.timestamp,
           photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "")
         };
@@ -1159,6 +1185,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             note: updatedExpense.note,
             worth_it: expense.worthIt,
             location: finalLocation,
+            location_locale: finalLocale,
             tags: updatedExpense.tags,
             created_at: expense.timestamp || editingExpense?.timestamp,
             updated_at: new Date().toISOString(),
@@ -1168,9 +1195,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }
     } else {
       // Insert
-      const finalLocation = expense.location 
-        ? `${expense.location} | ${trip.currentLocation}` 
-        : (trip.currentLocation ? `| ${trip.currentLocation}` : "");
+      const finalLocation = expense.location || "";
+      const finalLocale = trip.currentLocation || "";
 
       if (expense.spreadDays && expense.spreadDays > 1) {
         const N = expense.spreadDays;
@@ -1219,6 +1245,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             note: noteWithSuffix,
             worthIt: expense.worthIt,
             location: finalLocation,
+            locationLocale: finalLocale,
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
@@ -1237,6 +1264,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               note: singleExpense.note,
               worth_it: singleExpense.worthIt,
               location: singleExpense.location,
+              location_locale: singleExpense.locationLocale,
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null
@@ -1256,6 +1284,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const newExpense = {
           ...expense,
           location: finalLocation,
+          locationLocale: finalLocale,
           id: newId,
           timestamp: expense.timestamp || new Date().toISOString()
         };
@@ -1271,6 +1300,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             note: newExpense.note,
             worth_it: newExpense.worthIt,
             location: newExpense.location,
+            location_locale: newExpense.locationLocale,
             tags: newExpense.tags,
             trip_id: tripId,
             photo_url: newExpense.photoUrl || null
@@ -1473,7 +1503,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {sortedTags.map((item) => {
+              {sortedTags.slice(0, showAllTags ? sortedTags.length : 5).map((item) => {
                 const pct = allExpensesTotal > 0 ? (item.spend / allExpensesTotal) * 100 : 0;
                 return (
                   <div 
@@ -1505,6 +1535,28 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   </div>
                 );
               })}
+              {sortedTags.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  style={{
+                    backgroundColor: "transparent",
+                    border: "none",
+                    color: "var(--color-purple)",
+                    fontWeight: 700,
+                    fontSize: "0.82rem",
+                    cursor: "pointer",
+                    padding: "8px 0 4px",
+                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "4px"
+                  }}
+                >
+                  {showAllTags ? "Show Less ▲" : `Load More (${sortedTags.length - 5} more) ▼`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1514,12 +1566,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const nameLength = trip.name ? trip.name.length : 0;
   const dynamicFontSize = nameLength > 24 
-    ? "0.85rem" 
+    ? "1.1rem" 
     : nameLength > 18 
-      ? "0.95rem" 
+      ? "1.25rem" 
       : nameLength > 12 
-        ? "1.05rem" 
-        : "1.2rem";
+        ? "1.4rem" 
+        : "1.6rem";
 
   return isMounted ? (
     <div 
@@ -1645,144 +1697,80 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     <button
                       onClick={handleSaveSyncClick}
                       style={{
-                        fontSize: "0.75rem",
+                        fontSize: "0.68rem",
                         fontWeight: 700,
                         color: "white",
                         backgroundColor: "var(--color-orange)",
                         border: "none",
-                        borderRadius: "12px",
-                        padding: "6px 12px",
+                        borderRadius: "10px",
+                        padding: "4px 8px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
                         gap: "4px",
-                        boxShadow: "0 2px 8px rgba(232, 107, 50, 0.25)"
+                        boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)"
                       }}
                     >
                       ☁️ Save & Sync
                     </button>
-                    {(() => {
-                      const lastRates = localStorage.getItem("tracker_rates_last_updated");
-                      if (!lastRates) return null;
-                      const diffMs = Date.now() - parseInt(lastRates, 10);
-                      const diffMin = Math.round(diffMs / 60000);
-                      const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
-                      return (
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.65rem", color: "#6B7280" }}>
-                          <span>Rates: {ratesTimeText}</span>
-                          {isOnline && (
-                            <button
-                              type="button"
-                              onClick={() => fetchLatestRates(true)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                padding: 0,
-                                cursor: "pointer",
-                                fontSize: "0.7rem",
-                                color: "var(--color-purple)",
-                                display: "flex",
-                                alignItems: "center"
-                              }}
-                              title="Refresh exchange rates"
-                            >
-                              🔄
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                      <button
-                        onClick={() => setActiveModal("collaborators")}
-                        style={{
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          color: "var(--color-purple)",
-                          backgroundColor: "rgba(133, 58, 81, 0.08)",
-                          border: "none",
-                          borderRadius: "12px",
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        👥 Share
-                      </button>
-                      {(() => {
-                        let statusText = "Synced";
-                        let statusEmoji = "🟢";
-                        let badgeColor = "#10B981";
-                        let badgeBg = "#ECFDF5";
-                        let glow = "0 0 6px rgba(16, 185, 129, 0.4)";
-                        
-                        if (!isOnline) {
-                          statusText = "Offline";
-                          statusEmoji = "✈️";
-                          badgeColor = "#D97706";
-                          badgeBg = "#FEF3C7";
-                          glow = "0 0 6px rgba(217, 119, 6, 0.4)";
-                        } else if (isSyncing || syncQueue.length > 0) {
-                          statusText = "Syncing...";
-                          statusEmoji = "🔄";
-                          badgeColor = "#2563EB";
-                          badgeBg = "#EFF6FF";
-                          glow = "0 0 6px rgba(37, 99, 235, 0.4)";
-                        }
-                        
-                        return (
-                          <span style={{
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            color: badgeColor,
-                            backgroundColor: badgeBg,
-                            padding: "4px 8px",
-                            borderRadius: "12px",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            boxShadow: glow,
-                            transition: "all 0.3s ease"
-                          }}>
-                            {statusEmoji} {statusText}
-                          </span>
-                        );
-                      })()}
-                    </div>
+                    <button
+                      onClick={() => setActiveModal("collaborators")}
+                      style={{
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        color: "var(--color-purple)",
+                        backgroundColor: "rgba(133, 58, 81, 0.08)",
+                        border: "none",
+                        borderRadius: "10px",
+                        padding: "4px 8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      👥 Share
+                    </button>
                     {(() => {
-                      const lastRates = localStorage.getItem("tracker_rates_last_updated");
-                      if (!lastRates) return null;
-                      const diffMs = Date.now() - parseInt(lastRates, 10);
-                      const diffMin = Math.round(diffMs / 60000);
-                      const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
+                      let statusText = "Synced";
+                      let statusEmoji = "🟢";
+                      let badgeColor = "#10B981";
+                      let badgeBg = "#ECFDF5";
+                      let glow = "0 0 4px rgba(16, 185, 129, 0.25)";
+                      
+                      if (!isOnline) {
+                        statusText = "Offline";
+                        statusEmoji = "✈️";
+                        badgeColor = "#D97706";
+                        badgeBg = "#FEF3C7";
+                        glow = "0 0 4px rgba(217, 119, 6, 0.25)";
+                      } else if (isSyncing || syncQueue.length > 0) {
+                        statusText = "Syncing...";
+                        statusEmoji = "🔄";
+                        badgeColor = "#2563EB";
+                        badgeBg = "#EFF6FF";
+                        glow = "0 0 4px rgba(37, 99, 235, 0.25)";
+                      }
+                      
                       return (
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.65rem", color: "#6B7280" }}>
-                          <span>Rates: {ratesTimeText}</span>
-                          {isOnline && (
-                            <button
-                              type="button"
-                              onClick={() => fetchLatestRates(true)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                padding: 0,
-                                cursor: "pointer",
-                                fontSize: "0.7rem",
-                                color: "var(--color-purple)",
-                                display: "flex",
-                                alignItems: "center"
-                              }}
-                              title="Refresh exchange rates"
-                            >
-                              🔄
-                            </button>
-                          )}
-                        </div>
+                        <span style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 700,
+                          color: badgeColor,
+                          backgroundColor: badgeBg,
+                          padding: "3px 6px",
+                          borderRadius: "10px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "2px",
+                          boxShadow: glow,
+                          transition: "all 0.3s ease"
+                        }}>
+                          {statusEmoji} {statusText}
+                        </span>
                       );
                     })()}
                   </div>
@@ -1791,135 +1779,211 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             )}
           </div>
 
-          {/* Location input */}
+          {/* Main Stats container */}
           <div style={{
             display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "14px",
-            borderBottom: "1px dashed #E5E7EB",
-            paddingBottom: "6px"
+            flexDirection: "column",
+            gap: "6px",
+            marginTop: "12px"
           }}>
-            <span style={{ fontSize: "1.1rem" }}>📍</span>
-            <input
-              type="text"
-              placeholder="Where are you today?"
-              value={locationInput}
-              onChange={(e) => setLocationInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  updateLocation(locationInput);
-                }
-              }}
-              style={{
-                border: "none",
-                fontSize: "16px",
-                fontWeight: 500,
-                color: "#374151",
-                outline: "none",
-                width: "100%",
-                background: "transparent"
-              }}
-            />
-            {locationInput !== (trip.currentLocation || "") && (
-              <button
-                type="button"
-                onClick={() => updateLocation(locationInput)}
+            {/* Today Total & Daily Average side by side */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              padding: "0 12px"
+            }}>
+              {/* Today */}
+              <div 
+                onClick={() => setTodaySectionExpanded(!todaySectionExpanded)}
                 style={{
-                  backgroundColor: "var(--color-purple)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 4px 10px rgba(133, 58, 81, 0.2)",
-                  animation: "fadeInOverlay 0.2s ease-out",
+                  padding: "4px 8px",
+                  borderRadius: "12px",
+                  backgroundColor: todaySectionExpanded ? "rgba(133, 58, 81, 0.05)" : "transparent",
                   transition: "all 0.2s",
-                  whiteSpace: "nowrap"
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--color-orange)";
-                  e.currentTarget.style.boxShadow = "0 6px 12px rgba(232, 107, 50, 0.3)";
+                  if (!todaySectionExpanded) {
+                    e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.03)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--color-purple)";
-                  e.currentTarget.style.boxShadow = "0 4px 10px rgba(133, 58, 81, 0.2)";
+                  if (!todaySectionExpanded) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
                 }}
               >
-                Save
-              </button>
-            )}
-          </div>
-
-          {/* Totals */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end"
-          }}>
-            <div
-              onClick={() => setTodaySectionExpanded(!todaySectionExpanded)}
-              style={{
-                cursor: "pointer",
-                padding: "6px 12px",
-                marginLeft: "-12px",
-                borderRadius: "12px",
-                backgroundColor: todaySectionExpanded ? "rgba(133, 58, 81, 0.05)" : "transparent",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                if (!todaySectionExpanded) {
-                  e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.03)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!todaySectionExpanded) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }
-              }}
-            >
-              <p style={{
-                fontSize: "0.82rem",
-                color: "#6B7280",
-                fontWeight: 600,
-                marginBottom: "3px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px"
-              }}>
-                <span>Today</span>
                 <span style={{
-                  fontSize: "0.6rem",
-                  color: "#9CA3AF",
-                  transform: todaySectionExpanded ? "rotate(180deg)" : "none",
-                  transition: "transform 0.2s",
-                  display: "inline-block"
-                }}>▼</span>
-              </p>
-              <h2 style={{
-                fontSize: "1.8rem",
-                fontWeight: 900,
-                color: "#111827",
-                lineHeight: 1,
-                fontFamily: "var(--font-heading)"
-              }}>{formatMoney(todayTotal, trip.homeCurrency)}</h2>
+                  fontSize: "0.72rem",
+                  color: "#6B7280",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2px"
+                }}>
+                  Today
+                  <span style={{
+                    fontSize: "0.6rem",
+                    color: "#9CA3AF",
+                    transform: todaySectionExpanded ? "rotate(180deg)" : "none",
+                    transition: "transform 0.2s",
+                    display: "inline-block"
+                  }}>▼</span>
+                </span>
+                <h1 style={{
+                  fontSize: "2.4rem",
+                  fontWeight: 900,
+                  color: "#111827",
+                  lineHeight: 1.1,
+                  margin: 0,
+                  fontFamily: "var(--font-heading)"
+                }}>
+                  {formatMoney(todayTotal, trip.homeCurrency)}
+                </h1>
+              </div>
+
+              {/* Daily Average */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                flex: 1
+              }}>
+                <span style={{
+                  fontSize: "0.72rem",
+                  color: "#6B7280",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  marginBottom: "2px"
+                }}>
+                  Daily Avg ({daysActive}d)
+                </span>
+                <p style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 900,
+                  color: "var(--color-purple)",
+                  fontFamily: "var(--font-heading)",
+                  margin: 0,
+                  lineHeight: 1.1
+                }}>
+                  {formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}
+                </p>
+              </div>
             </div>
-            <div style={{ textAlign: "right", paddingBottom: "6px" }}>
-              <p style={{
-                fontSize: "0.8rem",
-                color: "#6B7280",
-                fontWeight: 500,
-                marginBottom: "2px"
-              }}>Daily Avg ({daysActive}d)</p>
-              <p style={{
-                fontSize: "1.1rem",
-                fontWeight: 800,
-                color: "var(--color-purple)",
-                fontFamily: "var(--font-heading)",
-                lineHeight: 1
-              }}>{formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}</p>
+
+            {/* Town/City Locale search field underneath */}
+            <div style={{ padding: "0 20px" }}>
+              {!isEditingLocale ? (
+                <div 
+                  onClick={() => {
+                    setLocaleSearchQuery(trip.currentLocation || "");
+                    setIsEditingLocale(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "0.82rem",
+                    color: "#6B7280",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                  title="Tap to change locale"
+                >
+                  <span>📍 {trip.currentLocation || "Where are you today?"}</span>
+                  <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>✏️</span>
+                </div>
+              ) : (
+                <div style={{ position: "relative", width: "100%", maxWidth: "300px" }}>
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      value={localeSearchQuery}
+                      onChange={(e) => {
+                        setLocaleSearchQuery(e.target.value);
+                        searchLocaleNominatim(e.target.value);
+                      }}
+                      placeholder="Search town/city..."
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        padding: "4px 8px",
+                        borderRadius: "10px",
+                        border: "1.5px solid var(--color-purple)",
+                        fontSize: "0.8rem",
+                        outline: "none",
+                        color: "#374151"
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingLocale(false);
+                        setLocaleSearchQuery("");
+                        setLocaleResults([]);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#EF4444",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        fontWeight: 700
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {localeResults.length > 0 && (
+                    <div style={{
+                      position: "absolute",
+                      top: "32px",
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                      zIndex: 100,
+                      maxHeight: "150px",
+                      overflowY: "auto"
+                    }}>
+                      {localeResults.map((res, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            updateLocation(res.name);
+                            setIsEditingLocale(false);
+                            setLocaleSearchQuery("");
+                            setLocaleResults([]);
+                          }}
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: "0.8rem",
+                            borderBottom: idx === localeResults.length - 1 ? "none" : "1px solid #F3F4F6",
+                            cursor: "pointer",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            color: "#374151"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                        >
+                          <strong>{res.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.7rem" }}>({res.display_name})</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2312,7 +2376,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
                                   const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
-                                  const dayLocation = sameDayExpenses.map(e => e.location ? (e.location.split(" | ")[1] || "") : "").find(loc => loc) || "";
+                                  const dayLocation = sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[1] || "") : "")).find(loc => loc) || "";
 
                                   return (
                                     <div key={exp.id}>
@@ -2419,7 +2483,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           olderGroups[dateKey].categories[exp.category].total += amtInHome;
                           olderGroups[dateKey].categories[exp.category].list.push(exp);
 
-                          const highLevelLoc = exp.location ? (exp.location.split(" | ")[1] || exp.location.split(" | ")[0] || "") : "";
+                          const highLevelLoc = exp.locationLocale || (exp.location ? (exp.location.split(" | ")[1] || exp.location.split(" | ")[0] || "") : "");
                           if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
                             olderGroups[dateKey].locationsList.push(highLevelLoc);
                           }
@@ -2766,6 +2830,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onAddCustomCurrency={addCustomCurrency}
           onVoiceStart={startVoiceListening}
           expenses={expenses}
+          onRefreshRates={() => fetchLatestRates(true)}
         />
       )}
 
@@ -3222,7 +3287,7 @@ function ExpenseCard({
             }
           }}
           style={{
-            backgroundColor: expense.worthIt ? "transparent" : "white",
+            backgroundColor: expense.worthIt ? "#FFFDF5" : "white",
             borderRadius: "16px",
             border: "1.5px solid transparent",
             padding: "15px 16px",
@@ -3249,7 +3314,9 @@ function ExpenseCard({
             display: "flex",
             flexDirection: "column",
             gap: "4px",
-            paddingLeft: "8px"
+            paddingLeft: "8px",
+            flex: 1,
+            minWidth: 0
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <span style={{
@@ -3282,17 +3349,28 @@ function ExpenseCard({
               <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>
                 {CATEGORY_EMOJIS[expense.category] || "📦"} {expense.category}
               </span>
-              {expense.location && expense.location.split(" | ")[0] && (
-                <span style={{
-                  fontSize: "0.78rem",
-                  color: "#9CA3AF",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "2px"
-                }}>
-                  📍 {expense.location.split(" | ")[0]}
-                </span>
-              )}
+              {(() => {
+                const dbLoc = expense.location || "";
+                const locale = expense.locationLocale || dbLoc.split(" | ")[1] || "";
+                const establishment = dbLoc.includes(" | ") ? dbLoc.split(" | ")[0] : dbLoc;
+                
+                const parts = [];
+                if (establishment.trim()) parts.push(establishment.trim());
+                if (locale.trim() && locale.trim() !== establishment.trim()) parts.push(locale.trim());
+                const displayLoc = parts.join(", ");
+                if (!displayLoc) return null;
+                return (
+                  <span style={{
+                    fontSize: "0.78rem",
+                    color: "#9CA3AF",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "2px"
+                  }}>
+                    📍 {displayLoc}
+                  </span>
+                );
+              })()}
             </div>
 
             {expense.tags && expense.tags.filter(t => !t.startsWith("spread-")).length > 0 && (
@@ -3350,7 +3428,8 @@ function ManualEntryModal({
   customCurrencies,
   onAddCustomCurrency,
   onVoiceStart,
-  expenses = []
+  expenses = [],
+  onRefreshRates
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;
@@ -3376,8 +3455,76 @@ function ManualEntryModal({
   const [editEntireGroup, setEditEntireGroup] = useState(false);
 
   const fileInputRef = useRef(null);
-  const [mapResults, setMapResults] = useState([]);
-  const [searchingMap, setSearchingMap] = useState(false);
+  const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
+  const [showLocSearchInput, setShowLocSearchInput] = useState(false);
+  const [locSearchQuery, setLocSearchQuery] = useState("");
+  const [locSearchResults, setLocSearchResults] = useState([]);
+  const [searchingLoc, setSearchingLoc] = useState(false);
+  const [coords, setCoords] = useState(null);
+
+  // Get user geolocation coordinates to restrict search within 50km
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude
+          });
+        },
+        (err) => {
+          console.warn("Geolocation permission denied or error:", err);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
+
+  const searchEstablishmentBounded = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setLocSearchResults([]);
+      return;
+    }
+    setSearchingLoc(true);
+    try {
+      let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8`;
+      if (coords) {
+        const latDiff = 50 / 111.0;
+        const lonDiff = 50 / (111.0 * Math.cos(coords.lat * Math.PI / 180));
+        const left = coords.lon - lonDiff;
+        const right = coords.lon + lonDiff;
+        const top = coords.lat + latDiff;
+        const bottom = coords.lat - latDiff;
+        url += `&viewbox=${left},${top},${right},${bottom}&bounded=1`;
+      }
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setLocSearchResults(data.map(item => ({
+          display_name: item.display_name,
+          name: item.name || item.display_name.split(",")[0]
+        })));
+      }
+    } catch (err) {
+      console.error("Error searching establishment:", err);
+    } finally {
+      setSearchingLoc(false);
+    }
+  };
+
+  const tripHashtags = (() => {
+    const tagsSet = new Set();
+    expenses.forEach(e => {
+      if (e.tags) {
+        e.tags.forEach(t => {
+          if (!t.startsWith("spread-") && !t.startsWith("spread-group-")) {
+            tagsSet.add(t);
+          }
+        });
+      }
+    });
+    return Array.from(tagsSet);
+  })();
 
   const [amount, setAmount] = useState(() => {
     if (expenseToEdit) return expenseToEdit.amount;
@@ -3426,7 +3573,7 @@ function ManualEntryModal({
     const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
     return lastUsed || trip.localCurrency;
   });
-  const [location, setLocation] = useState(() => {
+  const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) return (expenseToEdit.location.split(" | ")[0] || "");
     const draft = getDraft();
     return draft ? draft.location : "";
@@ -3497,7 +3644,7 @@ function ManualEntryModal({
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.localCurrency);
-      setLocation(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
+      setEstablishment(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
       setPhotoUrl(expenseToEdit.photoUrl || "");
       setExpenseDate(
         expenseToEdit.timestamp 
@@ -3515,10 +3662,10 @@ function ManualEntryModal({
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
     if (!expenseToEdit) {
-      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location, photoUrl };
+      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrl };
       localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
     }
-  }, [amount, title, extraNotes, category, worthIt, currency, location, photoUrl, expenseToEdit]);
+  }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrl, expenseToEdit]);
 
   const handleCloseWithX = () => {
     localStorage.removeItem("tracker_expense_draft");
@@ -3650,7 +3797,7 @@ function ManualEntryModal({
         }}
         className={worthIt ? "worth-it-shimmer-modal" : ""}
         style={{
-          backgroundColor: "white",
+          backgroundColor: worthIt ? "#FFFDF2" : "white",
           width: "100%",
           maxWidth: "400px",
           borderRadius: "24px",
@@ -3749,7 +3896,7 @@ function ManualEntryModal({
               category,
               note: fullNoteText || category,
               worthIt,
-              location: location, // Pass parsed location
+              location: establishment, // Pass parsed location
               photoUrl: photoUrl,
               tags: finalTags,
               id: expenseToEdit?.id,
@@ -3772,12 +3919,12 @@ function ManualEntryModal({
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>Expense Title</label>
+            }}>Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Latte #coffee, scooter rental #scooter..."
+              placeholder="Coffee before train"
               required
               style={{
                 padding: "10px 12px",
@@ -3815,6 +3962,23 @@ function ManualEntryModal({
                 onAddCustomCurrency={onAddCustomCurrency}
                 style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
               />
+              {(() => {
+                const val = parseFloat(amount);
+                const showConversion = currency !== trip.homeCurrency && !isNaN(val) && val > 0;
+                const convertedVal = showConversion ? convertCurrency(val, currency, trip.homeCurrency, rates) : 0;
+                if (!showConversion) return null;
+                return (
+                  <span style={{
+                    fontSize: "0.82rem",
+                    color: "#6B7280",
+                    fontWeight: 600,
+                    marginLeft: "4px",
+                    whiteSpace: "nowrap"
+                  }}>
+                    ≈ {formatMoney(convertedVal, trip.homeCurrency)}
+                  </span>
+                );
+              })()}
               <input
                 type="number"
                 step="0.01"
@@ -3889,6 +4053,66 @@ function ManualEntryModal({
               )}
             </div>
             
+            {/* Rates time and refresh inside manual entry modal */}
+            {(() => {
+              const lastRates = localStorage.getItem("tracker_rates_last_updated");
+              if (!lastRates) return null;
+              const diffMs = Date.now() - parseInt(lastRates, 10);
+              const diffMin = Math.round(diffMs / 60000);
+              const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
+              
+              const rateVal = convertCurrency(1, currency, trip.homeCurrency, rates);
+              const inverseRateVal = rateVal > 0 ? 1 / rateVal : 0;
+              
+              let rateText = "";
+              if (currency !== trip.homeCurrency && rateVal > 0) {
+                if (rateVal >= 1) {
+                  rateText = `1 ${currency} ≈ ${rateVal.toFixed(2)} ${trip.homeCurrency}`;
+                } else {
+                  rateText = `1 ${trip.homeCurrency} ≈ ${inverseRateVal.toFixed(2)} ${currency}`;
+                }
+              }
+
+              return (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "0.75rem",
+                  color: "#6B7280",
+                  marginTop: "-2px",
+                  padding: "0 4px",
+                  marginBottom: "6px"
+                }}>
+                  <span>{rateText}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span>Rates: {ratesTimeText}</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (onRefreshRates) {
+                          await onRefreshRates();
+                        }
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        color: "var(--color-purple)",
+                        display: "flex",
+                        alignItems: "center"
+                      }}
+                      title="Refresh exchange rates"
+                    >
+                      🔄
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Compressed photo preview */}
             {photoUrl && (
               <div style={{
@@ -4071,42 +4295,53 @@ function ManualEntryModal({
             </div>
 
             {/* Worth It Column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
               <label style={{
                 fontSize: "0.72rem",
                 fontWeight: 700,
-                color: "#4B5563",
+                color: worthIt ? "#B45309" : "#4B5563",
                 textTransform: "uppercase",
                 letterSpacing: "0.5px"
-              }}>Worth it.</label>
-              <button
-                type="button"
-                onClick={() => setWorthIt(!worthIt)}
+              }}>
+                {worthIt ? "Worth it." : "Worth it?"}
+              </label>
+              <div 
+                onClick={() => {
+                  const newValue = !worthIt;
+                  setWorthIt(newValue);
+                  if (typeof window !== "undefined" && navigator.vibrate) {
+                    navigator.vibrate(15);
+                  }
+                }}
                 style={{
+                  width: "52px",
+                  height: "28px",
+                  borderRadius: "15px",
+                  backgroundColor: worthIt ? "#F59E0B" : "#D1D5DB",
+                  padding: "3px",
+                  cursor: "pointer",
+                  transition: "background-color 0.25s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  boxShadow: worthIt ? "0 2px 8px rgba(245, 158, 11, 0.3)" : "none"
+                }}
+              >
+                <div style={{
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "50%",
+                  backgroundColor: "white",
+                  transform: worthIt ? "translateX(24px)" : "translateX(0)",
+                  transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "6px",
-                  backgroundColor: worthIt ? "#FFFBEB" : "white",
-                  borderRadius: "14px",
-                  padding: "10px 12px",
-                  border: worthIt ? "1.5px solid #F59E0B" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                  cursor: "pointer",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: worthIt ? "#B45309" : "#4B5563",
-                  outline: "none",
-                  width: "100%",
-                  boxShadow: worthIt ? "0 0 10px rgba(245, 158, 11, 0.15)" : "none",
-                  transition: "all 0.2s ease"
-                }}
-              >
-                <span style={{
-                  transform: worthIt ? "scale(1.2) rotate(8deg)" : "scale(1)",
-                  transition: "transform 0.2s"
-                }}>{worthIt ? "🌟" : "💸"}</span>
-                {worthIt ? "Worth it." : "Worth it?"}
-              </button>
+                  fontSize: "0.75rem",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.15)"
+                }}>
+                  {worthIt ? "🌟" : "💸"}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -4316,102 +4551,18 @@ function ManualEntryModal({
             </div>
           )}
 
-          {/* Location input + Nominatim Search */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px", position: "relative" }}>
-            <label style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Location</label>
-            <div style={{ display: "flex", gap: "6px" }}>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Common Ground Cafe, El Nido..."
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
-                  fontSize: "15px",
-                  outline: "none"
-                }}
-              />
-              <button
-                type="button"
-                onClick={searchLocation}
-                disabled={searchingMap}
-                style={{
-                  backgroundColor: "#F3F4F6",
-                  border: "1px solid #D1D5DB",
-                  borderRadius: "12px",
-                  width: "42px",
-                  height: "42px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.1rem"
-                }}
-                title="Search nearby locations"
-              >
-                {searchingMap ? "⌛" : "📍"}
-              </button>
-            </div>
 
-            {/* Nominatim Search Dropdown results */}
-            {mapResults.length > 0 && (
-              <div style={{
-                position: "absolute",
-                top: "64px",
-                left: 0,
-                right: 0,
-                backgroundColor: "white",
-                border: "1px solid #E5E7EB",
-                borderRadius: "12px",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                zIndex: 100,
-                maxHeight: "180px",
-                overflowY: "auto"
-              }}>
-                {mapResults.map((result, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setLocation(result.name);
-                      setMapResults([]);
-                    }}
-                    style={{
-                      padding: "10px 14px",
-                      fontSize: "0.85rem",
-                      borderBottom: idx === mapResults.length - 1 ? "none" : "1px solid #F3F4F6",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                  >
-                    <strong>{result.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.75rem" }}>({result.display_name})</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Notes Input at the bottom */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{
               fontSize: "0.75rem",
               fontWeight: 700,
               color: "#4B5563",
               textTransform: "uppercase",
               letterSpacing: "0.5px"
-            }}>Extra Notes</label>
+            }}>Notes</label>
+            
             <textarea
               value={extraNotes}
               onChange={(e) => setExtraNotes(e.target.value)}
@@ -4427,6 +4578,220 @@ function ManualEntryModal({
                 fontFamily: "inherit"
               }}
             />
+
+            <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "2px" }}>
+              <button
+                type="button"
+                onClick={() => setShowHashtagsDropdown(!showHashtagsDropdown)}
+                style={{
+                  backgroundColor: "#F3F4F6",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  color: "var(--color-purple)",
+                  fontWeight: "bold",
+                  outline: "none"
+                }}
+                title="Attach tag"
+              >
+                #
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLocSearchInput(!showLocSearchInput)}
+                style={{
+                  backgroundColor: "#F3F4F6",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  outline: "none"
+                }}
+                title="Attach establishment"
+              >
+                📍
+              </button>
+            </div>
+
+            {/* Hashtags Dropdown */}
+            {showHashtagsDropdown && (
+              <div style={{ position: "relative" }}>
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 25 rgba(0, 0, 0, 0.1)",
+                  zIndex: 200,
+                  maxHeight: "150px",
+                  overflowY: "auto",
+                  padding: "6px",
+                  marginTop: "4px"
+                }}>
+                  {tripHashtags.length === 0 ? (
+                    <div style={{ padding: "8px", fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center" }}>
+                      No tags used yet. Type #tag manually!
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px" }}>
+                      {tripHashtags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            if (!extraNotes.includes(`#${tag}`)) {
+                              setExtraNotes(prev => prev.trim() + ` #${tag}`);
+                            }
+                            setShowHashtagsDropdown(false);
+                          }}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            backgroundColor: "#F3F4F6",
+                            border: "none",
+                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            color: "var(--color-purple)",
+                            cursor: "pointer"
+                          }}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Location Autocomplete Search */}
+            {showLocSearchInput && (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                marginTop: "4px",
+                padding: "10px",
+                backgroundColor: "#F9FAFB",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB"
+              }}>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={locSearchQuery}
+                    onChange={(e) => {
+                      setLocSearchQuery(e.target.value);
+                      searchEstablishmentBounded(e.target.value);
+                    }}
+                    placeholder="Search establishment (e.g. Common Ground Cafe)..."
+                    autoFocus
+                    style={{
+                      flex: 1,
+                      padding: "8px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid #D1D5DB",
+                      fontSize: "14px",
+                      outline: "none"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLocSearchInput(false);
+                      setLocSearchQuery("");
+                      setLocSearchResults([]);
+                    }}
+                    style={{
+                      backgroundColor: "transparent",
+                      border: "none",
+                      color: "#9CA3AF",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      fontWeight: 600
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {locSearchResults.length > 0 && (
+                  <div style={{
+                    backgroundColor: "white",
+                    border: "1px solid #E5E7EB",
+                    borderRadius: "8px",
+                    maxHeight: "150px",
+                    overflowY: "auto"
+                  }}>
+                    {locSearchResults.map((result, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setEstablishment(result.name);
+                          setShowLocSearchInput(false);
+                          setLocSearchQuery("");
+                          setLocSearchResults([]);
+                        }}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: "0.82rem",
+                          borderBottom: idx === locSearchResults.length - 1 ? "none" : "1px solid #F3F4F6",
+                          cursor: "pointer",
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          lineHeight: "1.3"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                      >
+                        <strong>{result.name}</strong> <span style={{ color: "#9CA3AF", fontSize: "0.75rem" }}>({result.display_name})</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {searchingLoc && (
+                  <div style={{ fontSize: "0.75rem", color: "#6B7280", paddingLeft: "4px" }}>Searching...</div>
+                )}
+              </div>
+            )}
+
+            {establishment && (
+              <div style={{ display: "flex", marginTop: "4px" }}>
+                <span style={{
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  color: "#B45309",
+                  backgroundColor: "#FEF3C7",
+                  padding: "4px 10px",
+                  borderRadius: "8px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  📍 {establishment}
+                  <button
+                    type="button"
+                    onClick={() => setEstablishment("")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#B45309",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      padding: 0,
+                      fontSize: "0.85rem"
+                    }}
+                  >
+                    [✕]
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 6. Save / Delete Buttons */}
@@ -4871,12 +5236,45 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
 
   useEffect(() => {
     if (tripId) {
       fetchMembers();
     }
   }, [tripId]);
+
+  useEffect(() => {
+    const getUserEmail = async () => {
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setCurrentUserEmail(session.user.email.toLowerCase().trim());
+      }
+    };
+    getUserEmail();
+  }, []);
+
+  const isOwner = members.some(
+    m => m.email.toLowerCase().trim() === currentUserEmail && m.role === "owner"
+  );
+
+  const handleRemoveMember = async (memberId) => {
+    if (!supabase) return;
+    const confirmRemove = window.confirm("Are you sure you want to remove this collaborator?");
+    if (!confirmRemove) return;
+    try {
+      const { error } = await supabase
+        .from("trip_members")
+        .delete()
+        .eq("id", memberId);
+      if (error) throw error;
+      fetchMembers();
+    } catch (err) {
+      console.error("Error removing member:", err);
+      alert("Failed to remove collaborator: " + err.message);
+    }
+  };
 
   const fetchMembers = async () => {
     if (!supabase) return;
@@ -5072,12 +5470,34 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
                 whiteSpace: "nowrap",
                 flex: 1
               }} title={m.email}>{m.email}</span>
-              <span style={{ 
-                fontWeight: 600, 
-                color: "var(--color-purple)", 
-                textTransform: "capitalize",
-                flexShrink: 0
-              }}>{m.role}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                <span style={{ 
+                  fontWeight: 600, 
+                  color: "var(--color-purple)", 
+                  textTransform: "capitalize"
+                }}>{m.role}</span>
+                {isOwner && m.role !== "owner" && (
+                  <button
+                    onClick={() => handleRemoveMember(m.id)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#EF4444",
+                      cursor: "pointer",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      backgroundColor: "#FEE2E2",
+                      transition: "background-color 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#FCA5A5"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FEE2E2"}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

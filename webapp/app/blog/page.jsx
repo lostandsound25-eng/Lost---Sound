@@ -3,6 +3,8 @@ import Link from 'next/link';
 // Enable ISR: Revalidate the page every 60 seconds
 export const revalidate = 60;
 
+import { fetchWithTimeout } from '../../lib/fetch';
+
 // Helper to find the first image in HTML content if featured image is missing
 function getFirstImageFromContent(htmlContent) {
   const match = htmlContent.match(/<img[^>]+src="([^">]+)"/);
@@ -11,9 +13,9 @@ function getFirstImageFromContent(htmlContent) {
 
 async function getPosts() {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts',
-      { next: { revalidate: 60 } }
+      { next: { revalidate: 60 }, timeout: 5000 }
     );
     
     if (!res.ok) {
