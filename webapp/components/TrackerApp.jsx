@@ -3733,6 +3733,7 @@ function ManualEntryModal({
   const [editEntireGroup, setEditEntireGroup] = useState(false);
 
   const fileInputRef = useRef(null);
+  const notesInputRef = useRef(null);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
     return expenseToEdit && expenseToEdit.location ? true : false;
@@ -3747,17 +3748,34 @@ function ManualEntryModal({
   }, []);
 
   const tripHashtags = (() => {
-    const tagsSet = new Set();
+    const tagCounts = {};
+    const tagLastUsed = {};
+    
     expenses.forEach(e => {
       if (e.tags) {
         e.tags.forEach(t => {
           if (!t.startsWith("spread-") && !t.startsWith("spread-group-")) {
-            tagsSet.add(t);
+            tagCounts[t] = (tagCounts[t] || 0) + 1;
+            const ts = e.timestamp || "";
+            if (!tagLastUsed[t] || ts > tagLastUsed[t]) {
+              tagLastUsed[t] = ts;
+            }
           }
         });
       }
     });
-    return Array.from(tagsSet);
+    
+    const uniqueTags = Object.keys(tagCounts);
+    uniqueTags.sort((a, b) => {
+      const timeA = tagLastUsed[a] || "";
+      const timeB = tagLastUsed[b] || "";
+      return timeB.localeCompare(timeA);
+    });
+    
+    const top5Recent = uniqueTags.slice(0, 5);
+    top5Recent.sort((a, b) => tagCounts[b] - tagCounts[a]);
+    
+    return top5Recent;
   })();
 
   const [amount, setAmount] = useState(() => {
@@ -4472,8 +4490,8 @@ function ManualEntryModal({
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      padding: "8px 4px",
-                      borderRadius: "12px",
+                      padding: "5px 3px",
+                      borderRadius: "10px",
                       border: "1.5px solid",
                       cursor: "pointer",
                       backgroundColor: isSelected ? CATEGORY_COLORS[cat] : "white",
@@ -4484,9 +4502,9 @@ function ManualEntryModal({
                       flex: 1
                     }}
                   >
-                    <span style={{ fontSize: "1.15rem", marginBottom: "2px" }}>{CATEGORY_EMOJIS[cat]}</span>
+                    <span style={{ fontSize: "0.95rem", marginBottom: "1px" }}>{CATEGORY_EMOJIS[cat]}</span>
                     <span style={{ 
-                      fontSize: "0.68rem", 
+                      fontSize: "0.62rem", 
                       fontWeight: 700, 
                       textAlign: "center", 
                       width: "100%", 
@@ -4594,56 +4612,77 @@ function ManualEntryModal({
               gap: "10px",
               animation: "fadeInUp 0.2s ease-out"
             }}>
-              {/* Single Date Picker */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span style={{ fontSize: "0.72rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Single Date</span>
-                <input
-                  type="date"
-                  value={expenseDate}
-                  onChange={(e) => {
-                    setExpenseDate(e.target.value);
-                    setSpreadExpense(false);
+              {/* Tab Selector: Single Date vs. Multi-day / Spread */}
+              <div style={{
+                display: "flex",
+                backgroundColor: "rgba(133, 58, 81, 0.06)",
+                borderRadius: "10px",
+                padding: "3px",
+                marginBottom: "2px"
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setSpreadExpense(false)}
+                  style={{
+                    flex: 1,
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backgroundColor: !spreadExpense ? "white" : "transparent",
+                    color: !spreadExpense ? "var(--color-purple)" : "#6B7280",
+                    boxShadow: !spreadExpense ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  📅 Single Date
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpreadExpense(true);
+                    if (!spreadStart) setSpreadStart(new Date().toLocaleDateString('en-CA'));
+                    if (!spreadEnd) setSpreadEnd(getFutureDateString(6));
                   }}
                   style={{
-                    padding: "8px 10px",
+                    flex: 1,
+                    padding: "6px 12px",
                     borderRadius: "8px",
-                    border: "1px solid #E5E7EB",
-                    outline: "none",
-                    fontSize: "15px",
-                    backgroundColor: "white",
-                    color: "#374151"
+                    border: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    backgroundColor: spreadExpense ? "white" : "transparent",
+                    color: spreadExpense ? "var(--color-purple)" : "#6B7280",
+                    boxShadow: spreadExpense ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
+                    transition: "all 0.2s"
                   }}
-                />
+                >
+                  🗓️ Multi-day / Spread
+                </button>
               </div>
 
-              {/* Range toggle checkbox */}
-              <label style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                userSelect: "none",
-                padding: "8px 0 0",
-                borderTop: "1px dashed rgba(133, 58, 81, 0.15)"
-              }}>
-                <input
-                  type="checkbox"
-                  checked={spreadExpense}
-                  onChange={(e) => setSpreadExpense(e.target.checked)}
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    accentColor: "var(--color-orange)"
-                  }}
-                />
-                <span style={{
-                  fontSize: "0.8rem",
-                  color: "var(--color-purple)",
-                  fontWeight: 700
-                }}>
-                  🗓️ Spread/Repeat across multiple days
-                </span>
-              </label>
+              {!spreadExpense && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Select Date</span>
+                  <input
+                    type="date"
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid #E5E7EB",
+                      outline: "none",
+                      fontSize: "15px",
+                      backgroundColor: "white",
+                      color: "#374151"
+                    }}
+                  />
+                </div>
+              )}
 
               {spreadExpense && (
                 <div style={{
@@ -4651,13 +4690,16 @@ function ManualEntryModal({
                   flexDirection: "column",
                   gap: "8px",
                   padding: "10px",
-                  backgroundColor: "rgba(30, 64, 175, 0.03)",
+                  backgroundColor: "rgba(232, 107, 50, 0.02)",
                   borderRadius: "12px",
-                  borderLeft: "3px solid #BFDBFE"
+                  borderLeft: "3.5px solid var(--color-orange)",
+                  borderTop: "1px solid rgba(232, 107, 50, 0.05)",
+                  borderRight: "1px solid rgba(232, 107, 50, 0.05)",
+                  borderBottom: "1px solid rgba(232, 107, 50, 0.05)"
                 }}>
                   {/* Mode selector */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
+                    <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
                     <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
                       <button
                         type="button"
@@ -4670,9 +4712,9 @@ function ManualEntryModal({
                           fontSize: "0.75rem",
                           fontWeight: 700,
                           cursor: "pointer",
-                          backgroundColor: spreadMode === "divide" ? "#2563EB" : "white",
-                          borderColor: spreadMode === "divide" ? "#2563EB" : "#BFDBFE",
-                          color: spreadMode === "divide" ? "white" : "#1E40AF",
+                          backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
+                          borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
+                          color: spreadMode === "divide" ? "white" : "#4B5563",
                           transition: "all 0.2s"
                         }}
                       >
@@ -4689,9 +4731,9 @@ function ManualEntryModal({
                           fontSize: "0.75rem",
                           fontWeight: 700,
                           cursor: "pointer",
-                          backgroundColor: spreadMode === "repeat" ? "#2563EB" : "white",
-                          borderColor: spreadMode === "repeat" ? "#2563EB" : "#BFDBFE",
-                          color: spreadMode === "repeat" ? "white" : "#1E40AF",
+                          backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
+                          borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
+                          color: spreadMode === "repeat" ? "white" : "#4B5563",
                           transition: "all 0.2s"
                         }}
                       >
@@ -4703,7 +4745,7 @@ function ManualEntryModal({
                   {/* Dates */}
                   <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
+                      <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
                       <input
                         type="date"
                         value={spreadStart}
@@ -4711,11 +4753,11 @@ function ManualEntryModal({
                         style={{
                           padding: "6px 8px",
                           borderRadius: "8px",
-                          border: "1px solid #BFDBFE",
+                          border: "1px solid rgba(232, 107, 50, 0.2)",
                           outline: "none",
                           fontSize: "15px",
                           fontWeight: 600,
-                          color: "#1E40AF",
+                          color: "#C2410C",
                           backgroundColor: "white",
                           width: "100%",
                           boxSizing: "border-box"
@@ -4723,7 +4765,7 @@ function ManualEntryModal({
                       />
                     </div>
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <span style={{ fontSize: "0.72rem", color: "#1E40AF", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
+                      <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
                       <input
                         type="date"
                         value={spreadEnd}
@@ -4731,11 +4773,11 @@ function ManualEntryModal({
                         style={{
                           padding: "6px 8px",
                           borderRadius: "8px",
-                          border: "1px solid #BFDBFE",
+                          border: "1px solid rgba(232, 107, 50, 0.2)",
                           outline: "none",
                           fontSize: "15px",
                           fontWeight: 600,
-                          color: "#1E40AF",
+                          color: "#C2410C",
                           backgroundColor: "white",
                           width: "100%",
                           boxSizing: "border-box"
@@ -4761,9 +4803,10 @@ function ManualEntryModal({
                       return (
                         <div style={{
                           fontSize: "0.78rem",
-                          color: "#1E40AF",
+                          color: "#C2410C",
                           fontWeight: 600,
-                          backgroundColor: "#DBEAFE",
+                          backgroundColor: "rgba(232, 107, 50, 0.08)",
+                          border: "1px solid rgba(232, 107, 50, 0.15)",
                           padding: "8px 10px",
                           borderRadius: "8px",
                           marginTop: "4px",
@@ -4801,9 +4844,10 @@ function ManualEntryModal({
             
             <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
               <textarea
+                ref={notesInputRef}
                 value={extraNotes}
                 onChange={(e) => setExtraNotes(e.target.value)}
-                placeholder="Any additional details or thoughts..."
+                placeholder="Add details, or use # to further categorize your spending"
                 rows={2}
                 style={{
                   flex: 1,
@@ -4819,7 +4863,23 @@ function ManualEntryModal({
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", justifyContent: "center" }}>
                 <button
                   type="button"
-                  onClick={() => setShowHashtagsDropdown(!showHashtagsDropdown)}
+                  onClick={() => {
+                    setShowHashtagsDropdown(!showHashtagsDropdown);
+                    setExtraNotes(prev => {
+                      const trimmed = prev || "";
+                      if (trimmed.endsWith("#")) return prev;
+                      if (trimmed.length === 0) return "#";
+                      if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return prev + "#";
+                      return prev + " #";
+                    });
+                    setTimeout(() => {
+                      if (notesInputRef.current) {
+                        notesInputRef.current.focus();
+                        const len = notesInputRef.current.value.length;
+                        notesInputRef.current.setSelectionRange(len, len);
+                      }
+                    }, 50);
+                  }}
                   style={{
                     backgroundColor: "#F3F4F6",
                     border: "1px solid #D1D5DB",
