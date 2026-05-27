@@ -711,6 +711,25 @@ footer {
     flex-direction: column;
     gap: 16px;
   }
+
+  /* WordPress Galleries on Mobile */
+  .wp-block-gallery {
+    gap: 8px !important;
+    margin: 1.5rem 0 !important;
+  }
+
+  .wp-block-gallery .wp-block-image,
+  .wp-block-gallery .blocks-gallery-item {
+    flex: 1 1 40% !important; /* Forces 2 columns on mobile */
+    aspect-ratio: 1 / 1 !important; /* Crops to neat squares, matching WP mobile */
+    border-radius: 8px !important;
+  }
+
+  .wp-block-gallery .wp-block-image figcaption,
+  .wp-block-gallery .blocks-gallery-item figcaption {
+    font-size: 0.75rem !important;
+    padding: 20px 8px 8px !important;
+  }
 }
 
 /* Collapsing Navbar & Mobile Hamburger Drawer Styles */
