@@ -138,51 +138,28 @@ const getDayLabel = (timestamp) => {
 
 const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
   if (!query) return true;
-  const q = query.trim().toLowerCase();
+  let q = query.trim().toLowerCase();
   if (!q) return true;
 
-  // 1. Check if the entire query is a comparison operator: >, >=, <, <=, =, ==
-  const opMatch = q.match(/^(>=|<=|>|<|==|=)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
-  if (opMatch) {
-    const op = opMatch[1];
-    const targetVal = parseFloat(opMatch[2]);
-    const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
-    
-    if (op === ">") return amountInHome > targetVal;
-    if (op === ">=") return amountInHome >= targetVal;
-    if (op === "<") return amountInHome < targetVal;
-    if (op === "<=") return amountInHome <= targetVal;
-    if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
-  }
+  // 1. Convert English phrase comparisons to mathematical operators
+  q = q.replace(/more\s+than/g, '>');
+  q = q.replace(/less\s+than/g, '<');
+  q = q.replace(/\bover\b/g, '>');
+  q = q.replace(/\babove\b/g, '>');
+  q = q.replace(/\bunder\b/g, '<');
+  q = q.replace(/\bbelow\b/g, '<');
 
-  // 2. Check if the entire query is an English phrase comparison: over, above, under, below, more than, less than
-  const phraseMatch = q.match(/^(over|above|under|below|more\s+than|less\s+than)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
-  if (phraseMatch) {
-    const direction = phraseMatch[1];
-    const targetVal = parseFloat(phraseMatch[2]);
-    const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+  // 2. Normalize spaces and dollar signs around operators.
+  // e.g. "dinner >  $  100" -> "dinner >100"
+  q = q.replace(/(>=|<=|>|<|==|=)\s*\$?\s*(?=[0-9])/g, '$1');
 
-    if (["over", "above", "more than"].some(d => direction.includes(d))) {
-      return amountInHome > targetVal;
-    }
-    if (["under", "below", "less than"].some(d => direction.includes(d))) {
-      return amountInHome < targetVal;
-    }
-  }
-
-  // 3. Otherwise, perform a smart multi-term search (split by spaces, requiring all terms to match - AND query)
-  // This allows queries like: "food >50", "stay <200", "#italy over 100"
-  // Normalize spaces around operators first to keep them together in terms, e.g. "food > 50" -> ["food", ">50"]
-  const normalized = q
-    .replace(/(>=|<=|>|<|==|=)\s+/g, "$1")
-    .replace(/\s+(>=|<=|>|<|==|=)/g, "$1");
-
-  const terms = normalized.split(/\s+/).filter(t => t);
+  // Split into whitespace separated terms
+  const terms = q.split(/\s+/).filter(t => t);
   if (terms.length === 0) return true;
 
   return terms.every(term => {
-    // Check if this term is an operator comparison
-    const termOpMatch = term.match(/^(>=|<=|>|<|==|=)\$?([0-9]+(?:\.[0-9]+)?)$/);
+    // Check if this term is an operator comparison (e.g. ">100" or "<=50.5")
+    const termOpMatch = term.match(/^(>=|<=|>|<|==|=)([0-9]+(?:\.[0-9]+)?)$/);
     if (termOpMatch) {
       const op = termOpMatch[1];
       const targetVal = parseFloat(termOpMatch[2]);
@@ -193,21 +170,6 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
       if (op === "<") return amountInHome < targetVal;
       if (op === "<=") return amountInHome <= targetVal;
       if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
-    }
-
-    // Check if this term is an English phrase operator (e.g. "over50" or "under100" due to space cleaning)
-    const termPhraseMatch = term.match(/^(over|above|under|below|morethan|lessthan)\$?([0-9]+(?:\.[0-9]+)?)$/);
-    if (termPhraseMatch) {
-      const direction = termPhraseMatch[1];
-      const targetVal = parseFloat(termPhraseMatch[2]);
-      const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
-
-      if (["over", "above", "morethan"].includes(direction)) {
-        return amountInHome > targetVal;
-      }
-      if (["under", "below", "lessthan"].includes(direction)) {
-        return amountInHome < targetVal;
-      }
     }
 
     const note = (exp.note || "").toLowerCase();
@@ -476,6 +438,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [logLimit, setLogLimit] = useState(5);
   const [historyLimit, setHistoryLimit] = useState(14);
   const [searchQuery, setSearchQuery] = useState("");
+  const [manualLocalCurrency, setManualLocalCurrency] = useState(null);
+
+  useEffect(() => {
+    setManualLocalCurrency(null);
+  }, [expenses]);
 
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
@@ -1785,10 +1752,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: "0.72rem", fontWeight: 850, color: "#E86B32", textTransform: "uppercase", letterSpacing: "1px" }}>
-            ⚡ Rapid Log
-          </span>
-          <span style={{ fontSize: "0.68rem", color: "#9CA3AF" }}>
-            Add expense instantly without opening modals
+            ⚡ Rapid Add
           </span>
         </div>
 
@@ -1854,8 +1818,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   fontWeight: 800,
                   cursor: "pointer",
                   padding: "4px",
-                  marginLeft: "2px",
-                  display: "flex",
+                  width: "40px",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  display: "inline-flex",
                   alignItems: "center",
                   outline: "none"
                 }}
@@ -2264,7 +2230,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   title={trip.name}
                 >
                   <span>{trip.name}</span>
-                  <span style={{ fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 400 }}>✏️</span>
                 </div>
               )}
             </div>
@@ -2533,6 +2498,58 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </div>
             </div>
 
+            {/* Inline Currency Switcher Settings */}
+            {(() => {
+              const mostRecentlySpentLocal = (() => {
+                const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const recentLocal = sorted.find(e => e.currency !== trip.homeCurrency);
+                return recentLocal ? recentLocal.currency : (trip.localCurrency || "EUR");
+              })();
+              const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
+              return (
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "6px 20px",
+                  borderTop: "1px solid rgba(133, 58, 81, 0.05)",
+                  marginTop: "4px",
+                  fontSize: "0.82rem",
+                  color: "#6B7280"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ fontWeight: 600 }}>Home:</span>
+                    <SearchableCurrencySelect
+                      value={trip.homeCurrency}
+                      onChange={(val) => {
+                        updateHomeCurrency(val);
+                      }}
+                      rates={rates}
+                      customCurrencies={customCurrencies}
+                      onAddCustomCurrency={addCustomCurrency}
+                      style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ fontWeight: 600 }}>Local:</span>
+                    <SearchableCurrencySelect
+                      value={activeLocal}
+                      onChange={(val) => {
+                        updateLocalCurrency(val);
+                        setManualLocalCurrency(val);
+                        localStorage.setItem("tracker_last_used_currency", val);
+                      }}
+                      rates={rates}
+                      customCurrencies={customCurrencies}
+                      onAddCustomCurrency={addCustomCurrency}
+                      style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Town/City Locale search field underneath */}
             <div style={{ padding: "0 20px" }}>
               {!isEditingLocale ? (
@@ -2553,7 +2570,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   title="Tap to change locale"
                 >
                   <span>📍 {trip.currentLocation || "Where are you today?"}</span>
-                  <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>✏️</span>
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -2994,7 +3010,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       const sortedExpenses = [...displayedExpenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                       if (logView === "recent") {
-                        const recentExpenses = sortedExpenses.slice(0, logLimit);
+                        const recentExpenses = searchQuery ? sortedExpenses : sortedExpenses.slice(0, logLimit);
                         let lastLabel = null;
                         return (
                           <div>
@@ -3128,7 +3144,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         });
 
                         const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
-                        const visibleHistoryGroups = olderGroupsArray.slice(0, historyLimit);
+                        const visibleHistoryGroups = searchQuery ? olderGroupsArray : olderGroupsArray.slice(0, historyLimit);
 
                         if (olderGroupsArray.length === 0) {
                           return (
@@ -3408,7 +3424,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         return (
                           <div>
                             {historyContent}
-                            {olderGroupsArray.length > historyLimit && (
+                            {!searchQuery && olderGroupsArray.length > historyLimit && (
                               <div style={{ display: "flex", justifyContent: "center", marginTop: "16px", marginBottom: "10px" }}>
                                 <button
                                   type="button"
@@ -3922,7 +3938,7 @@ function ExpenseCard({
             boxShadow: "inset 4px 0 10px rgba(0,0,0,0.05)"
           }}
         >
-          ✕ Delete
+          Delete
         </div>
 
         <div
@@ -5035,7 +5051,15 @@ function ManualEntryModal({
 
               {/* Right Side: Active Symbol and Input Box */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
-                <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1F2937" }}>
+                <span style={{
+                  fontSize: "1.15rem",
+                  fontWeight: 800,
+                  color: "#1F2937",
+                  width: "42px",
+                  textAlign: "center",
+                  display: "inline-block",
+                  flexShrink: 0
+                }}>
                   {CURRENCY_SYMBOLS[currency] || currency}
                 </span>
                 <input

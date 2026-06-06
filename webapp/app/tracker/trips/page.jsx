@@ -232,7 +232,7 @@ export default function TripsDashboard() {
         backgroundColor: '#F9F6ED',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         borderBottom: '1px solid rgba(133, 58, 81, 0.05)'
       }}>
         <div>
@@ -264,16 +264,17 @@ export default function TripsDashboard() {
               backgroundColor: '#853A51',
               color: 'white',
               border: 'none',
-              borderRadius: '12px',
-              padding: '10px 16px',
+              borderRadius: '20px',
+              padding: '8px 16px',
               fontWeight: 750,
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
               cursor: 'pointer',
               boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              transition: 'background-color 0.2s'
+              gap: '6px',
+              transition: 'background-color 0.2s',
+              marginBottom: '2px'
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
@@ -289,10 +290,11 @@ export default function TripsDashboard() {
               color: 'white',
               backgroundColor: '#853A51',
               border: 'none',
-              borderRadius: '10px',
+              borderRadius: '20px',
               padding: '8px 16px',
               cursor: 'pointer',
-              boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)'
+              boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+              marginBottom: '2px'
             }}
           >
             Sign In
@@ -306,6 +308,45 @@ export default function TripsDashboard() {
         {/* LOGGED IN VIEW */}
         {session ? (
           <div>
+            <div style={{
+              background: 'linear-gradient(135deg, #853A51 0%, #a24b64 100%)',
+              borderRadius: '24px',
+              padding: '24px',
+              color: 'white',
+              marginBottom: '20px',
+              position: 'relative',
+              overflow: 'hidden',
+              boxShadow: '0 12px 30px rgba(133, 58, 81, 0.2)'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-20px',
+                right: '-20px',
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.05)',
+                pointerEvents: 'none'
+              }} />
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '1.5px',
+                color: 'rgba(255, 255, 255, 0.75)',
+                display: 'block',
+                marginBottom: '4px'
+              }}>
+                Adventure Hub
+              </span>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: 900, margin: 0, letterSpacing: '-0.3px', color: 'white' }}>
+                Where to next?
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.85)', margin: '8px 0 0 0', lineHeight: 1.45 }}>
+                Track shared budgets, log local expenses, and keep trip expenses in sync.
+              </p>
+            </div>
+
             {trips.length === 0 ? (
               // Empty State
               <div style={{
@@ -357,21 +398,23 @@ export default function TripsDashboard() {
                       backgroundColor: 'white',
                       borderRadius: '20px',
                       padding: '20px',
-                      boxShadow: '0 4px 12px rgba(133, 58, 81, 0.01)',
+                      boxShadow: '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                       border: '1.5px solid rgba(133, 58, 81, 0.08)',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#853A51';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.2)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(133, 58, 81, 0.08), 0 10px 10px -5px rgba(133, 58, 81, 0.03)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.08)';
                       e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)';
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1, paddingRight: '12px' }}>
@@ -491,24 +534,37 @@ export default function TripsDashboard() {
       {session && (
         <footer style={{
           padding: '24px',
-          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '12px',
           fontSize: '0.78rem',
           color: '#9CA3AF',
-          borderTop: '1px solid rgba(133, 58, 81, 0.05)'
+          borderTop: '1px solid rgba(133, 58, 81, 0.05)',
+          flexWrap: 'wrap'
         }}>
-          Logged in as <strong style={{ color: '#6B7280' }}>{session.user.email}</strong>
-          <span style={{ margin: '0 8px', opacity: 0.5 }}>•</span>
+          <span>Logged in as <strong style={{ color: '#6B7280' }}>{session.user.email}</strong></span>
           <button
             onClick={handleSignOut}
             style={{
-              background: 'none',
+              background: 'rgba(220, 38, 38, 0.08)',
               border: 'none',
-              color: '#853A51',
+              color: '#DC2626',
               fontWeight: 700,
               cursor: 'pointer',
-              textDecoration: 'underline',
-              padding: 0,
-              fontSize: 'inherit'
+              padding: '4px 10px',
+              borderRadius: '8px',
+              fontSize: '0.75rem',
+              transition: 'all 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.08)';
             }}
           >
             Sign Out
