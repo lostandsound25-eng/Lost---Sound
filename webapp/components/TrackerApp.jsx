@@ -141,7 +141,7 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
   const q = query.trim().toLowerCase();
   if (!q) return true;
 
-  // 1. Comparison operator: >, >=, <, <=, =, ==
+  // 1. Check if the entire query is a comparison operator: >, >=, <, <=, =, ==
   const opMatch = q.match(/^(>=|<=|>|<|==|=)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
   if (opMatch) {
     const op = opMatch[1];
@@ -155,39 +155,79 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
     if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
   }
 
-  // 2. English comparisons: over, above, under, below, more than, less than
-  const phraseMatch = q.match(/^(over|above|under|below|more than|less than)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
+  // 2. Check if the entire query is an English phrase comparison: over, above, under, below, more than, less than
+  const phraseMatch = q.match(/^(over|above|under|below|more\s+than|less\s+than)\s*\$?\s*([0-9]+(?:\.[0-9]+)?)$/);
   if (phraseMatch) {
     const direction = phraseMatch[1];
     const targetVal = parseFloat(phraseMatch[2]);
     const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
 
-    if (["over", "above", "more than"].includes(direction)) {
+    if (["over", "above", "more than"].some(d => direction.includes(d))) {
       return amountInHome > targetVal;
     }
-    if (["under", "below", "less than"].includes(direction)) {
+    if (["under", "below", "less than"].some(d => direction.includes(d))) {
       return amountInHome < targetVal;
     }
   }
 
-  // 3. Simple text search (note, category, location, currency, tags)
-  const note = (exp.note || "").toLowerCase();
-  const location = (exp.location || "").toLowerCase();
-  const category = (exp.category || "").toLowerCase();
-  const currency = (exp.currency || "").toLowerCase();
-  
-  if (q.startsWith("#")) {
-    const tag = q.slice(1);
-    return note.includes(q) || (exp.tags && exp.tags.some(t => t.toLowerCase() === tag));
-  }
+  // 3. Otherwise, perform a smart multi-term search (split by spaces, requiring all terms to match - AND query)
+  // This allows queries like: "food >50", "stay <200", "#italy over 100"
+  // Normalize spaces around operators first to keep them together in terms, e.g. "food > 50" -> ["food", ">50"]
+  const normalized = q
+    .replace(/(>=|<=|>|<|==|=)\s+/g, "$1")
+    .replace(/\s+(>=|<=|>|<|==|=)/g, "$1");
 
-  return (
-    note.includes(q) || 
-    location.includes(q) || 
-    category.includes(q) || 
-    currency.includes(q) ||
-    (exp.tags && exp.tags.some(t => t.toLowerCase().includes(q)))
-  );
+  const terms = normalized.split(/\s+/).filter(t => t);
+  if (terms.length === 0) return true;
+
+  return terms.every(term => {
+    // Check if this term is an operator comparison
+    const termOpMatch = term.match(/^(>=|<=|>|<|==|=)\$?([0-9]+(?:\.[0-9]+)?)$/);
+    if (termOpMatch) {
+      const op = termOpMatch[1];
+      const targetVal = parseFloat(termOpMatch[2]);
+      const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+
+      if (op === ">") return amountInHome > targetVal;
+      if (op === ">=") return amountInHome >= targetVal;
+      if (op === "<") return amountInHome < targetVal;
+      if (op === "<=") return amountInHome <= targetVal;
+      if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
+    }
+
+    // Check if this term is an English phrase operator (e.g. "over50" or "under100" due to space cleaning)
+    const termPhraseMatch = term.match(/^(over|above|under|below|morethan|lessthan)\$?([0-9]+(?:\.[0-9]+)?)$/);
+    if (termPhraseMatch) {
+      const direction = termPhraseMatch[1];
+      const targetVal = parseFloat(termPhraseMatch[2]);
+      const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+
+      if (["over", "above", "morethan"].includes(direction)) {
+        return amountInHome > targetVal;
+      }
+      if (["under", "below", "lessthan"].includes(direction)) {
+        return amountInHome < targetVal;
+      }
+    }
+
+    const note = (exp.note || "").toLowerCase();
+    const location = (exp.location || "").toLowerCase();
+    const category = (exp.category || "").toLowerCase();
+    const currency = (exp.currency || "").toLowerCase();
+
+    if (term.startsWith("#")) {
+      const tag = term.slice(1);
+      return note.includes(term) || (exp.tags && exp.tags.some(t => t.toLowerCase() === tag));
+    }
+
+    return (
+      note.includes(term) ||
+      location.includes(term) ||
+      category.includes(term) ||
+      currency.includes(term) ||
+      (exp.tags && exp.tags.some(t => t.toLowerCase().includes(term)))
+    );
+  });
 };
 
 export default function TrackerApp({ tripId = null, isDemo = false }) {
@@ -434,6 +474,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     return list || [];
   };
   const [logLimit, setLogLimit] = useState(5);
+  const [historyLimit, setHistoryLimit] = useState(14);
   const [searchQuery, setSearchQuery] = useState("");
 
   const toggleOlderCategory = (dateKey, cat) => {
@@ -446,6 +487,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [syncError, setSyncError] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pendingCloudSync, setPendingCloudSync] = useState(false);
+
+  // Rapid Expense state variables
+  const [rapidTitle, setRapidTitle] = useState("");
+  const [rapidAmount, setRapidAmount] = useState("");
+  const [rapidCurrency, setRapidCurrency] = useState(() => {
+    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
+    return lastUsed || trip.localCurrency || "USD";
+  });
+  const [rapidCategory, setRapidCategory] = useState("Food & Drink");
+  const [isAddingRapid, setIsAddingRapid] = useState(false);
+
+  useEffect(() => {
+    if (trip && trip.localCurrency) {
+      setRapidCurrency(trip.localCurrency);
+    }
+  }, [trip?.localCurrency]);
 
   // Editable trip name state
   const [isEditingName, setIsEditingName] = useState(false);
@@ -1671,6 +1728,204 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
 
+  const handleAddRapidExpense = async (e) => {
+    e.preventDefault();
+    if (isAddingRapid) return;
+    const val = parseFloat(rapidAmount);
+    if (!rapidTitle.trim()) {
+      alert("Please enter a title.");
+      return;
+    }
+    if (!rapidAmount || isNaN(val) || val <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    setIsAddingRapid(true);
+    try {
+      const timestamp = new Date().toISOString();
+      const hashtagRegex = /#([a-zA-Z0-9_-]+)/g;
+      const parsedTags = [];
+      let match;
+      while ((match = hashtagRegex.exec(rapidTitle)) !== null) {
+        parsedTags.push(match[1].toLowerCase());
+      }
+      
+      await saveExpense({
+        amount: val,
+        currency: rapidCurrency,
+        category: rapidCategory,
+        note: rapidTitle.trim(),
+        worthIt: true, // defaults to worth it for rapid entries
+        location: trip.currentLocation || "",
+        tags: parsedTags,
+        timestamp: timestamp
+      });
+      
+      setRapidTitle("");
+      setRapidAmount("");
+    } catch (err) {
+      console.error("Error adding rapid expense:", err);
+    } finally {
+      setIsAddingRapid(false);
+    }
+  };
+
+  const renderRapidExpenseArea = () => {
+    return (
+      <div style={{
+        backgroundColor: "white",
+        borderRadius: "20px",
+        padding: "12px 14px",
+        margin: "0 24px 16px 24px",
+        border: "1.5px solid rgba(133, 58, 81, 0.08)",
+        boxShadow: "0 4px 12px rgba(133, 58, 81, 0.01)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "0.72rem", fontWeight: 850, color: "#E86B32", textTransform: "uppercase", letterSpacing: "1px" }}>
+            ⚡ Rapid Log
+          </span>
+          <span style={{ fontSize: "0.68rem", color: "#9CA3AF" }}>
+            Add expense instantly without opening modals
+          </span>
+        </div>
+
+        <form onSubmit={handleAddRapidExpense} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {/* Title & Amount Row */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              placeholder="What did you buy?"
+              value={rapidTitle}
+              onChange={(e) => setRapidTitle(e.target.value)}
+              style={{
+                flex: 1.6,
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid #E5E7EB",
+                fontSize: "0.85rem",
+                outline: "none",
+                color: "#374151",
+                backgroundColor: "#F9FAFB"
+              }}
+            />
+            
+            <div style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              border: "1px solid #E5E7EB",
+              borderRadius: "10px",
+              padding: "0 8px",
+              backgroundColor: "#F9FAFB"
+            }}>
+              <input
+                type="text"
+                placeholder="0.00"
+                value={rapidAmount}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[0-9.]*$/.test(val)) setRapidAmount(val);
+                }}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  outline: "none",
+                  color: "#374151"
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const lastUsed = localStorage.getItem("tracker_last_used_currency");
+                  const localDefault = lastUsed && lastUsed !== trip.homeCurrency ? lastUsed : (trip.localCurrency || "EUR");
+                  setRapidCurrency(prev => prev === trip.homeCurrency ? localDefault : trip.homeCurrency);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-purple)",
+                  fontSize: "0.8rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  padding: "4px",
+                  marginLeft: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                  outline: "none"
+                }}
+                title="Toggle currency"
+              >
+                {CURRENCY_SYMBOLS[rapidCurrency] || rapidCurrency}
+              </button>
+            </div>
+          </div>
+
+          {/* Category & Save Button Row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "4px" }}>
+              {CATEGORIES.map(cat => {
+                const isSelected = rapidCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setRapidCategory(cat)}
+                    style={{
+                      border: "none",
+                      backgroundColor: isSelected ? CATEGORY_COLORS[cat] : "rgba(133, 58, 81, 0.04)",
+                      borderRadius: "8px",
+                      width: "32px",
+                      height: "32px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "1.1rem",
+                      transition: "all 0.15s ease",
+                      outline: "none"
+                    }}
+                    title={cat}
+                  >
+                    {CATEGORY_EMOJIS[cat]}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isAddingRapid}
+              style={{
+                backgroundColor: "var(--color-orange)",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                padding: "8px 16px",
+                fontSize: "0.82rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(232, 107, 50, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                outline: "none",
+                transition: "opacity 0.2s"
+              }}
+            >
+              {isAddingRapid ? "Adding..." : "⚡ Add"}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   const renderInsights = () => {
     if (visibleExpenses.length === 0) {
       return (
@@ -2494,6 +2749,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           )}
         </header>
 
+        {/* Top-Level Rapid Expense Log Card */}
+        {renderRapidExpenseArea()}
+
         {/* Log */}
         <section style={{ padding: "0 24px" }}>
           {(() => {
@@ -2870,6 +3128,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         });
 
                         const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+                        const visibleHistoryGroups = olderGroupsArray.slice(0, historyLimit);
 
                         if (olderGroupsArray.length === 0) {
                           return (
@@ -2878,6 +3137,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             </div>
                           );
                         }
+
+                        let historyContent;
 
                         if (historyViewMode === "spreadsheet") {
                           const renderCell = (group, cat, label) => {
@@ -2916,7 +3177,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             );
                           };
 
-                          return (
+                          historyContent = (
                             <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
                               <div style={{
                                 width: "100%",
@@ -2938,7 +3199,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {olderGroupsArray.map((group) => {
+                                    {visibleHistoryGroups.map((group) => {
                                       return (
                                         <tr key={group.dateKey} style={{ borderBottom: "1px solid #F3F4F6", transition: "background-color 0.15s" }}>
                                           <td 
@@ -2986,161 +3247,200 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                               </div>
                             </div>
                           );
+                        } else {
+                          historyContent = (
+                            <div style={{ marginTop: "8px" }}>
+                              {visibleHistoryGroups.map((group) => {
+                                const isExpanded = expandedLogDates.includes(group.dateKey);
+                                return (
+                                  <div
+                                    key={group.dateKey}
+                                    style={{
+                                      backgroundColor: "white",
+                                      borderRadius: "16px",
+                                      padding: "14px",
+                                      marginBottom: "10px",
+                                      boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                                      border: "1px solid #F3F4F6"
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        cursor: "pointer"
+                                      }}
+                                      onClick={() => {
+                                        setExpandedLogDates(prev =>
+                                          prev.includes(group.dateKey)
+                                            ? prev.filter(k => k !== group.dateKey)
+                                            : [...prev, group.dateKey]
+                                        );
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                        <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151" }}>
+                                          {group.dateDisplay}
+                                        </span>
+                                        {group.location && (
+                                          <span style={{ fontSize: "0.75rem", color: "var(--color-orange)", display: "flex", alignItems: "center", gap: "2px" }}>
+                                            📍 {group.location}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <span style={{
+                                          fontSize: "0.95rem",
+                                          fontWeight: 800,
+                                          color: "var(--color-purple)"
+                                        }}>
+                                          {formatMoney(group.totalSpend, trip.homeCurrency)}
+                                        </span>
+                                        <span style={{
+                                          fontSize: "0.7rem",
+                                          color: "#9CA3AF",
+                                          transform: isExpanded ? "rotate(180deg)" : "none",
+                                          transition: "transform 0.2s"
+                                        }}>▼</span>
+                                      </div>
+                                    </div>
+
+                                    {isExpanded && (
+                                      <div
+                                        style={{
+                                          marginTop: "14px",
+                                          borderTop: "1px solid #F3F4F6",
+                                          paddingTop: "10px",
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px"
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {Object.entries(group.categories).map(([cat, catData]) => {
+                                          const key = `${group.dateKey}-${cat}`;
+                                          const isCatExpanded = !!expandedOlderCategory[key];
+                                          return (
+                                            <div
+                                              key={cat}
+                                              style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "6px",
+                                                fontSize: "0.85rem",
+                                                color: "#4B5563",
+                                                borderBottom: "1px dashed #F3F4F6",
+                                                paddingBottom: "8px",
+                                                marginTop: "4px"
+                                              }}
+                                            >
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  alignItems: "center",
+                                                  cursor: "pointer",
+                                                  width: "100%"
+                                                }}
+                                                onClick={() => toggleOlderCategory(group.dateKey, cat)}
+                                              >
+                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                  <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
+                                                  <span style={{ fontWeight: 600 }}>{cat}</span>
+                                                  <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                                                    ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
+                                                  </span>
+                                                </div>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                  <span style={{
+                                                    fontWeight: 700,
+                                                    color: CATEGORY_COLORS[cat] || "#111827"
+                                                  }}>
+                                                    {formatMoney(catData.total, trip.homeCurrency)}
+                                                  </span>
+                                                  <span style={{
+                                                    fontSize: "0.6rem",
+                                                    color: "#9CA3AF",
+                                                    transform: isCatExpanded ? "rotate(180deg)" : "none",
+                                                    transition: "transform 0.15s"
+                                                  }}>▼</span>
+                                                </div>
+                                              </div>
+
+                                              {isCatExpanded && (
+                                                <div style={{
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  gap: "8px",
+                                                  paddingLeft: "16px",
+                                                  marginTop: "6px"
+                                                }}>
+                                                  {catData.list.map((exp) => (
+                                                    <ExpenseCard
+                                                      key={exp.id}
+                                                      expense={exp}
+                                                      onEdit={(e) => {
+                                                        setEditingExpense(e);
+                                                        setActiveModal("manual");
+                                                      }}
+                                                      onDelete={deleteExpense}
+                                                      formatMoney={formatMoney}
+                                                      convertCurrency={convertCurrency}
+                                                      homeCurrency={trip.homeCurrency}
+                                                      rates={rates}
+                                                    />
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
                         }
 
                         return (
-                          <div style={{ marginTop: "8px" }}>
-                            {olderGroupsArray.map((group) => {
-                              const isExpanded = expandedLogDates.includes(group.dateKey);
-                              return (
-                                <div
-                                  key={group.dateKey}
+                          <div>
+                            {historyContent}
+                            {olderGroupsArray.length > historyLimit && (
+                              <div style={{ display: "flex", justifyContent: "center", marginTop: "16px", marginBottom: "10px" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryLimit((prev) => prev + 14)}
                                   style={{
+                                    fontSize: "0.82rem",
+                                    fontWeight: 750,
+                                    color: "var(--color-purple)",
                                     backgroundColor: "white",
-                                    borderRadius: "16px",
-                                    padding: "14px",
-                                    marginBottom: "10px",
+                                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                                    borderRadius: "12px",
+                                    padding: "10px 20px",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
                                     boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                                    border: "1px solid #F3F4F6"
+                                    width: "100%",
+                                    maxWidth: "200px",
+                                    textAlign: "center"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = "var(--color-purple)";
+                                    e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.02)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = "rgba(133, 58, 81, 0.15)";
+                                    e.currentTarget.style.backgroundColor = "white";
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                      cursor: "pointer"
-                                    }}
-                                    onClick={() => {
-                                      setExpandedLogDates(prev =>
-                                        prev.includes(group.dateKey)
-                                          ? prev.filter(k => k !== group.dateKey)
-                                          : [...prev, group.dateKey]
-                                      );
-                                    }}
-                                  >
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                      <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151" }}>
-                                        {group.dateDisplay}
-                                      </span>
-                                      {group.location && (
-                                        <span style={{ fontSize: "0.75rem", color: "var(--color-orange)", display: "flex", alignItems: "center", gap: "2px" }}>
-                                          📍 {group.location}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                      <span style={{
-                                        fontSize: "0.95rem",
-                                        fontWeight: 800,
-                                        color: "var(--color-purple)"
-                                      }}>
-                                        {formatMoney(group.totalSpend, trip.homeCurrency)}
-                                      </span>
-                                      <span style={{
-                                        fontSize: "0.7rem",
-                                        color: "#9CA3AF",
-                                        transform: isExpanded ? "rotate(180deg)" : "none",
-                                        transition: "transform 0.2s"
-                                      }}>▼</span>
-                                    </div>
-                                  </div>
-
-                                  {isExpanded && (
-                                    <div
-                                      style={{
-                                        marginTop: "14px",
-                                        borderTop: "1px solid #F3F4F6",
-                                        paddingTop: "10px",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "8px"
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {Object.entries(group.categories).map(([cat, catData]) => {
-                                        const key = `${group.dateKey}-${cat}`;
-                                        const isCatExpanded = !!expandedOlderCategory[key];
-                                        return (
-                                          <div
-                                            key={cat}
-                                            style={{
-                                              display: "flex",
-                                              flexDirection: "column",
-                                              gap: "6px",
-                                              fontSize: "0.85rem",
-                                              color: "#4B5563",
-                                              borderBottom: "1px dashed #F3F4F6",
-                                              paddingBottom: "8px",
-                                              marginTop: "4px"
-                                            }}
-                                          >
-                                            <div
-                                              style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                                cursor: "pointer",
-                                                width: "100%"
-                                              }}
-                                              onClick={() => toggleOlderCategory(group.dateKey, cat)}
-                                            >
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
-                                                <span style={{ fontWeight: 600 }}>{cat}</span>
-                                                <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
-                                                  ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
-                                                </span>
-                                              </div>
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <span style={{
-                                                  fontWeight: 700,
-                                                  color: CATEGORY_COLORS[cat] || "#111827"
-                                                }}>
-                                                  {formatMoney(catData.total, trip.homeCurrency)}
-                                                </span>
-                                                <span style={{
-                                                  fontSize: "0.6rem",
-                                                  color: "#9CA3AF",
-                                                  transform: isCatExpanded ? "rotate(180deg)" : "none",
-                                                  transition: "transform 0.15s"
-                                                }}>▼</span>
-                                              </div>
-                                            </div>
-
-                                            {isCatExpanded && (
-                                              <div style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "8px",
-                                                paddingLeft: "16px",
-                                                marginTop: "6px"
-                                              }}>
-                                                {catData.list.map((exp) => (
-                                                  <ExpenseCard
-                                                    key={exp.id}
-                                                    expense={exp}
-                                                    onEdit={(e) => {
-                                                      setEditingExpense(e);
-                                                      setActiveModal("manual");
-                                                    }}
-                                                    onDelete={deleteExpense}
-                                                    formatMoney={formatMoney}
-                                                    convertCurrency={convertCurrency}
-                                                    homeCurrency={trip.homeCurrency}
-                                                    rates={rates}
-                                                  />
-                                                ))}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                                  Load More Days
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       }
@@ -4239,6 +4539,14 @@ function ManualEntryModal({
     return new Date().toLocaleDateString('en-CA');
   });
 
+  const [lastLocalCurrency, setLastLocalCurrency] = useState(() => {
+    if (expenseToEdit && expenseToEdit.currency !== trip.homeCurrency) {
+      return expenseToEdit.currency;
+    }
+    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
+    return lastUsed && lastUsed !== trip.homeCurrency ? lastUsed : (trip.localCurrency || "EUR");
+  });
+
   // Sync editEntireGroup changes
   useEffect(() => {
     if (isGroup && editEntireGroup) {
@@ -4459,41 +4767,55 @@ function ManualEntryModal({
             }
 
             let finalTimestamp;
+            const todayCA = new Date().toLocaleDateString('en-CA');
+            const [year, month, day] = expenseDate.split('-').map(Number);
+
+            const getRetroactiveTimestamp = () => {
+              const sameDayExps = expenses.filter(e => {
+                try {
+                  return new Date(e.timestamp).toLocaleDateString('en-CA') === expenseDate;
+                } catch (err) {
+                  return false;
+                }
+              });
+
+              if (sameDayExps.length > 0) {
+                const times = sameDayExps.map(e => new Date(e.timestamp).getTime());
+                const maxTime = Math.max(...times);
+                const candidateTime = maxTime + 1000;
+                const dCandidate = new Date(candidateTime);
+                if (dCandidate.toLocaleDateString('en-CA') === expenseDate) {
+                  return dCandidate.toISOString();
+                } else {
+                  return new Date(maxTime + 1).toISOString();
+                }
+              } else {
+                const now = new Date();
+                const targetDate = new Date(
+                  year,
+                  month - 1,
+                  day,
+                  now.getHours(),
+                  now.getMinutes(),
+                  now.getSeconds(),
+                  now.getMilliseconds()
+                );
+                return targetDate.toISOString();
+              }
+            };
+
             if (expenseToEdit) {
               const origDateStr = new Date(expenseToEdit.timestamp).toLocaleDateString('en-CA');
               if (expenseDate === origDateStr) {
                 finalTimestamp = expenseToEdit.timestamp;
               } else {
-                const now = new Date();
-                const [year, month, day] = expenseDate.split('-').map(Number);
-                const targetDate = new Date(
-                  year,
-                  month - 1,
-                  day,
-                  now.getHours(),
-                  now.getMinutes(),
-                  now.getSeconds(),
-                  now.getMilliseconds()
-                );
-                finalTimestamp = targetDate.toISOString();
+                finalTimestamp = getRetroactiveTimestamp();
               }
             } else {
-              const todayCA = new Date().toLocaleDateString('en-CA');
               if (expenseDate === todayCA) {
                 finalTimestamp = new Date().toISOString();
               } else {
-                const now = new Date();
-                const [year, month, day] = expenseDate.split('-').map(Number);
-                const targetDate = new Date(
-                  year,
-                  month - 1,
-                  day,
-                  now.getHours(),
-                  now.getMinutes(),
-                  now.getSeconds(),
-                  now.getMilliseconds()
-                );
-                finalTimestamp = targetDate.toISOString();
+                finalTimestamp = getRetroactiveTimestamp();
               }
             }
 
@@ -4635,95 +4957,115 @@ function ManualEntryModal({
             <div style={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "6px 12px",
+              padding: "8px 14px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               marginBottom: "4px"
             }}>
-              <SearchableCurrencySelect
-                value={currency}
-                onChange={setCurrency}
-                rates={rates}
-                customCurrencies={customCurrencies}
-                onAddCustomCurrency={onAddCustomCurrency}
-                style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
-              />
+              {/* Left Side: Conversion and sideline currency selector */}
               {(() => {
-                const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
-                const localDefault = lastUsed || trip.localCurrency || "USD";
-                const targetToggle = currency === trip.homeCurrency ? localDefault : trip.homeCurrency;
-                if (trip.homeCurrency === targetToggle) return null;
-                return (
-                  <button
-                    type="button"
-                    onClick={() => setCurrency(targetToggle)}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(133, 58, 81, 0.2)",
-                      backgroundColor: "rgba(133, 58, 81, 0.04)",
-                      color: "var(--color-purple)",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      marginRight: "8px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "2px",
-                      outline: "none"
-                    }}
-                  >
-                    ⇄ {targetToggle}
-                  </button>
-                );
-              })()}
-              {(() => {
+                const sidelineCurrency = currency === trip.homeCurrency ? lastLocalCurrency : trip.homeCurrency;
+                const isSidelineChangeable = sidelineCurrency !== trip.homeCurrency;
                 const cleanAmt = evaluateMathExpression(amount);
-                const val = parseFloat(cleanAmt);
-                const showConversion = currency !== trip.homeCurrency && !isNaN(val) && val > 0;
-                const convertedVal = showConversion ? convertCurrency(val, currency, trip.homeCurrency, rates) : 0;
-                if (!showConversion) return null;
+                const val = parseFloat(cleanAmt) || 0;
+                const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
+                const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
                 return (
-                  <span style={{
-                    fontSize: "0.82rem",
-                    color: "#6B7280",
-                    fontWeight: 600,
-                    marginLeft: "4px",
-                    whiteSpace: "nowrap"
-                  }}>
-                    ≈ {formatMoney(convertedVal, trip.homeCurrency)}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                    <span style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 600 }}>
+                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
+                    </span>
+                    {isSidelineChangeable ? (
+                      <SearchableCurrencySelect
+                        value={lastLocalCurrency}
+                        onChange={(val) => {
+                          setLastLocalCurrency(val);
+                          localStorage.setItem("tracker_last_used_currency", val);
+                        }}
+                        rates={rates}
+                        customCurrencies={customCurrencies}
+                        onAddCustomCurrency={onAddCustomCurrency}
+                        style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "0.8rem", fontWeight: 750, color: "var(--color-purple)", padding: "2px 6px" }}>
+                        {trip.homeCurrency}
+                      </span>
+                    )}
+                  </div>
                 );
               })()}
-              <input
-                type="text"
-                value={amount}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^[0-9+\-*/().\s]*$/.test(val)) {
-                    setAmount(val);
+
+              {/* Middle Side: Swap Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (currency === trip.homeCurrency) {
+                    setCurrency(lastLocalCurrency);
+                  } else {
+                    setLastLocalCurrency(currency);
+                    setCurrency(trip.homeCurrency);
                   }
                 }}
-                onBlur={() => {
-                  const evaluated = evaluateMathExpression(amount);
-                  setAmount(evaluated);
-                }}
-                placeholder="0.00"
                 style={{
-                  flex: 1,
-                  border: "none",
-                  background: "transparent",
-                  fontSize: "1.4rem",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  border: "1px solid rgba(133, 58, 81, 0.2)",
+                  backgroundColor: "white",
+                  color: "var(--color-purple)",
+                  fontSize: "1rem",
                   fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 6px rgba(133, 58, 81, 0.08)",
                   outline: "none",
-                  width: "100%",
-                  color: "#111827",
-                  textAlign: "right",
-                  paddingRight: "6px",
-                  padding: "4px 0"
+                  transition: "transform 0.15s ease",
+                  margin: "0 8px"
                 }}
-              />
+                onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+                onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                ⇄
+              </button>
+
+              {/* Right Side: Active Symbol and Input Box */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+                <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1F2937" }}>
+                  {CURRENCY_SYMBOLS[currency] || currency}
+                </span>
+                <input
+                  type="text"
+                  value={amount}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^[0-9+\-*/().\s]*$/.test(val)) {
+                      setAmount(val);
+                    }
+                  }}
+                  onBlur={() => {
+                    const evaluated = evaluateMathExpression(amount);
+                    setAmount(evaluated);
+                  }}
+                  placeholder="0.00"
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    fontSize: "1.4rem",
+                    fontWeight: 800,
+                    outline: "none",
+                    width: "100%",
+                    maxWidth: "110px",
+                    color: "#111827",
+                    textAlign: "right",
+                    padding: "4px 0"
+                  }}
+                />
+              </div>
             </div>
             {spreadExpense && (() => {
               const start = new Date(spreadStart);
@@ -5054,173 +5396,119 @@ function ManualEntryModal({
               gap: "12px",
               animation: "fadeInUp 0.2s ease-out"
             }}>
+              {/* Dynamic Range Card & Mode Selector (rendered ABOVE the calendar) */}
+              {(() => {
+                const start = new Date(spreadStart + "T00:00:00");
+                const end = new Date(spreadEnd + "T00:00:00");
+                const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
+
+                if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
+                  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                  const val = parseFloat(evaluateMathExpression(amount)) || 0;
+                  const daily = spreadMode === "repeat" ? val : (val / days);
+                  const total = spreadMode === "repeat" ? (val * days) : val;
+
+                  const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+                  const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+
+                  return (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      padding: "12px",
+                      backgroundColor: "rgba(232, 107, 50, 0.05)",
+                      borderRadius: "16px",
+                      border: "1.5px solid rgba(232, 107, 50, 0.15)",
+                      marginBottom: "6px"
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#9A3412" }}>
+                          🗓️ {formattedStart} – {formattedEnd}
+                        </span>
+                        <span style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 750,
+                          backgroundColor: "rgba(232, 107, 50, 0.12)",
+                          color: "#C2410C",
+                          padding: "2px 8px",
+                          borderRadius: "20px"
+                        }}>
+                          {days} Days
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setSpreadMode("divide")}
+                          style={{
+                            flex: 1,
+                            padding: "8px 10px",
+                            borderRadius: "10px",
+                            border: "1.5px solid",
+                            fontSize: "0.76rem",
+                            fontWeight: 750,
+                            cursor: "pointer",
+                            backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
+                            borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
+                            color: spreadMode === "divide" ? "white" : "#4B5563",
+                            transition: "all 0.2s",
+                            outline: "none"
+                          }}
+                        >
+                          ⚖️ Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{daily.toFixed(2)}/d)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSpreadMode("repeat")}
+                          style={{
+                            flex: 1,
+                            padding: "8px 10px",
+                            borderRadius: "10px",
+                            border: "1.5px solid",
+                            fontSize: "0.76rem",
+                            fontWeight: 750,
+                            cursor: "pointer",
+                            backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
+                            borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
+                            color: spreadMode === "repeat" ? "white" : "#4B5563",
+                            transition: "all 0.2s",
+                            outline: "none"
+                          }}
+                        >
+                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{val.toFixed(2)}/d)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Single date selection card
+                  const d = new Date(expenseDate + "T00:00:00");
+                  const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+                  return (
+                    <div style={{
+                      padding: "10px 12px",
+                      backgroundColor: "rgba(133, 58, 81, 0.04)",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(133, 58, 81, 0.08)",
+                      fontSize: "0.82rem",
+                      fontWeight: 750,
+                      color: "var(--color-purple)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "6px"
+                    }}>
+                      <span>📅 Logging on {formattedDate}</span>
+                      <span style={{ fontSize: "0.72rem", color: "#6B7280" }}>Tap days for range</span>
+                    </div>
+                  );
+                }
+              })()}
+
               {/* Render Custom Calendar Grid */}
               {renderCalendarGrid()}
-
-              {/* Dynamic Spread/Range Configuration (visible only if range is active) */}
-              {spreadExpense && (
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  padding: "12px",
-                  backgroundColor: "rgba(232, 107, 50, 0.03)",
-                  borderRadius: "14px",
-                  borderLeft: "4px solid var(--color-orange)",
-                  borderTop: "1px solid rgba(232, 107, 50, 0.06)",
-                  borderRight: "1px solid rgba(232, 107, 50, 0.06)",
-                  borderBottom: "1px solid rgba(232, 107, 50, 0.06)",
-                  marginTop: "6px"
-                }}>
-                  {/* Distribution Mode */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.72rem", color: "#C2410C", fontWeight: 750, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Distribution Mode
-                    </span>
-                    <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setSpreadMode("divide")}
-                        style={{
-                          flex: 1,
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          border: "1.5px solid",
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
-                          borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
-                          color: spreadMode === "divide" ? "white" : "#4B5563",
-                          transition: "all 0.2s",
-                          outline: "none"
-                        }}
-                      >
-                        ⚖️ Spread Evenly
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSpreadMode("repeat")}
-                        style={{
-                          flex: 1,
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          border: "1.5px solid",
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
-                          borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
-                          color: spreadMode === "repeat" ? "white" : "#4B5563",
-                          transition: "all 0.2s",
-                          outline: "none"
-                        }}
-                      >
-                        🔄 Repeat Daily
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Manual Date Edit Helper Inputs (Collapsible/Mini) */}
-                  <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <span style={{ fontSize: "0.68rem", color: "#9A3412", fontWeight: 700 }}>Start Date</span>
-                      <input
-                        type="date"
-                        value={spreadStart}
-                        onChange={(e) => setSpreadStart(e.target.value)}
-                        style={{
-                          padding: "5px 8px",
-                          borderRadius: "6px",
-                          border: "1px solid rgba(232, 107, 50, 0.15)",
-                          outline: "none",
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "#C2410C",
-                          backgroundColor: "white",
-                          boxSizing: "border-box"
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <span style={{ fontSize: "0.68rem", color: "#9A3412", fontWeight: 700 }}>End Date</span>
-                      <input
-                        type="date"
-                        value={spreadEnd}
-                        onChange={(e) => setSpreadEnd(e.target.value)}
-                        style={{
-                          padding: "5px 8px",
-                          borderRadius: "6px",
-                          border: "1px solid rgba(232, 107, 50, 0.15)",
-                          outline: "none",
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "#C2410C",
-                          backgroundColor: "white",
-                          boxSizing: "border-box"
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Explanation Text */}
-                  {(() => {
-                    const start = new Date(spreadStart + "T00:00:00");
-                    const end = new Date(spreadEnd + "T00:00:00");
-                    if (!isNaN(start) && !isNaN(end) && end >= start) {
-                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                      const val = parseFloat(evaluateMathExpression(amount)) || 0;
-                      const dailyPortion = val > 0 
-                        ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
-                        : "0.00";
-                      const totalCost = val > 0 
-                        ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
-                        : "0.00";
-                      return (
-                        <div style={{
-                          fontSize: "0.76rem",
-                          color: "#9A3412",
-                          fontWeight: 600,
-                          lineHeight: "1.4",
-                          marginTop: "2px"
-                        }}>
-                          {spreadMode === "repeat" ? (
-                            <span>Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days. Total: {totalCost} {currency}.</span>
-                          ) : (
-                            <span>Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).</span>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setSpreadExpense(false);
-                      setSpreadEnd(null);
-                      setExpenseDate(spreadStart);
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#C2410C",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                      padding: 0,
-                      textAlign: "left",
-                      marginTop: "2px",
-                      outline: "none",
-                      width: "fit-content"
-                    }}
-                  >
-                    Reset to Single Date
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
