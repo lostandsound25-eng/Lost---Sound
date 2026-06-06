@@ -24,20 +24,13 @@ export default function TripsDashboard() {
       setLoading(true);
     }
 
-    const demoTripMock = {
-      id: "demo",
-      name: "My Local Trip (Demo)",
-      role: "demo",
-      created_at: new Date().toISOString()
-    };
-
     const handleAuthSession = (session) => {
       if (session) {
         setSession(session);
         fetchTrips(session.user);
       } else {
         setSession(null);
-        setTrips([demoTripMock]);
+        setTrips([]);
         setLoading(false);
       }
     };
@@ -51,7 +44,7 @@ export default function TripsDashboard() {
         } else {
           console.error("Code exchange failed:", error);
           setSession(null);
-          setTrips([demoTripMock]);
+          setTrips([]);
           setLoading(false);
         }
       });
@@ -63,7 +56,7 @@ export default function TripsDashboard() {
         handleAuthSession(session);
       } else {
         setSession(null);
-        setTrips([demoTripMock]);
+        setTrips([]);
         setLoading(false);
       }
     });
@@ -73,7 +66,7 @@ export default function TripsDashboard() {
         handleAuthSession(session);
       } else {
         setSession(null);
-        setTrips([demoTripMock]);
+        setTrips([]);
         setLoading(false);
       }
     });
@@ -208,9 +201,10 @@ export default function TripsDashboard() {
         backgroundColor: '#F9F6ED'
       }}>
         <div style={{
-          color: 'var(--color-purple)',
+          color: '#853A51',
           fontWeight: 700,
-          fontSize: '1.1rem'
+          fontSize: '1.1rem',
+          fontFamily: 'system-ui, sans-serif'
         }}>Loading Dashboard...</div>
       </div>
     );
@@ -224,62 +218,81 @@ export default function TripsDashboard() {
         margin: '0 auto',
         minHeight: '100vh',
         backgroundColor: '#F9F6ED',
-        fontFamily: 'var(--font-body), system-ui, sans-serif',
-        color: 'var(--color-text)',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+        color: '#1F2937',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 0 40px rgba(0,0,0,0.05)'
+        boxShadow: '0 0 40px rgba(133, 58, 81, 0.03)',
+        boxSizing: 'border-box'
       }}
     >
-      {/* Header */}
+      {/* Redesigned Clean Header */}
       <header style={{
-        padding: '24px 20px',
-        backgroundColor: 'white',
-        borderBottom: '1px solid #eee',
+        padding: '32px 24px 20px 24px',
+        backgroundColor: '#F9F6ED',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottom: '1px solid rgba(133, 58, 81, 0.05)'
       }}>
         <div>
+          <span style={{ 
+            fontSize: '0.72rem', 
+            fontWeight: 850, 
+            color: '#E86B32', 
+            textTransform: 'uppercase', 
+            letterSpacing: '1.5px',
+            display: 'block'
+          }}>
+            Lost & Sound
+          </span>
           <h1 style={{
-            fontSize: '1.4rem',
+            fontSize: '1.75rem',
             fontWeight: 900,
-            color: 'var(--color-purple)',
-            fontFamily: 'var(--font-heading)',
-            lineHeight: 1.1
-          }}>My Trips</h1>
-          <p style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: '2px' }}>
-            {session ? `Logged in as ${session.user.email}` : "Viewing as Guest"}
-          </p>
+            color: '#853A51',
+            margin: '2px 0 0 0',
+            letterSpacing: '-0.5px'
+          }}>
+            My Trips
+          </h1>
         </div>
+
         {session ? (
           <button
-            onClick={handleSignOut}
+            onClick={() => setShowCreateModal(true)}
             style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#9CA3AF',
-              background: 'none',
-              border: '1px solid #E5E7EB',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              cursor: 'pointer'
+              backgroundColor: '#853A51',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '10px 16px',
+              fontWeight: 750,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'background-color 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
           >
-            Sign Out
+            ✈️ + New Trip
           </button>
         ) : (
           <button
             onClick={() => window.location.href = '/tracker'}
             style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
+              fontSize: '0.82rem',
+              fontWeight: 750,
               color: 'white',
-              backgroundColor: 'var(--color-purple)',
+              backgroundColor: '#853A51',
               border: 'none',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              cursor: 'pointer'
+              borderRadius: '10px',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)'
             }}
           >
             Sign In
@@ -288,177 +301,220 @@ export default function TripsDashboard() {
       </header>
 
       {/* Main Content */}
-      <main style={{ flex: 1, padding: '24px 20px' }}>
-        {/* Create Trip CTA Card */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '20px',
-          padding: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-          border: '1.5px solid rgba(133, 58, 81, 0.08)',
-          marginBottom: '24px',
-          textAlign: 'center'
-        }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-purple)', marginBottom: '6px' }}>
-            Ready for a new adventure?
-          </h2>
-          <p style={{ fontSize: '0.82rem', color: '#6B7280', marginBottom: '16px' }}>
-            Create a collaborative cloud trip to track your budget with a travel partner in real-time.
-          </p>
-          <button
-            onClick={() => {
-              if (session) {
-                setShowCreateModal(true);
-              } else {
-                alert("Please sign in or create an account to start tracking your own cloud trips!");
-                window.location.href = '/tracker';
-              }
-            }}
-            style={{
-              backgroundColor: 'var(--color-orange)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: 750,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(232, 107, 50, 0.25)',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}
-          >
-            ✈️ Create New Trip
-          </button>
-          <button
-            onClick={() => window.location.href = '/tracker?demo=true'}
-            style={{
-              backgroundColor: 'white',
-              color: 'var(--color-purple)',
-              border: '1.5px solid rgba(133, 58, 81, 0.15)',
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: 750,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              marginTop: '10px'
-            }}
-          >
-            🎒 Play in Demo Trip
-          </button>
-        </div>
-
-        {/* Guest Sign In Prompt Card */}
-        {!session && (
+      <main style={{ flex: 1, padding: '12px 20px 40px 20px' }}>
+        
+        {/* LOGGED IN VIEW */}
+        {session ? (
+          <div>
+            {trips.length === 0 ? (
+              // Empty State
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 24px',
+                backgroundColor: 'white',
+                borderRadius: '24px',
+                border: '1.5px solid rgba(133, 58, 81, 0.08)',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.01)',
+                marginTop: '12px'
+              }}>
+                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>🎒</span>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#853A51', margin: '0 0 8px 0' }}>
+                  No trips synced yet
+                </h3>
+                <p style={{ 
+                  fontSize: '0.85rem', 
+                  color: '#6B7280', 
+                  lineHeight: '1.5',
+                  margin: '0 0 24px 0'
+                }}>
+                  Create your first collaborative trip in the cloud to track expenses and sync with partners in real-time.
+                </p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  style={{
+                    backgroundColor: '#E86B32',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 24px',
+                    fontWeight: 750,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 10px rgba(232, 107, 50, 0.2)'
+                  }}
+                >
+                  Create New Trip
+                </button>
+              </div>
+            ) : (
+              // Grid list of Trip Cards
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
+                {trips.map(trip => (
+                  <div
+                    key={trip.id}
+                    onClick={() => window.location.href = `/tracker/trip/${trip.id}`}
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '20px',
+                      padding: '20px',
+                      boxShadow: '0 4px 12px rgba(133, 58, 81, 0.01)',
+                      border: '1.5px solid rgba(133, 58, 81, 0.08)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#853A51';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.08)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1, paddingRight: '12px' }}>
+                      <h4 style={{ 
+                        fontSize: '1.1rem', 
+                        fontWeight: 800, 
+                        color: '#1F2937', 
+                        margin: 0,
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap'
+                      }}>{trip.name}</h4>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 750,
+                          color: trip.role === 'owner' ? '#E86B32' : '#853A51',
+                          backgroundColor: trip.role === 'owner' ? 'rgba(232, 107, 50, 0.06)' : 'rgba(133, 58, 81, 0.06)',
+                          padding: '3px 8px',
+                          borderRadius: '8px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {trip.role}
+                        </span>
+                        
+                        <span style={{ fontSize: '0.72rem', color: '#9CA3AF', fontWeight: 550 }}>
+                          Home: {trip.home_currency}
+                        </span>
+                      </div>
+                    </div>
+                    <span style={{ 
+                      fontSize: '1.3rem', 
+                      color: '#853A51',
+                      opacity: 0.6,
+                      fontWeight: 700 
+                    }}>→</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          // GUEST VIEW (Not Logged In)
           <div style={{
-            backgroundColor: 'rgba(133, 58, 81, 0.03)',
-            borderRadius: '20px',
-            padding: '20px',
-            border: '1.5px solid rgba(133, 58, 81, 0.1)',
-            marginBottom: '24px',
-            textAlign: 'center'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            marginTop: '12px'
           }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-purple)', marginBottom: '6px' }}>
-              ☁️ Save & Share Your Trips
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: '#6B7280', marginBottom: '16px', lineHeight: '1.4' }}>
-              Sign up with your email to unlock real-time collaboration with travel partners, cloud backup, and multi-device syncing.
-            </p>
-            <button
-              onClick={() => window.location.href = '/tracker'}
-              style={{
-                backgroundColor: 'var(--color-purple)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '10px 20px',
-                fontWeight: 750,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
-                width: '100%'
-              }}
-            >
-              Sign In / Create Account
-            </button>
+            {/* Elegant Auth CTA Card */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '24px',
+              padding: '36px 24px',
+              border: '1.5px solid rgba(133, 58, 81, 0.08)',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.01)',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>☁️</span>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#853A51', margin: '0 0 8px 0' }}>
+                Collaborate in the Cloud
+              </h3>
+              <p style={{ 
+                fontSize: '0.85rem', 
+                color: '#6B7280', 
+                lineHeight: '1.5',
+                margin: '0 0 24px 0'
+              }}>
+                Sign up with your email or Google account to invite travel partners, sync budgets, work offline, and back up your logs.
+              </p>
+              
+              <button
+                onClick={() => window.location.href = '/tracker'}
+                style={{
+                  backgroundColor: '#853A51',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: 750,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginBottom: '10px'
+                }}
+              >
+                Sign In / Create Account
+              </button>
+
+              <button
+                onClick={() => window.location.href = '/tracker?demo=true'}
+                style={{
+                  backgroundColor: 'white',
+                  color: '#853A51',
+                  border: '1.5px solid rgba(133, 58, 81, 0.15)',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: 750,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                🎒 Play in Demo Trip (Offline)
+              </button>
+            </div>
           </div>
         )}
-
-        {/* Trips List */}
-        <div>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-            All Trips ({trips.length})
-          </h3>
-
-          {trips.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '40px 20px',
-              color: '#9CA3AF',
-              backgroundColor: 'white',
-              borderRadius: '20px',
-              border: '1px solid #E5E7EB'
-            }}>
-              <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>🎒</span>
-              <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>No cloud trips yet.</p>
-              <p style={{ fontSize: '0.8rem', marginTop: '4px' }}>Click the button above to create one!</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {trips.map(trip => (
-                <div
-                  key={trip.id}
-                  onClick={() => {
-                    if (trip.id === 'demo') {
-                      window.location.href = '/tracker?demo=true';
-                    } else {
-                      window.location.href = `/tracker/trip/${trip.id}`;
-                    }
-                  }}
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: '20px',
-                    padding: '16px 20px',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.01)',
-                    border: '1px solid #E5E7EB',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-purple)'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
-                >
-                  <div>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#1F2937' }}>{trip.name}</h4>
-                    <span style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      color: trip.role === 'owner' ? 'var(--color-orange)' : 'var(--color-purple)',
-                      backgroundColor: trip.role === 'owner' ? 'rgba(232, 107, 50, 0.08)' : 'rgba(133, 58, 81, 0.08)',
-                      padding: '2px 8px',
-                      borderRadius: '8px',
-                      display: 'inline-block',
-                      marginTop: '6px',
-                      textTransform: 'uppercase'
-                    }}>{trip.role}</span>
-                  </div>
-                  <span style={{ fontSize: '1.2rem', color: '#9CA3AF' }}>→</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </main>
+
+      {/* Redesigned Minimal Footer */}
+      {session && (
+        <footer style={{
+          padding: '24px',
+          textAlign: 'center',
+          fontSize: '0.78rem',
+          color: '#9CA3AF',
+          borderTop: '1px solid rgba(133, 58, 81, 0.05)'
+        }}>
+          Logged in as <strong style={{ color: '#6B7280' }}>{session.user.email}</strong>
+          <span style={{ margin: '0 8px', opacity: 0.5 }}>•</span>
+          <button
+            onClick={handleSignOut}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#853A51',
+              fontWeight: 700,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0,
+              fontSize: 'inherit'
+            }}
+          >
+            Sign Out
+          </button>
+        </footer>
+      )}
 
       {/* Create Trip Modal */}
       {showCreateModal && (
@@ -488,17 +544,17 @@ export default function TripsDashboard() {
             animation: 'fadeInUp 0.3s ease-out'
           }}>
             <h3 style={{
-              fontSize: '1.3rem',
-              fontWeight: 800,
-              color: 'var(--color-purple)',
+              fontSize: '1.25rem',
+              fontWeight: 900,
+              color: '#853A51',
               marginBottom: '16px',
-              fontFamily: 'var(--font-heading)'
+              fontFamily: 'system-ui, sans-serif'
             }}>Create New Trip</h3>
 
             <form onSubmit={handleCreateTrip}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left', marginBottom: '24px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
                     Trip Name
                   </label>
                   <input
@@ -514,14 +570,15 @@ export default function TripsDashboard() {
                       border: '1px solid #E5E7EB',
                       fontSize: '0.9rem',
                       outline: 'none',
-                      color: '#1F2937'
+                      color: '#1F2937',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
-                    Home Currency (e.g. USD, EUR, PHP)
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
+                    Home Currency (e.g. USD, EUR)
                   </label>
                   <input
                     type="text"
@@ -536,7 +593,8 @@ export default function TripsDashboard() {
                       border: '1px solid #E5E7EB',
                       fontSize: '0.9rem',
                       outline: 'none',
-                      color: '#1F2937'
+                      color: '#1F2937',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -546,12 +604,17 @@ export default function TripsDashboard() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="btn btn-primary"
                   style={{
                     width: '100%',
+                    backgroundColor: '#853A51',
+                    color: 'white',
+                    border: 'none',
                     borderRadius: '12px',
                     padding: '12px',
-                    fontWeight: 700
+                    fontWeight: 750,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)'
                   }}
                 >
                   {creating ? 'Creating...' : 'Launch Trip'}

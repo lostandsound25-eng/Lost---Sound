@@ -1378,6 +1378,98 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             performCloudAction("insert", dbEntry);
           });
         }
+      } else if (expense.spreadDays && expense.spreadDays > 1) {
+        // 1. Upgrading a single expense to a range: delete the original single expense
+        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+        if (!isDemo && tripId) {
+          performCloudAction("delete", { id: expense.id });
+        }
+
+        // 2. Generate new range entries starting from start to end date
+        const N = expense.spreadDays;
+        const totalAmount = expense.amount;
+        const isRepeat = expense.spreadMode === "repeat";
+        const dailyAmount = isRepeat ? totalAmount : parseFloat((totalAmount / N).toFixed(2));
+        const remainder = isRepeat ? 0 : parseFloat((totalAmount - dailyAmount * N).toFixed(2));
+
+        const newExpenses = [];
+        const dbInserts = [];
+        const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
+        const groupUuid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+        const groupTag = `spread-group-${groupUuid}`;
+
+        const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
+        const finalLocation = expense.location || "";
+        const finalLocale = trip.currentLocation || "";
+
+        for (let i = 0; i < N; i++) {
+          const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
+          const newId = crypto.randomUUID ? crypto.randomUUID() : (Date.now() + i).toString();
+          
+          const d = new Date(startD);
+          d.setDate(d.getDate() + i);
+          const timestamp = d.toISOString();
+
+          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+          const baseNote = expense.note || expense.category;
+          const cleanBaseNote = baseNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+
+          const noteWithSuffix = startStr && endStr 
+            ? `${cleanBaseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+            : `${cleanBaseNote} (Day ${i + 1}/${N})`;
+
+          const entryTags = [
+            ...baseTags,
+            groupTag,
+            `spread-mode-${expense.spreadMode}`,
+            `spread-start-${expense.spreadStart}`,
+            `spread-end-${expense.spreadEnd}`,
+            `spread-amount-${expense.amount}`
+          ];
+
+          const singleExpense = {
+            amount: amt,
+            currency: expense.currency,
+            category: expense.category,
+            note: noteWithSuffix,
+            worthIt: expense.worthIt,
+            location: finalLocation,
+            locationLocale: finalLocale,
+            tags: entryTags,
+            id: newId,
+            timestamp: timestamp,
+            photoUrl: expense.photoUrl || ""
+          };
+
+          newExpenses.push(singleExpense);
+
+          if (!isDemo && tripId) {
+            dbInserts.push({
+              id: singleExpense.id,
+              created_at: singleExpense.timestamp,
+              amount: singleExpense.amount,
+              currency: singleExpense.currency,
+              category: singleExpense.category,
+              note: singleExpense.note,
+              worth_it: singleExpense.worthIt,
+              location: singleExpense.location,
+              location_locale: singleExpense.locationLocale,
+              tags: singleExpense.tags,
+              trip_id: tripId,
+              photo_url: singleExpense.photoUrl || null
+            });
+          }
+        }
+
+        pushToUndo({ type: 'insert_bulk', data: newExpenses });
+        setExpenses((prev) => [...newExpenses, ...prev]);
+
+        if (!isDemo && tripId && dbInserts.length > 0) {
+          dbInserts.forEach((dbEntry) => {
+            performCloudAction("insert", dbEntry);
+          });
+        }
       } else {
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
         const cleanNote = expense.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
@@ -2828,6 +2920,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
                               <div style={{
                                 width: "100%",
+                                overflowX: "auto",
+                                WebkitOverflowScrolling: "touch",
                                 borderRadius: "16px",
                                 border: "1.5px solid #E5E7EB",
                                 backgroundColor: "white",
@@ -3456,7 +3550,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   );
 }
 
-// Swipe-to-delete card representing each expense log
 function ExpenseCard({
   expense,
   onEdit,
@@ -3470,12 +3563,14 @@ function ExpenseCard({
   const [isDragging, setIsDragging] = useState(false);
   const [offsetX, setOffsetX] = useState(0);
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
 
   // Parse custom note suffix for spread/repeat details if present: e.g. "Hotel Booking (Day 1/7, May 23 - May 29)"
   const spreadMatch = expense.note ? expense.note.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
-  const displayNote = expense.note ? (spreadMatch ? spreadMatch[1].trim() : expense.note) : (expense.category || "");
+  const rawDisplayNote = expense.note ? (spreadMatch ? spreadMatch[1].trim() : expense.note) : (expense.category || "");
+  const displayNote = rawDisplayNote.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
   const isRepeat = expense.tags?.includes("spread-mode-repeat");
   const spreadInfo = spreadMatch 
     ? `${isRepeat ? "Repeat" : "Spread"}: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` 
@@ -3499,9 +3594,14 @@ function ExpenseCard({
         overflow: "hidden",
         borderRadius: "16px"
       }}>
-        {/* Delete button revealed by swiping */}
         <div
-          onClick={() => onDelete(expense.id)}
+          onClick={() => {
+            if (window.confirm("Are you sure you want to delete this expense?")) {
+              const deleteEntire = expense.tags?.some(t => t.startsWith("spread-group-"));
+              const groupTag = expense.tags?.find(t => t.startsWith("spread-group-"));
+              onDelete(expense.id, deleteEntire, groupTag);
+            }
+          }}
           style={{
             position: "absolute",
             top: 0,
@@ -3678,7 +3778,7 @@ function ExpenseCard({
             )}
           </div>
 
-          <div style={{ textAlign: "right" }}>
+          <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
             <div style={{
               fontWeight: 800,
               fontSize: "1.05rem",
@@ -3689,9 +3789,89 @@ function ExpenseCard({
                 {expense.amount.toFixed(2)} {expense.currency}
               </div>
             )}
+            {expense.photoUrl && (
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLightbox(true);
+                }}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  border: "1.5px solid #E5E7EB",
+                  marginTop: "6px",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
+                  backgroundColor: "#f3f4f6"
+                }}
+                title="Click to view receipt"
+              >
+                <img 
+                  src={expense.photoUrl} 
+                  alt="Receipt thumbnail" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {showLightbox && (
+        <div 
+          onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backdropFilter: "blur(5px)",
+            padding: "20px"
+          }}
+        >
+          <img 
+            src={expense.photoUrl} 
+            alt="Full receipt" 
+            style={{
+              maxWidth: "100%",
+              maxHeight: "80vh",
+              objectFit: "contain",
+              borderRadius: "12px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+            }} 
+          />
+          <button 
+            onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              background: "rgba(255,255,255,0.2)",
+              border: "none",
+              color: "white",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              fontSize: "1.2rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -3730,7 +3910,9 @@ function ManualEntryModal({
   const origEnd = expenseToEdit?.tags?.find(t => t.startsWith("spread-end-"))?.replace("spread-end-", "") || "";
   const origAmount = parseFloat(expenseToEdit?.tags?.find(t => t.startsWith("spread-amount-"))?.replace("spread-amount-", "") || (expenseToEdit?.amount || 0));
 
-  const [editEntireGroup, setEditEntireGroup] = useState(false);
+  const [editEntireGroup, setEditEntireGroup] = useState(() => {
+    return isGroup;
+  });
 
   const fileInputRef = useRef(null);
   const notesInputRef = useRef(null);
@@ -3784,6 +3966,9 @@ function ManualEntryModal({
 
   const [amount, setAmount] = useState(() => {
     if (expenseToEdit && expenseToEdit.amount !== undefined && expenseToEdit.amount !== null) {
+      if (isGroup) {
+        return origAmount.toString();
+      }
       return expenseToEdit.amount.toString();
     }
     const draft = getDraft();
@@ -3846,6 +4031,177 @@ function ManualEntryModal({
     return false;
   });
   const [isDateExpanded, setIsDateExpanded] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => {
+    const initDate = expenseToEdit && expenseToEdit.timestamp ? new Date(expenseToEdit.timestamp) : new Date();
+    return initDate.getMonth();
+  });
+  const [calYear, setCalYear] = useState(() => {
+    const initDate = expenseToEdit && expenseToEdit.timestamp ? new Date(expenseToEdit.timestamp) : new Date();
+    return initDate.getFullYear();
+  });
+
+  const renderCalendarGrid = () => {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const totalDays = new Date(calYear, calMonth + 1, 0).getDate();
+    const prevMonthTotalDays = new Date(calYear, calMonth, 0).getDate();
+    const daysGrid = [];
+    
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = new Date(calYear, calMonth - 1, prevMonthTotalDays - i);
+      daysGrid.push({
+        day: prevMonthTotalDays - i,
+        isCurrentMonth: false,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    for (let i = 1; i <= totalDays; i++) {
+      const d = new Date(calYear, calMonth, i);
+      daysGrid.push({
+        day: i,
+        isCurrentMonth: true,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    const remaining = 42 - daysGrid.length;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(calYear, calMonth + 1, i);
+      daysGrid.push({
+        day: i,
+        isCurrentMonth: false,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    const handleDayClick = (dayStr) => {
+      if (spreadExpense || !spreadStart || spreadEnd) {
+        setSpreadStart(dayStr);
+        setExpenseDate(dayStr);
+        setSpreadEnd(null);
+        setSpreadExpense(false);
+      } else {
+        if (dayStr > spreadStart) {
+          setSpreadEnd(dayStr);
+          setSpreadExpense(true);
+          setSpreadMode("divide");
+        } else if (dayStr < spreadStart) {
+          setSpreadStart(dayStr);
+          setExpenseDate(dayStr);
+          setSpreadEnd(null);
+          setSpreadExpense(false);
+        } else {
+          setSpreadStart(dayStr);
+          setExpenseDate(dayStr);
+          setSpreadEnd(null);
+          setSpreadExpense(false);
+        }
+      }
+    };
+    
+    const changeMonth = (direction) => {
+      if (direction === -1) {
+        if (calMonth === 0) {
+          setCalMonth(11);
+          setCalYear(prev => prev - 1);
+        } else {
+          setCalMonth(prev => prev - 1);
+        }
+      } else {
+        if (calMonth === 11) {
+          setCalMonth(0);
+          setCalYear(prev => prev + 1);
+        } else {
+          setCalMonth(prev => prev + 1);
+        }
+      }
+    };
+    
+    return (
+      <div style={{ padding: "4px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          <button 
+            type="button" 
+            onClick={() => changeMonth(-1)}
+            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+          >
+            ◀
+          </button>
+          <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
+            {months[calMonth]} {calYear}
+          </span>
+          <button 
+            type="button" 
+            onClick={() => changeMonth(1)}
+            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+          >
+            ▶
+          </button>
+        </div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.72rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "3px" }}>
+          {daysGrid.map((item, idx) => {
+            const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
+            const isStart = spreadStart === item.dateStr;
+            const isEnd = spreadEnd === item.dateStr;
+            const isRangeSelected = spreadExpense && spreadStart && spreadEnd;
+            const isInRange = isRangeSelected && item.dateStr > spreadStart && item.dateStr < spreadEnd;
+            const isSelected = !spreadExpense ? (expenseDate === item.dateStr) : (isStart || isEnd);
+            
+            let bg = "transparent";
+            let color = item.isCurrentMonth ? "#374151" : "#D1D5DB";
+            let fontWeight = 600;
+            let borderRadius = "50%";
+            
+            if (isSelected) {
+              bg = isStart || isEnd ? "var(--color-orange)" : "var(--color-purple)";
+              color = "white";
+              fontWeight = 800;
+            } else if (isInRange) {
+              bg = "rgba(232, 107, 50, 0.12)";
+              color = "#C2410C";
+              fontWeight = 700;
+              borderRadius = "6px";
+            } else if (isToday) {
+              bg = "rgba(133, 58, 81, 0.08)";
+              color = "var(--color-purple)";
+              fontWeight = 800;
+            }
+            
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleDayClick(item.dateStr)}
+                style={{
+                  border: "none",
+                  background: bg,
+                  color: color,
+                  fontWeight: fontWeight,
+                  fontSize: "0.82rem",
+                  height: "36px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: borderRadius,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  outline: "none"
+                }}
+              >
+                {item.day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const [spreadMode, setSpreadMode] = useState(() => {
     if (expenseToEdit) {
@@ -3903,7 +4259,8 @@ function ManualEntryModal({
       const baseTitle = parts[0] || "";
       const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
-      setAmount(expenseToEdit.amount !== undefined && expenseToEdit.amount !== null ? expenseToEdit.amount.toString() : "");
+      const targetAmt = (isGroup && editEntireGroup) ? origAmount : expenseToEdit.amount;
+      setAmount(targetAmt !== undefined && targetAmt !== null ? targetAmt.toString() : "");
       setTitle(baseTitle);
       setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
@@ -3922,13 +4279,10 @@ function ManualEntryModal({
       }
       setExpenseDate(initialDateStr);
 
-      if (expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
-        setSpreadExpense(true);
-      } else {
-        setSpreadExpense(false);
-      }
+      const targetSpread = (isGroup && editEntireGroup) || (!isGroup && expenseToEdit.tags?.some(t => t.startsWith("spread-group-")));
+      setSpreadExpense(targetSpread);
     }
-  }, [expenseToEdit, trip.localCurrency]);
+  }, [expenseToEdit, trip.localCurrency, isGroup, editEntireGroup, origAmount]);
 
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
@@ -4110,14 +4464,36 @@ function ManualEntryModal({
               if (expenseDate === origDateStr) {
                 finalTimestamp = expenseToEdit.timestamp;
               } else {
-                finalTimestamp = new Date(expenseDate + "T12:00:00").toISOString();
+                const now = new Date();
+                const [year, month, day] = expenseDate.split('-').map(Number);
+                const targetDate = new Date(
+                  year,
+                  month - 1,
+                  day,
+                  now.getHours(),
+                  now.getMinutes(),
+                  now.getSeconds(),
+                  now.getMilliseconds()
+                );
+                finalTimestamp = targetDate.toISOString();
               }
             } else {
               const todayCA = new Date().toLocaleDateString('en-CA');
               if (expenseDate === todayCA) {
                 finalTimestamp = new Date().toISOString();
               } else {
-                finalTimestamp = new Date(expenseDate + "T12:00:00").toISOString();
+                const now = new Date();
+                const [year, month, day] = expenseDate.split('-').map(Number);
+                const targetDate = new Date(
+                  year,
+                  month - 1,
+                  day,
+                  now.getHours(),
+                  now.getMinutes(),
+                  now.getSeconds(),
+                  now.getMilliseconds()
+                );
+                finalTimestamp = targetDate.toISOString();
               }
             }
 
@@ -4274,6 +4650,35 @@ function ManualEntryModal({
                 style={{ fontSize: "1rem", fontWeight: 700, marginRight: "4px" }}
               />
               {(() => {
+                const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
+                const localDefault = lastUsed || trip.localCurrency || "USD";
+                const targetToggle = currency === trip.homeCurrency ? localDefault : trip.homeCurrency;
+                if (trip.homeCurrency === targetToggle) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setCurrency(targetToggle)}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(133, 58, 81, 0.2)",
+                      backgroundColor: "rgba(133, 58, 81, 0.04)",
+                      color: "var(--color-purple)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      marginRight: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "2px",
+                      outline: "none"
+                    }}
+                  >
+                    ⇄ {targetToggle}
+                  </button>
+                );
+              })()}
+              {(() => {
                 const cleanAmt = evaluateMathExpression(amount);
                 const val = parseFloat(cleanAmt);
                 const showConversion = currency !== trip.homeCurrency && !isNaN(val) && val > 0;
@@ -4320,6 +4725,39 @@ function ManualEntryModal({
                 }}
               />
             </div>
+            {spreadExpense && (() => {
+              const start = new Date(spreadStart);
+              const end = new Date(spreadEnd);
+              if (isNaN(start) || isNaN(end) || end < start) return null;
+              const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+              const val = parseFloat(evaluateMathExpression(amount)) || 0;
+              const daily = spreadMode === "repeat" ? val : (val / days);
+              const total = spreadMode === "repeat" ? (val * days) : val;
+              return (
+                <div style={{
+                  backgroundColor: "rgba(232, 107, 50, 0.06)",
+                  border: "1px solid rgba(232, 107, 50, 0.15)",
+                  borderRadius: "12px",
+                  padding: "10px 14px",
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  color: "#C2410C",
+                  marginTop: "6px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>🔁 Series Mode: {days} days</span>
+                    <span>{formatMoney(total, currency)} Total</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#9A3412", fontWeight: 600 }}>
+                    <span>{spreadMode === "repeat" ? "Repeats daily" : "Spread evenly"}</span>
+                    <span>{formatMoney(daily, currency)} / day</span>
+                  </div>
+                </div>
+              );
+            })()}
             
             {/* Rates time and refresh inside manual entry modal */}
             {(() => {
@@ -4607,103 +5045,38 @@ function ManualEntryModal({
           {/* Collapsible Date Picker */}
           {isDateExpanded && (
             <div style={{
-              padding: "12px",
+              padding: "16px 12px",
               backgroundColor: "#F9F6ED",
-              borderRadius: "16px",
+              borderRadius: "20px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               display: "flex",
               flexDirection: "column",
-              gap: "10px",
+              gap: "12px",
               animation: "fadeInUp 0.2s ease-out"
             }}>
-              {/* Tab Selector: Single Date vs. Multi-day / Spread */}
-              <div style={{
-                display: "flex",
-                backgroundColor: "rgba(133, 58, 81, 0.06)",
-                borderRadius: "10px",
-                padding: "3px",
-                marginBottom: "2px"
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setSpreadExpense(false)}
-                  style={{
-                    flex: 1,
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    border: "none",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    backgroundColor: !spreadExpense ? "white" : "transparent",
-                    color: !spreadExpense ? "var(--color-purple)" : "#6B7280",
-                    boxShadow: !spreadExpense ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  📅 Single Date
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSpreadExpense(true);
-                    if (!spreadStart) setSpreadStart(new Date().toLocaleDateString('en-CA'));
-                    if (!spreadEnd) setSpreadEnd(getFutureDateString(6));
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    border: "none",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    backgroundColor: spreadExpense ? "white" : "transparent",
-                    color: spreadExpense ? "var(--color-purple)" : "#6B7280",
-                    boxShadow: spreadExpense ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  🗓️ Multi-day / Spread
-                </button>
-              </div>
+              {/* Render Custom Calendar Grid */}
+              {renderCalendarGrid()}
 
-              {!spreadExpense && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#4B5563", fontWeight: 700, textTransform: "uppercase" }}>Select Date</span>
-                  <input
-                    type="date"
-                    value={expenseDate}
-                    onChange={(e) => setExpenseDate(e.target.value)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid #E5E7EB",
-                      outline: "none",
-                      fontSize: "15px",
-                      backgroundColor: "white",
-                      color: "#374151"
-                    }}
-                  />
-                </div>
-              )}
-
+              {/* Dynamic Spread/Range Configuration (visible only if range is active) */}
               {spreadExpense && (
                 <div style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "8px",
-                  padding: "10px",
-                  backgroundColor: "rgba(232, 107, 50, 0.02)",
-                  borderRadius: "12px",
-                  borderLeft: "3.5px solid var(--color-orange)",
-                  borderTop: "1px solid rgba(232, 107, 50, 0.05)",
-                  borderRight: "1px solid rgba(232, 107, 50, 0.05)",
-                  borderBottom: "1px solid rgba(232, 107, 50, 0.05)"
+                  gap: "10px",
+                  padding: "12px",
+                  backgroundColor: "rgba(232, 107, 50, 0.03)",
+                  borderRadius: "14px",
+                  borderLeft: "4px solid var(--color-orange)",
+                  borderTop: "1px solid rgba(232, 107, 50, 0.06)",
+                  borderRight: "1px solid rgba(232, 107, 50, 0.06)",
+                  borderBottom: "1px solid rgba(232, 107, 50, 0.06)",
+                  marginTop: "6px"
                 }}>
-                  {/* Mode selector */}
+                  {/* Distribution Mode */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>Distribution Mode</span>
+                    <span style={{ fontSize: "0.72rem", color: "#C2410C", fontWeight: 750, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Distribution Mode
+                    </span>
                     <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
                       <button
                         type="button"
@@ -4719,7 +5092,8 @@ function ManualEntryModal({
                           backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
                           borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
                           color: spreadMode === "divide" ? "white" : "#4B5563",
-                          transition: "all 0.2s"
+                          transition: "all 0.2s",
+                          outline: "none"
                         }}
                       >
                         ⚖️ Spread Evenly
@@ -4738,7 +5112,8 @@ function ManualEntryModal({
                           backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
                           borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
                           color: spreadMode === "repeat" ? "white" : "#4B5563",
-                          transition: "all 0.2s"
+                          transition: "all 0.2s",
+                          outline: "none"
                         }}
                       >
                         🔄 Repeat Daily
@@ -4746,91 +5121,104 @@ function ManualEntryModal({
                     </div>
                   </div>
 
-                  {/* Dates */}
-                  <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>Start Date</span>
+                  {/* Manual Date Edit Helper Inputs (Collapsible/Mini) */}
+                  <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontSize: "0.68rem", color: "#9A3412", fontWeight: 700 }}>Start Date</span>
                       <input
                         type="date"
                         value={spreadStart}
                         onChange={(e) => setSpreadStart(e.target.value)}
                         style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          border: "1px solid rgba(232, 107, 50, 0.2)",
+                          padding: "5px 8px",
+                          borderRadius: "6px",
+                          border: "1px solid rgba(232, 107, 50, 0.15)",
                           outline: "none",
-                          fontSize: "15px",
+                          fontSize: "13px",
                           fontWeight: 600,
                           color: "#C2410C",
                           backgroundColor: "white",
-                          width: "100%",
                           boxSizing: "border-box"
                         }}
                       />
                     </div>
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
-                      <span style={{ fontSize: "0.7rem", color: "#C2410C", fontWeight: 700, textTransform: "uppercase" }}>End Date</span>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontSize: "0.68rem", color: "#9A3412", fontWeight: 700 }}>End Date</span>
                       <input
                         type="date"
                         value={spreadEnd}
                         onChange={(e) => setSpreadEnd(e.target.value)}
                         style={{
-                          padding: "6px 8px",
-                          borderRadius: "8px",
-                          border: "1px solid rgba(232, 107, 50, 0.2)",
+                          padding: "5px 8px",
+                          borderRadius: "6px",
+                          border: "1px solid rgba(232, 107, 50, 0.15)",
                           outline: "none",
-                          fontSize: "15px",
+                          fontSize: "13px",
                           fontWeight: 600,
                           color: "#C2410C",
                           backgroundColor: "white",
-                          width: "100%",
                           boxSizing: "border-box"
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Dynamic Explanation */}
+                  {/* Explanation Text */}
                   {(() => {
                     const start = new Date(spreadStart + "T00:00:00");
                     const end = new Date(spreadEnd + "T00:00:00");
                     if (!isNaN(start) && !isNaN(end) && end >= start) {
                       const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                      const evaluatedAmt = evaluateMathExpression(amount);
-                      const val = parseFloat(evaluatedAmt);
-                      const dailyPortion = !isNaN(val) && val > 0 
+                      const val = parseFloat(evaluateMathExpression(amount)) || 0;
+                      const dailyPortion = val > 0 
                         ? (spreadMode === "repeat" ? val : val / days).toFixed(2) 
                         : "0.00";
-                      const totalCost = !isNaN(val) && val > 0 
+                      const totalCost = val > 0 
                         ? (spreadMode === "repeat" ? val * days : val).toFixed(2) 
                         : "0.00";
                       return (
                         <div style={{
-                          fontSize: "0.78rem",
-                          color: "#C2410C",
+                          fontSize: "0.76rem",
+                          color: "#9A3412",
                           fontWeight: 600,
-                          backgroundColor: "rgba(232, 107, 50, 0.08)",
-                          border: "1px solid rgba(232, 107, 50, 0.15)",
-                          padding: "8px 10px",
-                          borderRadius: "8px",
-                          marginTop: "4px",
-                          lineHeight: "1.3"
+                          lineHeight: "1.4",
+                          marginTop: "2px"
                         }}>
                           {spreadMode === "repeat" ? (
-                            <>
-                              Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days.<br />
-                              Total cost will be <strong>{totalCost} {currency}</strong>.
-                            </>
+                            <span>Logging <strong>{dailyPortion} {currency} / day</strong> for {days} days. Total: {totalCost} {currency}.</span>
                           ) : (
-                            <>
-                              Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).
-                            </>
+                            <span>Spreading <strong>{val} {currency}</strong> across <strong>{days} days</strong> ({dailyPortion} {currency} / day).</span>
                           )}
                         </div>
                       );
                     }
                     return null;
                   })()}
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setSpreadExpense(false);
+                      setSpreadEnd(null);
+                      setExpenseDate(spreadStart);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#C2410C",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      padding: 0,
+                      textAlign: "left",
+                      marginTop: "2px",
+                      outline: "none",
+                      width: "fit-content"
+                    }}
+                  >
+                    Reset to Single Date
+                  </button>
                 </div>
               )}
             </div>
