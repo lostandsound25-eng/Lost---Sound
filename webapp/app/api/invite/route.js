@@ -16,10 +16,10 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'go@lostandsound.org';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'go@lostandsoundtravel.com';
     const cleanInviter = inviterEmail || 'A collaborator';
     const cleanTripName = tripName || 'their trip';
-    const cleanOrigin = origin || 'https://lostandsound.org'; // Fallback
+    const cleanOrigin = origin || 'https://lostandsoundtravel.com'; // Fallback
     const dashboardLink = `${cleanOrigin}/tracker?tripId=${tripId}&email=${encodeURIComponent(email)}`;
 
     const subject = `${cleanInviter} invited you to join their trip "${cleanTripName}" on Lost & Sound`;

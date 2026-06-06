@@ -5587,7 +5587,7 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const inviterEmail = session?.user?.email || "Your travel partner";
-        const origin = typeof window !== "undefined" ? window.location.origin : "https://lostandsound.org";
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://lostandsoundtravel.com";
 
         const res = await fetch("/api/invite", {
           method: "POST",
