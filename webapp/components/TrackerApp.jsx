@@ -2110,12 +2110,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const nameLength = trip.name ? trip.name.length : 0;
   const dynamicFontSize = nameLength > 24 
-    ? "1.1rem" 
+    ? "1.35rem" 
     : nameLength > 18 
-      ? "1.25rem" 
+      ? "1.5rem" 
       : nameLength > 12 
-        ? "1.4rem" 
-        : "1.6rem";
+        ? "1.7rem" 
+        : "1.9rem";
 
   return isMounted ? (
     <div 
@@ -2498,138 +2498,141 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </div>
             </div>
 
-            {/* Inline Currency Switcher Settings */}
-            {(() => {
-              const mostRecentlySpentLocal = (() => {
-                const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const recentLocal = sorted.find(e => e.currency !== trip.homeCurrency);
-                return recentLocal ? recentLocal.currency : (trip.localCurrency || "EUR");
-              })();
-              const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
-              return (
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "6px 20px",
-                  borderTop: "1px solid rgba(133, 58, 81, 0.05)",
-                  marginTop: "4px",
-                  fontSize: "0.82rem",
-                  color: "#6B7280"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ fontWeight: 600 }}>Home:</span>
-                    <SearchableCurrencySelect
-                      value={trip.homeCurrency}
-                      onChange={(val) => {
-                        updateHomeCurrency(val);
-                      }}
-                      rates={rates}
-                      customCurrencies={customCurrencies}
-                      onAddCustomCurrency={addCustomCurrency}
-                      style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                    />
+            {/* Compact details line: Location & Currencies side-by-side */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "6px 20px",
+              borderTop: "1px solid rgba(133, 58, 81, 0.05)",
+              marginTop: "4px",
+              fontSize: "0.82rem",
+              color: "#6B7280",
+              gap: "8px",
+              flexWrap: "wrap"
+            }}>
+              {/* Location */}
+              <div>
+                {!isEditingLocale ? (
+                  <div 
+                    onClick={() => {
+                      setLocaleSearchQuery(trip.currentLocation || "");
+                      setIsEditingLocale(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                    title="Tap to change locale"
+                  >
+                    <span>📍 {trip.currentLocation || "Where are you today?"}</span>
                   </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span style={{ fontWeight: 600 }}>Local:</span>
-                    <SearchableCurrencySelect
-                      value={activeLocal}
-                      onChange={(val) => {
-                        updateLocalCurrency(val);
-                        setManualLocalCurrency(val);
-                        localStorage.setItem("tracker_last_used_currency", val);
+                ) : (
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      value={localeSearchQuery}
+                      onChange={(e) => setLocaleSearchQuery(e.target.value)}
+                      placeholder="Town/city..."
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateLocation(localeSearchQuery.trim());
+                          setIsEditingLocale(false);
+                        }
                       }}
-                      rates={rates}
-                      customCurrencies={customCurrencies}
-                      onAddCustomCurrency={addCustomCurrency}
-                      style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                      style={{
+                        padding: "2px 6px",
+                        borderRadius: "8px",
+                        border: "1.5px solid var(--color-purple)",
+                        fontSize: "0.8rem",
+                        outline: "none",
+                        color: "#374151",
+                        width: "100px"
+                      }}
                     />
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Town/City Locale search field underneath */}
-            <div style={{ padding: "0 20px" }}>
-              {!isEditingLocale ? (
-                <div 
-                  onClick={() => {
-                    setLocaleSearchQuery(trip.currentLocation || "");
-                    setIsEditingLocale(true);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "0.82rem",
-                    color: "#6B7280",
-                    fontWeight: 700,
-                    cursor: "pointer"
-                  }}
-                  title="Tap to change locale"
-                >
-                  <span>📍 {trip.currentLocation || "Where are you today?"}</span>
-                </div>
-              ) : (
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <input
-                    type="text"
-                    value={localeSearchQuery}
-                    onChange={(e) => setLocaleSearchQuery(e.target.value)}
-                    placeholder="Enter town/city (e.g. Siargao)..."
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                    <button
+                      type="button"
+                      onClick={() => {
                         updateLocation(localeSearchQuery.trim());
                         setIsEditingLocale(false);
-                      }
-                    }}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "10px",
-                      border: "1.5px solid var(--color-purple)",
-                      fontSize: "0.8rem",
-                      outline: "none",
-                      color: "#374151",
-                      width: "150px"
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateLocation(localeSearchQuery.trim());
-                      setIsEditingLocale(false);
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#10B981",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
-                      fontWeight: 700
-                    }}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingLocale(false);
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#EF4444",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
-                      fontWeight: 700
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#10B981",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        fontWeight: 700
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingLocale(false);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#EF4444",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        fontWeight: 700
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Inline Currency Switchers */}
+              {(() => {
+                const mostRecentlySpentLocal = (() => {
+                  const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                  const recentLocal = sorted.find(e => e.currency !== trip.homeCurrency);
+                  return recentLocal ? recentLocal.currency : (trip.localCurrency || "EUR");
+                })();
+                const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <span style={{ fontWeight: 600 }}>Home:</span>
+                      <SearchableCurrencySelect
+                        value={trip.homeCurrency}
+                        onChange={(val) => {
+                          updateHomeCurrency(val);
+                        }}
+                        rates={rates}
+                        customCurrencies={customCurrencies}
+                        onAddCustomCurrency={addCustomCurrency}
+                        style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <span style={{ fontWeight: 600 }}>Local:</span>
+                      <SearchableCurrencySelect
+                        value={activeLocal}
+                        onChange={(val) => {
+                          updateLocalCurrency(val);
+                          setManualLocalCurrency(val);
+                          localStorage.setItem("tracker_last_used_currency", val);
+                        }}
+                        rates={rates}
+                        customCurrencies={customCurrencies}
+                        onAddCustomCurrency={addCustomCurrency}
+                        style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
