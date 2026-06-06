@@ -18,21 +18,40 @@ export default function TrackerTripPage({ params }) {
     const code = params.get('code');
     const isAuthCallback = (typeof window !== 'undefined' && window.location.hash.includes('access_token')) || !!code;
 
-    const checkTripAccess = () => {
-      supabase
-        .from('trips')
-        .select('id')
-        .eq('id', tripId)
-        .single()
-        .then(({ data, error }) => {
-          if (error || !data) {
-            alert('This trip does not exist or you do not have permission to view it.');
-            window.location.href = '/tracker';
-          } else {
-            setAuthorized(true);
-            setLoading(false);
+    const checkTripAccess = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Store the target trip ID so we can redirect back here after login
+          sessionStorage.setItem('pending_trip_id', tripId);
+          window.location.href = '/tracker';
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('id', tripId)
+          .single();
+
+        if (error || !data) {
+          alert('This trip does not exist or you do not have permission to view it.');
+          window.location.href = '/tracker';
+        } else {
+          // Resolve any pending member invitation for this user
+          if (session.user?.email) {
+            await supabase
+              .from('trip_members')
+              .update({ user_id: session.user.id })
+              .eq('email', session.user.email.toLowerCase().trim());
           }
-        });
+          setAuthorized(true);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Access check error:", err);
+        window.location.href = '/tracker';
+      }
     };
 
     if (code) {
@@ -45,18 +64,17 @@ export default function TrackerTripPage({ params }) {
           checkTripAccess();
         } else {
           console.error("Code exchange failed:", error);
-          checkTripAccess(); // Try anyway, though RLS will block if not auth'd
+          checkTripAccess();
         }
       });
     } else if (isAuthCallback) {
-      // It's implicit flow hash callback, wait for onAuthStateChange to fire
+      // Wait for session
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
           subscription.unsubscribe();
           checkTripAccess();
         }
       });
-      // Fallback timeout
       const t = setTimeout(() => {
         subscription.unsubscribe();
         checkTripAccess();

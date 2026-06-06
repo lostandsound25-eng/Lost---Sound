@@ -31,7 +31,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`navbar ${isCollapsed ? 'collapsed-mobile' : ''}`}>
+      <nav className={`navbar ${isCollapsed ? 'collapsed-mobile' : ''} ${isTracker ? 'navbar-tracker' : ''}`}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <Link href="/" className="logo">
             <img 

@@ -367,6 +367,10 @@ section {
   background-color: transparent;
   z-index: 1000;
   padding: 24px 0;
+  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar .container {
@@ -894,16 +898,22 @@ footer {
 
   /* When navbar is collapsed on mobile */
   .navbar.collapsed-mobile {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
     background-color: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
     padding: 8px 0;
     border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  }
+
+  /* Specific override for tracker page to keep it app-like and fixed at the top */
+  .navbar.collapsed-mobile.navbar-tracker {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
   }
 
   .navbar.collapsed-mobile .logo-img {
