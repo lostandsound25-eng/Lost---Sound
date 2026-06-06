@@ -8,7 +8,8 @@ export default function SearchableCurrencySelect({
   rates = {}, 
   customCurrencies = [], 
   onAddCustomCurrency,
-  style = {}
+  style = {},
+  align = "left"
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -138,7 +139,8 @@ export default function SearchableCurrencySelect({
         <div style={{
           position: "absolute",
           top: "100%",
-          left: 0,
+          left: align === "left" ? 0 : "auto",
+          right: align === "right" ? 0 : "auto",
           marginTop: "6px",
           backgroundColor: "white",
           borderRadius: "12px",

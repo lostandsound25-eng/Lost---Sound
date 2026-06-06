@@ -2628,6 +2628,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         customCurrencies={customCurrencies}
                         onAddCustomCurrency={addCustomCurrency}
                         style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                        align="right"
                       />
                     </div>
                   </div>
