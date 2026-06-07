@@ -465,6 +465,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     return lastUsed || trip.localCurrency || "USD";
   });
   const [rapidCategory, setRapidCategory] = useState("Food & Drink");
+  const [rapidWorthIt, setRapidWorthIt] = useState(false);
   const [isAddingRapid, setIsAddingRapid] = useState(false);
 
   useEffect(() => {
@@ -1252,13 +1253,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const saveTripName = async () => {
     setIsEditingName(false);
-    if (!nameInput.trim()) return;
-    setTrip((prev) => ({ ...prev, name: nameInput.trim() }));
+    const cleanName = nameInput.trim().slice(0, 30);
+    if (!cleanName) return;
+    setTrip((prev) => ({ ...prev, name: cleanName }));
     if (!isDemo && tripId && supabase) {
       try {
         await supabase
           .from("trips")
-          .update({ name: nameInput.trim() })
+          .update({ name: cleanName })
           .eq("id", tripId);
       } catch (err) {
         console.error("Failed to sync updated name:", err);
@@ -1751,14 +1753,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         currency: rapidCurrency,
         category: rapidCategory,
         note: rapidTitle.trim(),
-        worthIt: false, // defaults to not worth it for rapid entries
-        location: trip.currentLocation || "",
+        worthIt: rapidWorthIt,
+        location: "",
         tags: parsedTags,
         timestamp: timestamp
       });
       
       setRapidTitle("");
       setRapidAmount("");
+      setRapidWorthIt(false);
     } catch (err) {
       console.error("Error adding rapid expense:", err);
     } finally {
@@ -1861,7 +1864,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
           {/* Category & Save Button Row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
-            <div style={{ display: "flex", gap: "4px" }}>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
               {CATEGORIES.map(cat => {
                 const isSelected = rapidCategory === cat;
                 return (
@@ -1889,21 +1892,45 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   </button>
                 );
               })}
+
+              <div style={{ width: "1px", height: "20px", backgroundColor: "rgba(133, 58, 81, 0.12)", margin: "0 4px" }} />
+
+              <button
+                type="button"
+                onClick={() => setRapidWorthIt(!rapidWorthIt)}
+                style={{
+                  border: "none",
+                  backgroundColor: rapidWorthIt ? "rgba(245, 158, 11, 0.12)" : "rgba(133, 58, 81, 0.04)",
+                  borderRadius: "8px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: rapidWorthIt ? "#F59E0B" : "#9CA3AF",
+                  transition: "all 0.15s ease",
+                  outline: "none"
+                }}
+                title={rapidWorthIt ? "Marked as Worth It!" : "Mark as Worth It"}
+              >
+                <StarIcon filled={rapidWorthIt} />
+              </button>
             </div>
 
             <button
               type="submit"
               disabled={isAddingRapid}
               style={{
-                backgroundColor: "var(--color-purple)",
+                backgroundColor: "var(--color-orange)",
                 color: "white",
                 border: "none",
-                borderRadius: "10px",
-                padding: "8px 16px",
+                borderRadius: "20px",
+                padding: "8px 20px",
                 fontSize: "0.82rem",
                 fontWeight: 800,
                 cursor: "pointer",
-                boxShadow: "0 2px 6px rgba(133, 58, 81, 0.12)",
+                boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)",
                 display: "flex",
                 alignItems: "center",
                 gap: "4px",
@@ -2135,14 +2162,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     );
   };
 
-  const nameLength = trip.name ? trip.name.length : 0;
+  const nameLength = trip.name ? Math.min(trip.name.length, 30) : 0;
   const dynamicFontSize = nameLength > 24 
-    ? "1.35rem" 
+    ? "1.55rem" 
     : nameLength > 18 
-      ? "1.5rem" 
+      ? "1.7rem" 
       : nameLength > 12 
-        ? "1.7rem" 
-        : "1.9rem";
+        ? "1.9rem" 
+        : "2.1rem";
 
   return isMounted ? (
     <div 
@@ -2223,6 +2250,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   onBlur={saveTripName}
                   onKeyDown={(e) => e.key === "Enter" && saveTripName()}
                   autoFocus
+                  maxLength={30}
                   style={{
                     fontSize: dynamicFontSize,
                     fontWeight: 800,
@@ -2244,19 +2272,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     fontWeight: 800,
                     color: "var(--color-purple)",
                     margin: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    lineHeight: "1.2",
                     flex: 1,
                     minWidth: 0,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
+                    cursor: "pointer"
                   }} 
                   title={trip.name}
                 >
-                  <span>{trip.name}</span>
+                  <span>{(trip.name || "").slice(0, 30)}</span>
                 </div>
               )}
             </div>
@@ -2264,16 +2289,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <div style={{ flexShrink: 0 }}>
                 {isDemo ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       {undoStack.length > 0 && (
                         <button
                           onClick={handleUndo}
                           style={{
                             background: "none",
                             border: "none",
-                            fontSize: "1.1rem",
+                            fontSize: "0.85rem",
                             cursor: "pointer",
-                            padding: "4px",
+                            padding: "2px",
                             display: "flex",
                             alignItems: "center",
                             outline: "none"
@@ -2289,9 +2314,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           style={{
                             background: "none",
                             border: "none",
-                            fontSize: "1.1rem",
+                            fontSize: "0.85rem",
                             cursor: "pointer",
-                            padding: "4px",
+                            padding: "2px",
                             display: "flex",
                             alignItems: "center",
                             outline: "none"
@@ -2304,19 +2329,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       <button
                         onClick={handleSaveSyncClick}
                         style={{
-                          fontSize: "1.1rem",
+                          fontSize: "0.85rem",
                           color: "white",
                           backgroundColor: "var(--color-orange)",
                           border: "none",
                           borderRadius: "50%",
-                          width: "32px",
-                          height: "32px",
+                          width: "24px",
+                          height: "24px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           outline: "none",
-                          boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)"
+                          boxShadow: "0 2px 4px rgba(232, 107, 50, 0.15)"
                         }}
                         title="Save & Sync"
                       >
@@ -2326,16 +2351,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       {undoStack.length > 0 && (
                         <button
                           onClick={handleUndo}
                           style={{
                             background: "none",
                             border: "none",
-                            fontSize: "1.1rem",
+                            fontSize: "0.85rem",
                             cursor: "pointer",
-                            padding: "4px",
+                            padding: "2px",
                             display: "flex",
                             alignItems: "center",
                             outline: "none"
@@ -2351,9 +2376,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           style={{
                             background: "none",
                             border: "none",
-                            fontSize: "1.1rem",
+                            fontSize: "0.85rem",
                             cursor: "pointer",
-                            padding: "4px",
+                            padding: "2px",
                             display: "flex",
                             alignItems: "center",
                             outline: "none"
@@ -2366,13 +2391,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       <button
                         onClick={() => setActiveModal("collaborators")}
                         style={{
-                          fontSize: "1.1rem",
+                          fontSize: "0.85rem",
                           color: "var(--color-purple)",
                           backgroundColor: "rgba(133, 58, 81, 0.08)",
                           border: "none",
                           borderRadius: "50%",
-                          width: "32px",
-                          height: "32px",
+                          width: "24px",
+                          height: "24px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
@@ -2409,11 +2434,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         <span 
                           title={statusText}
                           style={{
-                            fontSize: statusEmoji === "🟢" ? "1rem" : "0.9rem",
+                            fontSize: "0.85rem",
                             color: badgeColor,
                             backgroundColor: badgeBg,
-                            width: "32px",
-                            height: "32px",
+                            width: "24px",
+                            height: "24px",
                             borderRadius: "50%",
                             display: "inline-flex",
                             alignItems: "center",
@@ -2826,100 +2851,103 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   gap: "10px",
                   flexWrap: "wrap"
                 }}>
-                  {/* Segmented View Toggles */}
-                  <div style={{
-                    display: "flex",
-                    backgroundColor: "rgba(133, 58, 81, 0.05)",
-                    padding: "3px",
-                    borderRadius: "8px",
-                    gap: "2px",
-                    alignItems: "center"
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setLogView("recent")}
-                      style={{
-                        fontSize: "0.82rem",
-                        fontWeight: logView === "recent" ? 700 : 500,
-                        color: logView === "recent" ? "var(--color-purple)" : "#6B7280",
-                        backgroundColor: logView === "recent" ? "white" : "transparent",
-                        border: "none",
-                        borderRadius: "6px",
-                        padding: "5px 14px",
-                        cursor: "pointer",
-                        boxShadow: logView === "recent" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      Log
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLogView("history")}
-                      style={{
-                        fontSize: "0.82rem",
-                        fontWeight: logView === "history" ? 700 : 500,
-                        color: logView === "history" ? "var(--color-purple)" : "#6B7280",
-                        backgroundColor: logView === "history" ? "white" : "transparent",
-                        border: "none",
-                        borderRadius: "6px",
-                        padding: "5px 14px",
-                        cursor: "pointer",
-                        boxShadow: logView === "history" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      History
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLogView("insights")}
-                      style={{
-                        fontSize: "0.82rem",
-                        fontWeight: logView === "insights" ? 700 : 500,
-                        color: logView === "insights" ? "var(--color-purple)" : "#6B7280",
-                        backgroundColor: logView === "insights" ? "white" : "transparent",
-                        border: "none",
-                        borderRadius: "6px",
-                        padding: "5px 14px",
-                        cursor: "pointer",
-                        boxShadow: logView === "insights" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      Insights
-                    </button>
+                  {/* Left Controls Wrapper (Tab selector & floating search) */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Segmented View Toggles */}
+                    <div style={{
+                      display: "flex",
+                      backgroundColor: "rgba(133, 58, 81, 0.05)",
+                      padding: "3px",
+                      borderRadius: "8px",
+                      gap: "2px",
+                      alignItems: "center"
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setLogView("recent")}
+                        style={{
+                          fontSize: "0.82rem",
+                          fontWeight: logView === "recent" ? 700 : 500,
+                          color: logView === "recent" ? "var(--color-purple)" : "#6B7280",
+                          backgroundColor: logView === "recent" ? "white" : "transparent",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "5px 14px",
+                          cursor: "pointer",
+                          boxShadow: logView === "recent" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        Log
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogView("history")}
+                        style={{
+                          fontSize: "0.82rem",
+                          fontWeight: logView === "history" ? 700 : 500,
+                          color: logView === "history" ? "var(--color-purple)" : "#6B7280",
+                          backgroundColor: logView === "history" ? "white" : "transparent",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "5px 14px",
+                          cursor: "pointer",
+                          boxShadow: logView === "history" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        History
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLogView("insights")}
+                        style={{
+                          fontSize: "0.82rem",
+                          fontWeight: logView === "insights" ? 700 : 500,
+                          color: logView === "insights" ? "var(--color-purple)" : "#6B7280",
+                          backgroundColor: logView === "insights" ? "white" : "transparent",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "5px 14px",
+                          cursor: "pointer",
+                          boxShadow: logView === "insights" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        Insights
+                      </button>
+                    </div>
 
+                    {/* Standalone Floating Search Button */}
                     {logView !== "insights" && (
-                      <>
-                        <div style={{ width: "1px", height: "16px", backgroundColor: "rgba(133, 58, 81, 0.15)", margin: "0 4px" }} />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSearch(!showSearch);
-                            if (showSearch) {
-                              setSearchQuery("");
-                            }
-                          }}
-                          style={{
-                            fontSize: "0.82rem",
-                            fontWeight: showSearch ? 700 : 500,
-                            color: showSearch ? "var(--color-purple)" : "#6B7280",
-                            backgroundColor: showSearch ? "white" : "transparent",
-                            border: "none",
-                            borderRadius: "6px",
-                            padding: "5px 10px",
-                            cursor: "pointer",
-                            boxShadow: showSearch ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                            transition: "all 0.15s",
-                            display: "flex",
-                            alignItems: "center"
-                          }}
-                          title="Search expenses"
-                        >
-                          🔍
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSearch(!showSearch);
+                          if (showSearch) {
+                            setSearchQuery("");
+                          }
+                        }}
+                        style={{
+                          fontSize: "0.85rem",
+                          color: showSearch ? "white" : "var(--color-purple)",
+                          backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
+                          transition: "all 0.15s",
+                          outline: "none"
+                        }}
+                        title="Search expenses"
+                      >
+                        🔍
+                      </button>
                     )}
                   </div>
 
@@ -4250,14 +4278,16 @@ function ExpenseCard({
               </span>
               {(() => {
                 const dbLoc = expense.location || "";
-                const locale = expense.locationLocale || dbLoc.split(" | ")[1] || "";
+                const locale = expense.locationLocale || "";
                 const establishment = dbLoc.includes(" | ") ? dbLoc.split(" | ")[0] : dbLoc;
                 
-                const parts = [];
-                if (establishment.trim()) parts.push(establishment.trim());
-                if (locale.trim() && locale.trim() !== establishment.trim()) parts.push(locale.trim());
-                const displayLoc = parts.join(", ");
-                if (!displayLoc) return null;
+                const cleanEst = establishment.trim();
+                const cleanLoc = locale.trim();
+                
+                // Only show if cleanEst is present and not matching the planned locale (case-insensitive)
+                const shouldShow = cleanEst && cleanEst.toLowerCase() !== cleanLoc.toLowerCase();
+                if (!shouldShow) return null;
+                
                 return (
                   <span style={{
                     fontSize: "0.78rem",
@@ -4266,7 +4296,7 @@ function ExpenseCard({
                     alignItems: "center",
                     gap: "2px"
                   }}>
-                    📍 {displayLoc}
+                    📍 {cleanEst}
                   </span>
                 );
               })()}
