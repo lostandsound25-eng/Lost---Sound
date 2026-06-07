@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
+import SearchableCurrencySelect from '../../../components/SearchableCurrencySelect';
 
 export default function TripsDashboard() {
   const [session, setSession] = useState(null);
@@ -12,6 +13,30 @@ export default function TripsDashboard() {
   const [newTripName, setNewTripName] = useState("");
   const [homeCurrency, setHomeCurrency] = useState("USD");
   const [creating, setCreating] = useState(false);
+  const [rates, setRates] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem("tracker_rates");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch(e) {}
+      }
+    }
+    return {
+      USD: 1.0,
+      EUR: 1.08,
+      THB: 0.027,
+      PHP: 0.017,
+      VND: 0.000039,
+      IDR: 0.000062,
+      CAD: 0.73,
+      MXN: 0.060,
+      AUD: 0.66,
+      SGD: 0.74,
+      GBP: 1.25,
+      JPY: 0.0065
+    };
+  });
 
   useEffect(() => {
     if (!supabase) return;
@@ -634,25 +659,24 @@ export default function TripsDashboard() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#4B5563', marginBottom: '6px' }}>
-                    Home Currency (e.g. USD, EUR)
+                    Home Currency
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={homeCurrency}
-                    onChange={(e) => setHomeCurrency(e.target.value.toUpperCase())}
-                    maxLength={3}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: '12px',
-                      border: '1px solid #E5E7EB',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                      color: '#1F2937',
-                      boxSizing: 'border-box'
-                    }}
-                  />
+                  <div style={{
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '12px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: 'white'
+                  }}>
+                    <SearchableCurrencySelect
+                      value={homeCurrency}
+                      onChange={(val) => setHomeCurrency(val)}
+                      rates={rates}
+                      customCurrencies={[]}
+                      style={{ fontSize: '0.92rem', fontWeight: 700, width: '100%', textAlign: 'left' }}
+                    />
+                  </div>
                 </div>
               </div>
 

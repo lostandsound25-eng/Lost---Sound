@@ -82,8 +82,8 @@ export default function SearchableCurrencySelect({
   // Filter currency options
   let options = [];
   if (!search.trim()) {
-    // Show defaults + any custom currencies added + the current value
-    options = [...new Set([...defaultCurrencies, ...customCurrencies, value])];
+    // Show no default list to force users to type
+    options = [];
   } else {
     // Search within all available currencies in rates & match country names
     const query = search.trim().toLowerCase();
@@ -179,7 +179,9 @@ export default function SearchableCurrencySelect({
             gap: "2px"
           }}>
             {options.length === 0 ? (
-              <span style={{ fontSize: "0.8rem", color: "#9CA3AF", padding: "6px 8px" }}>No results</span>
+              <span style={{ fontSize: "0.8rem", color: "#9CA3AF", padding: "6px 8px" }}>
+                {!search.trim() ? "Type country or currency..." : "No results"}
+              </span>
             ) : (
               options.map(opt => (
                 <button

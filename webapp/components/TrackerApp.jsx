@@ -1722,7 +1722,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         currency: rapidCurrency,
         category: rapidCategory,
         note: rapidTitle.trim(),
-        worthIt: true, // defaults to worth it for rapid entries
+        worthIt: false, // defaults to not worth it for rapid entries
         location: trip.currentLocation || "",
         tags: parsedTags,
         timestamp: timestamp
@@ -1740,19 +1740,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const renderRapidExpenseArea = () => {
     return (
       <div style={{
-        backgroundColor: "white",
-        borderRadius: "20px",
-        padding: "12px 14px",
-        margin: "0 24px 16px 24px",
-        border: "1.5px solid rgba(133, 58, 81, 0.08)",
-        boxShadow: "0 4px 12px rgba(133, 58, 81, 0.01)",
+        padding: "0 24px",
+        margin: "0 0 20px 0",
         display: "flex",
         flexDirection: "column",
         gap: "10px"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "0.72rem", fontWeight: 850, color: "#E86B32", textTransform: "uppercase", letterSpacing: "1px" }}>
-            ⚡ Rapid Add
+          <span style={{ fontSize: "0.75rem", fontWeight: 850, color: "#E86B32", textTransform: "uppercase", letterSpacing: "1px" }}>
+            Quick Expense
           </span>
         </div>
 
@@ -1768,11 +1764,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 flex: 1.6,
                 padding: "8px 12px",
                 borderRadius: "10px",
-                border: "1px solid #E5E7EB",
+                border: "1.5px solid rgba(133, 58, 81, 0.08)",
                 fontSize: "0.85rem",
                 outline: "none",
                 color: "#374151",
-                backgroundColor: "#F9FAFB"
+                backgroundColor: "white",
+                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.01)"
               }}
             />
             
@@ -1780,10 +1777,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               flex: 1,
               display: "flex",
               alignItems: "center",
-              border: "1px solid #E5E7EB",
+              border: "1.5px solid rgba(133, 58, 81, 0.08)",
               borderRadius: "10px",
               padding: "0 8px",
-              backgroundColor: "#F9FAFB"
+              backgroundColor: "white",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.01)"
             }}>
               <input
                 type="text"
@@ -1868,7 +1866,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               type="submit"
               disabled={isAddingRapid}
               style={{
-                backgroundColor: "var(--color-orange)",
+                backgroundColor: "var(--color-purple)",
                 color: "white",
                 border: "none",
                 borderRadius: "10px",
@@ -1876,7 +1874,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 fontSize: "0.82rem",
                 fontWeight: 800,
                 cursor: "pointer",
-                boxShadow: "0 2px 6px rgba(232, 107, 50, 0.15)",
+                boxShadow: "0 2px 6px rgba(133, 58, 81, 0.12)",
                 display: "flex",
                 alignItems: "center",
                 gap: "4px",
@@ -1884,7 +1882,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 transition: "opacity 0.2s"
               }}
             >
-              {isAddingRapid ? "Adding..." : "⚡ Add"}
+              {isAddingRapid ? "Adding..." : "+ Add"}
             </button>
           </div>
         </form>
@@ -3029,7 +3027,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
                                   const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
-                                  const dayLocation = sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[1] || "") : "")).find(loc => loc) || "";
+                                  const dayLocation = label === "Today" 
+                                    ? (trip.currentLocation || "") 
+                                    : (sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc) || "");
 
                                   return (
                                     <div key={exp.id}>
@@ -3136,10 +3136,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           olderGroups[dateKey].categories[exp.category].total += amtInHome;
                           olderGroups[dateKey].categories[exp.category].list.push(exp);
 
-                          const highLevelLoc = exp.locationLocale || (exp.location ? (exp.location.split(" | ")[1] || exp.location.split(" | ")[0] || "") : "");
-                          if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
-                            olderGroups[dateKey].locationsList.push(highLevelLoc);
-                          }
+                          const isToday = dateKey === (() => {
+                             const now = new Date();
+                             return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                           })();
+                           const highLevelLoc = isToday 
+                             ? (trip.currentLocation || "") 
+                             : (exp.locationLocale || (exp.location ? (exp.location.split(" | ")[0] || exp.location) : ""));
+                           if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
+                             olderGroups[dateKey].locationsList.push(highLevelLoc);
+                           }
                         });
 
                         // Set backward compatible single location for card rendering
