@@ -3079,7 +3079,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const label = getDayLabel(exp.timestamp);
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
-                                                                const d = new Date(exp.timestamp);
+                                  const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
+                                  const d = new Date(exp.timestamp);
                                   const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                   const itLoc = trip.itinerary?.[dateKey];
                                   const dayLocation = itLoc !== undefined ? itLoc : (
