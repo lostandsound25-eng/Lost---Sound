@@ -216,6 +216,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [drillDownExpenses, setDrillDownExpenses] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [editingItineraryDate, setEditingItineraryDate] = useState(null);
+  const [itineraryInput, setItineraryInput] = useState("");
 
   const pushToUndo = (action) => {
     setUndoStack(prev => [...prev, action]);
@@ -414,18 +417,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const getDrillDownList = () => {
     if (!drillDownExpenses) return [];
     const { tag, dateKey, category, list } = drillDownExpenses;
-    const nowLimit = new Date();
     if (tag) {
       return expenses.filter(e => {
         const cleanTags = e.tags ? e.tags.filter(t => !t.startsWith("spread-")) : [];
-        return cleanTags.includes(tag) && new Date(e.timestamp) <= nowLimit;
+        return cleanTags.includes(tag);
       });
     }
     if (dateKey) {
       return expenses.filter(e => {
         const d = new Date(e.timestamp);
         const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const matchesDate = k === dateKey && d <= nowLimit;
+        const matchesDate = k === dateKey;
         if (!matchesDate) return false;
         if (category && category !== "ALL") {
           return e.category === category;
@@ -704,7 +706,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           name: "Demo Trip (Southeast Asia)",
           homeCurrency: "USD",
           localCurrency: "PHP",
-          currentLocation: "Manila"
+          currentLocation: "Manila",
+          itinerary: {}
         });
       }
 
@@ -1158,7 +1161,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         name: tripData.name,
         homeCurrency: tripData.home_currency || "USD",
         localCurrency: tripData.local_currency || "USD",
-        currentLocation: tripData.current_location || ""
+        currentLocation: tripData.current_location || "",
+        itinerary: tripData.itinerary || {}
       };
       setTrip(newTrip);
 
@@ -1208,6 +1212,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         await supabase.from("trips").update({ current_location: loc }).eq("id", tripId);
       } catch (e) {
         console.error("Failed to sync location to cloud:", e);
+      }
+    }
+  };
+
+  const updateItineraryLocation = async (dateKey, locationText) => {
+    const updatedItinerary = {
+      ...(trip.itinerary || {}),
+      [dateKey]: locationText
+    };
+    setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
+    if (!isDemo && tripId && supabase) {
+      try {
+        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
+      } catch (e) {
+        console.error("Failed to sync itinerary to cloud:", e);
       }
     }
   };
@@ -1332,7 +1351,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
         const finalLocation = expense.location || "";
-        const finalLocale = trip.currentLocation || "";
 
         for (let i = 0; i < N; i++) {
           const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
@@ -1341,6 +1359,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           const d = new Date(startD);
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
+
+          const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const finalLocale = expense.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
 
           const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
@@ -1424,7 +1445,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
         const finalLocation = expense.location || "";
-        const finalLocale = trip.currentLocation || "";
 
         for (let i = 0; i < N; i++) {
           const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
@@ -1433,6 +1453,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           const d = new Date(startD);
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
+
+          const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const finalLocale = expense.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
 
           const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
@@ -1499,7 +1522,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const cleanNote = expense.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
         
         const finalLocation = expense.location || "";
-        const finalLocale = editingExpense?.locationLocale || trip.currentLocation || "";
+        const ts = expense.timestamp || editingExpense?.timestamp || new Date().toISOString();
+        const d = new Date(ts);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const finalLocale = expense.locationLocale || editingExpense?.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
 
         const updatedExpense = {
           ...expense,
@@ -1507,7 +1533,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           tags: baseTags,
           location: finalLocation,
           locationLocale: finalLocale,
-          timestamp: expense.timestamp || editingExpense?.timestamp,
+          timestamp: ts,
           photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "")
         };
 
@@ -1537,7 +1563,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     } else {
       // Insert
       const finalLocation = expense.location || "";
-      const finalLocale = trip.currentLocation || "";
+      const tsForInsert = expense.timestamp || new Date().toISOString();
+      const dForInsert = new Date(tsForInsert);
+      const dateKeyForInsert = `${dForInsert.getFullYear()}-${String(dForInsert.getMonth() + 1).padStart(2, '0')}-${String(dForInsert.getDate()).padStart(2, '0')}`;
+      const finalLocale = expense.locationLocale || trip.itinerary?.[dateKeyForInsert] || trip.currentLocation || "";
 
       if (expense.spreadDays && expense.spreadDays > 1) {
         const N = expense.spreadDays;
@@ -1628,7 +1657,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           location: finalLocation,
           locationLocale: finalLocale,
           id: newId,
-          timestamp: expense.timestamp || new Date().toISOString()
+          timestamp: tsForInsert
         };
         pushToUndo({ type: 'insert', data: newExpense });
         setExpenses((prev) => [newExpense, ...prev]);
@@ -1882,7 +1911,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 transition: "opacity 0.2s"
               }}
             >
-              {isAddingRapid ? "Adding..." : "+ Add"}
+              {isAddingRapid ? "Adding..." : "⚡ Add"}
             </button>
           </div>
         </form>
@@ -2275,21 +2304,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       <button
                         onClick={handleSaveSyncClick}
                         style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 700,
+                          fontSize: "1.1rem",
                           color: "white",
                           backgroundColor: "var(--color-orange)",
                           border: "none",
-                          borderRadius: "10px",
-                          padding: "4px 8px",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
-                          gap: "4px",
+                          justifyContent: "center",
+                          outline: "none",
                           boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)"
                         }}
+                        title="Save & Sync"
                       >
-                        ☁️ Save & Sync
+                        ☁️
                       </button>
                     </div>
                   </div>
@@ -2335,20 +2366,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       <button
                         onClick={() => setActiveModal("collaborators")}
                         style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 700,
+                          fontSize: "1.1rem",
                           color: "var(--color-purple)",
                           backgroundColor: "rgba(133, 58, 81, 0.08)",
                           border: "none",
-                          borderRadius: "10px",
-                          padding: "4px 8px",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
-                          gap: "4px"
+                          justifyContent: "center",
+                          outline: "none"
                         }}
+                        title="Share & Collaborate"
                       >
-                        👥 Share
+                        👥
                       </button>
                     </div>
                     {(() => {
@@ -2373,20 +2406,24 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       }
                       
                       return (
-                        <span style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 700,
-                          color: badgeColor,
-                          backgroundColor: badgeBg,
-                          padding: "3px 6px",
-                          borderRadius: "10px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "2px",
-                          boxShadow: glow,
-                          transition: "all 0.3s ease"
-                        }}>
-                          {statusEmoji} {statusText}
+                        <span 
+                          title={statusText}
+                          style={{
+                            fontSize: statusEmoji === "🟢" ? "1rem" : "0.9rem",
+                            color: badgeColor,
+                            backgroundColor: badgeBg,
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: glow,
+                            transition: "all 0.3s ease",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {statusEmoji === "🟢" ? "●" : statusEmoji}
                         </span>
                       );
                     })()}
@@ -2795,7 +2832,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     backgroundColor: "rgba(133, 58, 81, 0.05)",
                     padding: "3px",
                     borderRadius: "8px",
-                    gap: "2px"
+                    gap: "2px",
+                    alignItems: "center"
                   }}>
                     <button
                       type="button"
@@ -2851,80 +2889,94 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     >
                       Insights
                     </button>
+
+                    {logView !== "insights" && (
+                      <>
+                        <div style={{ width: "1px", height: "16px", backgroundColor: "rgba(133, 58, 81, 0.15)", margin: "0 4px" }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSearch(!showSearch);
+                            if (showSearch) {
+                              setSearchQuery("");
+                            }
+                          }}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: showSearch ? 700 : 500,
+                            color: showSearch ? "var(--color-purple)" : "#6B7280",
+                            backgroundColor: showSearch ? "white" : "transparent",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                            boxShadow: showSearch ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                            transition: "all 0.15s",
+                            display: "flex",
+                            alignItems: "center"
+                          }}
+                          title="Search expenses"
+                        >
+                          🔍
+                        </button>
+                      </>
+                    )}
                   </div>
 
-                  {/* Future filter toggle */}
-                  {hasFutureExpenses && logView !== "insights" && (
-                    <button
-                      type="button"
-                      onClick={() => setShowFuture(!showFuture)}
-                      style={{
-                        fontSize: "0.78rem",
-                        fontWeight: 700,
-                        color: showFuture ? "white" : "var(--color-purple)",
-                        backgroundColor: showFuture ? "var(--color-purple)" : "rgba(133, 58, 81, 0.08)",
-                        border: "none",
-                        borderRadius: "20px",
-                        padding: "6px 12px",
-                        cursor: "pointer",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      {showFuture ? "Hide Future" : "Show Future"}
-                    </button>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    {/* Compact View Toggle in History */}
+                    {logView === "history" && (
+                      <button
+                        type="button"
+                        onClick={() => setHistoryViewMode(historyViewMode === "cards" ? "spreadsheet" : "cards")}
+                        style={{
+                          fontSize: "0.95rem",
+                          color: "#C2410C",
+                          backgroundColor: "rgba(194, 65, 12, 0.05)",
+                          border: "none",
+                          borderRadius: "20px",
+                          width: "32px",
+                          height: "32px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.15s"
+                        }}
+                        title={historyViewMode === "cards" ? "Switch to Spreadsheet" : "Switch to Cards"}
+                      >
+                        {historyViewMode === "cards" ? "📊" : "🗂️"}
+                      </button>
+                    )}
+
+                    {/* Future filter toggle */}
+                    {hasFutureExpenses && logView !== "insights" && (
+                      <button
+                        type="button"
+                        onClick={() => setShowFuture(!showFuture)}
+                        style={{
+                          fontSize: "0.78rem",
+                          fontWeight: 700,
+                          color: showFuture ? "#0369A1" : "#0284C7",
+                          backgroundColor: showFuture ? "#E0F2FE" : "rgba(2, 132, 199, 0.06)",
+                          border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid rgba(2, 132, 199, 0.1)",
+                          borderRadius: "20px",
+                          padding: "6px 12px",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {showFuture ? "Hide Future" : "Show Future"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* History Mode Selector */}
-                {logView === "history" && (
-                  <div style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginBottom: "12px",
-                    gap: "6px"
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setHistoryViewMode("cards")}
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: historyViewMode === "cards" ? 700 : 500,
-                        color: historyViewMode === "cards" ? "white" : "#6B7280",
-                        backgroundColor: historyViewMode === "cards" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                        border: "none",
-                        borderRadius: "16px",
-                        padding: "4px 12px",
-                        cursor: "pointer",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      🗂️ Cards
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHistoryViewMode("spreadsheet")}
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: historyViewMode === "spreadsheet" ? 700 : 500,
-                        color: historyViewMode === "spreadsheet" ? "white" : "#6B7280",
-                        backgroundColor: historyViewMode === "spreadsheet" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                        border: "none",
-                        borderRadius: "16px",
-                        padding: "4px 12px",
-                        cursor: "pointer",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      📊 Spreadsheet
-                    </button>
-                  </div>
-                )}
-
-                {/* Search Input Box */}
-                {logView !== "insights" && (
+                {/* Slide-down Search Box */}
+                {showSearch && logView !== "insights" && (
                   <div style={{
                     position: "relative",
-                    marginBottom: "16px"
+                    marginBottom: "12px"
                   }}>
                     <span style={{
                       position: "absolute",
@@ -2939,11 +2991,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search note, tag, category, or operators (e.g. >100, over 50)..."
+                      placeholder="Search notes, tags, or operators..."
+                      autoFocus
                       style={{
                         width: "100%",
-                        padding: "10px 12px 10px 36px",
-                        borderRadius: "12px",
+                        padding: "8px 12px 8px 36px",
+                        borderRadius: "10px",
                         border: "1.5px solid #E5E7EB",
                         backgroundColor: "white",
                         fontSize: "0.85rem",
@@ -3026,10 +3079,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const label = getDayLabel(exp.timestamp);
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
-                                  const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
-                                  const dayLocation = label === "Today" 
-                                    ? (trip.currentLocation || "") 
-                                    : (sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc) || "");
+                                                                const d = new Date(exp.timestamp);
+                                  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                  const itLoc = trip.itinerary?.[dateKey];
+                                  const dayLocation = itLoc !== undefined ? itLoc : (
+                                    label === "Today" 
+                                      ? (trip.currentLocation || "") 
+                                      : (sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc) || "")
+                                  );
 
                                   return (
                                     <div key={exp.id}>
@@ -3050,11 +3107,57 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                           letterSpacing: "0.5px"
                                         }}>
                                           <span>{label}</span>
-                                          {dayLocation && (
-                                            <span style={{ color: "var(--color-orange)", display: "inline-flex", alignItems: "center", gap: "2px" }}>
-                                              📍 {dayLocation}
-                                            </span>
-                                          )}
+                                          <span 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingItineraryDate(dateKey);
+                                              setItineraryInput(dayLocation || "");
+                                            }}
+                                            style={{ 
+                                              color: dayLocation ? "var(--color-orange)" : "#9CA3AF", 
+                                              display: "inline-flex", 
+                                              alignItems: "center", 
+                                              gap: "2px",
+                                              cursor: "pointer",
+                                              textTransform: "none"
+                                            }}
+                                          >
+                                            {editingItineraryDate === dateKey ? (
+                                              <input
+                                                type="text"
+                                                value={itineraryInput}
+                                                onChange={(e) => setItineraryInput(e.target.value)}
+                                                onBlur={() => {
+                                                  updateItineraryLocation(dateKey, itineraryInput);
+                                                  setEditingItineraryDate(null);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    updateItineraryLocation(dateKey, itineraryInput);
+                                                    setEditingItineraryDate(null);
+                                                  } else if (e.key === "Escape") {
+                                                    setEditingItineraryDate(null);
+                                                  }
+                                                }}
+                                                autoFocus
+                                                style={{
+                                                  fontSize: "0.8rem",
+                                                  fontWeight: 800,
+                                                  color: "var(--color-orange)",
+                                                  border: "none",
+                                                  borderBottom: "1px solid var(--color-orange)",
+                                                  outline: "none",
+                                                  width: "85px",
+                                                  background: "transparent",
+                                                  padding: 0
+                                                }}
+                                              />
+                                            ) : (
+                                              <span title="Click to edit destination">
+                                                📍 {dayLocation || "Add destination"}
+                                              </span>
+                                            )}
+                                          </span>
                                         </div>
                                       )}
                                       <ExpenseCard
@@ -3148,9 +3251,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                            }
                         });
 
-                        // Set backward compatible single location for card rendering
+                        // Set backward compatible single location for card rendering, giving preference to planned itinerary
                         Object.keys(olderGroups).forEach(k => {
-                          olderGroups[k].location = olderGroups[k].locationsList[0] || "";
+                          const itLoc = trip.itinerary?.[k];
+                          olderGroups[k].location = itLoc !== undefined ? itLoc : (olderGroups[k].locationsList[0] || "");
                         });
 
                         const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
@@ -3246,20 +3350,62 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                             <div style={{ fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>
                                               {group.dateDisplay}
                                             </div>
-                                            {group.locationsList.length > 0 && (
-                                              <div style={{
+                                            <div 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingItineraryDate(group.dateKey);
+                                                setItineraryInput(group.location || "");
+                                              }}
+                                              style={{
                                                 fontSize: "0.7rem",
-                                                color: "var(--color-orange)",
+                                                color: group.location ? "var(--color-orange)" : "#9CA3AF",
                                                 fontWeight: 700,
                                                 marginTop: "2px",
                                                 whiteSpace: "nowrap",
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                maxWidth: "100px"
-                                              }}>
-                                                📍 {group.locationsList[0]}
-                                              </div>
-                                            )}
+                                                cursor: "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "2px",
+                                                maxWidth: "110px",
+                                                overflow: "hidden"
+                                              }}
+                                            >
+                                              {editingItineraryDate === group.dateKey ? (
+                                                <input
+                                                  type="text"
+                                                  value={itineraryInput}
+                                                  onChange={(e) => setItineraryInput(e.target.value)}
+                                                  onBlur={() => {
+                                                    updateItineraryLocation(group.dateKey, itineraryInput);
+                                                    setEditingItineraryDate(null);
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                      updateItineraryLocation(group.dateKey, itineraryInput);
+                                                      setEditingItineraryDate(null);
+                                                    } else if (e.key === "Escape") {
+                                                      setEditingItineraryDate(null);
+                                                    }
+                                                  }}
+                                                  autoFocus
+                                                  style={{
+                                                    fontSize: "0.7rem",
+                                                    fontWeight: 700,
+                                                    color: "var(--color-orange)",
+                                                    border: "none",
+                                                    borderBottom: "1px solid var(--color-orange)",
+                                                    outline: "none",
+                                                    width: "75px",
+                                                    background: "transparent",
+                                                    padding: 0
+                                                  }}
+                                                />
+                                              ) : (
+                                                <span title="Click to edit destination" style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
+                                                  📍 {group.location || "Add Location"}
+                                                </span>
+                                              )}
+                                            </div>
                                           </td>
                                           {renderCell(group, "Accommodation", "Stay")}
                                           {renderCell(group, "Transportation", "Transit")}
@@ -3309,11 +3455,58 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151" }}>
                                           {group.dateDisplay}
                                         </span>
-                                        {group.location && (
-                                          <span style={{ fontSize: "0.75rem", color: "var(--color-orange)", display: "flex", alignItems: "center", gap: "2px" }}>
-                                            📍 {group.location}
-                                          </span>
-                                        )}
+                                        <div 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingItineraryDate(group.dateKey);
+                                            setItineraryInput(group.location || "");
+                                          }}
+                                          style={{ 
+                                            fontSize: "0.75rem", 
+                                            color: group.location ? "var(--color-orange)" : "#9CA3AF", 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "2px", 
+                                            cursor: "pointer",
+                                            fontWeight: 600
+                                          }}
+                                        >
+                                          {editingItineraryDate === group.dateKey ? (
+                                            <input
+                                              type="text"
+                                              value={itineraryInput}
+                                              onChange={(e) => setItineraryInput(e.target.value)}
+                                              onBlur={() => {
+                                                updateItineraryLocation(group.dateKey, itineraryInput);
+                                                setEditingItineraryDate(null);
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  updateItineraryLocation(group.dateKey, itineraryInput);
+                                                  setEditingItineraryDate(null);
+                                                } else if (e.key === "Escape") {
+                                                  setEditingItineraryDate(null);
+                                                }
+                                              }}
+                                              autoFocus
+                                              style={{
+                                                fontSize: "0.75rem",
+                                                fontWeight: 600,
+                                                color: "var(--color-orange)",
+                                                border: "none",
+                                                borderBottom: "1px solid var(--color-orange)",
+                                                outline: "none",
+                                                width: "80px",
+                                                background: "transparent",
+                                                padding: 0
+                                              }}
+                                            />
+                                          ) : (
+                                            <span title="Click to edit destination">
+                                              📍 {group.location || "Add destination"}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                         <span style={{
@@ -5060,7 +5253,7 @@ function ManualEntryModal({
               </button>
 
               {/* Right Side: Active Symbol and Input Box */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "2 1 auto", justifyContent: "flex-end", minWidth: 0 }}>
                 <span style={{
                   fontSize: "1.15rem",
                   fontWeight: 800,
@@ -5093,10 +5286,11 @@ function ManualEntryModal({
                     fontWeight: 800,
                     outline: "none",
                     width: "100%",
-                    maxWidth: "110px",
+                    maxWidth: "150px",
                     color: "#111827",
                     textAlign: "right",
-                    padding: "4px 0"
+                    padding: "4px 0",
+                    paddingRight: "8px"
                   }}
                 />
               </div>

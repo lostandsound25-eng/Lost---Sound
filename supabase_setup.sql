@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS public.trips (
   name text NOT NULL,
   home_currency text DEFAULT 'USD' NOT NULL,
   local_currency text DEFAULT 'PHP' NOT NULL,
-  current_location text DEFAULT ''
+  current_location text DEFAULT '',
+  itinerary jsonb DEFAULT '{}'::jsonb
 );
 
 -- Enable RLS on trips

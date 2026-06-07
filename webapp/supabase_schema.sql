@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.trips (
     home_currency TEXT DEFAULT 'USD' NOT NULL,
     local_currency TEXT DEFAULT 'USD' NOT NULL,
     current_location TEXT DEFAULT '',
+    itinerary JSONB DEFAULT '{}'::jsonb,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -91,6 +92,7 @@ ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS home_currency TEXT DEFAULT 'US
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS local_currency TEXT DEFAULT 'USD' NOT NULL;
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS current_location TEXT DEFAULT '';
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '{}'::jsonb;
 
 -- Enable Realtime replication for collaborative updating safely
 DO $$
