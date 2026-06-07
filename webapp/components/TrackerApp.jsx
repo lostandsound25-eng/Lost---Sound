@@ -33,6 +33,112 @@ const StarIcon = ({ filled }) => (
   </svg>
 );
 
+const UndoIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7v6h6" />
+    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+  </svg>
+);
+
+const RedoIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 7v6h-6" />
+    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+  </svg>
+);
+
+const COUNTRY_CURRENCY_MAP = {
+  "japan": "JPY", "japanese": "JPY",
+  "vietnam": "VND", "vietnamese": "VND",
+  "united states": "USD", "usa": "USD", "america": "USD", "american": "USD", "us": "USD",
+  "thailand": "THB", "thai": "THB",
+  "europe": "EUR", "euro": "EUR", "european": "EUR", "germany": "EUR", "france": "EUR", "italy": "EUR", "spain": "EUR", "netherlands": "EUR", "greece": "EUR", "portugal": "EUR", "austria": "EUR", "belgium": "EUR", "ireland": "EUR", "finland": "EUR",
+  "philippines": "PHP", "philippine": "PHP", "filipino": "PHP", "manila": "PHP", "siargao": "PHP",
+  "indonesia": "IDR", "indonesian": "IDR", "bali": "IDR", "jakarta": "IDR",
+  "canada": "CAD", "canadian": "CAD",
+  "mexico": "MXN", "mexican": "MXN", "peso": "MXN",
+  "australia": "AUD", "australian": "AUD",
+  "united kingdom": "GBP", "uk": "GBP", "great britain": "GBP", "england": "GBP", "london": "GBP", "british": "GBP", "pound": "GBP",
+  "singapore": "SGD", "singaporean": "SGD",
+  "malaysia": "MYR", "malaysian": "MYR",
+  "new zealand": "NZD", "kiwi": "NZD",
+  "switzerland": "CHF", "swiss": "CHF", "franc": "CHF",
+  "china": "CNY", "chinese": "CNY", "yuan": "CNY", "renminbi": "CNY",
+  "hong kong": "HKD",
+  "taiwan": "TWD", "taiwanese": "TWD",
+  "south korea": "KRW", "korea": "KRW", "korean": "KRW", "won": "KRW",
+  "india": "INR", "indian": "INR", "rupee": "INR",
+  "brazil": "BRL", "brazilian": "BRL", "real": "BRL",
+  "south africa": "ZAR", "south african": "ZAR", "rand": "ZAR",
+  "norway": "NOK", "norwegian": "NOK", "krone": "NOK",
+  "sweden": "SEK", "swedish": "SEK", "krona": "SEK",
+  "denmark": "DKK", "danish": "DKK",
+  "turkey": "TRY", "turkish": "TRY", "lira": "TRY",
+  "russia": "RUB", "russian": "RUB", "ruble": "RUB",
+  "united arab emirates": "AED", "uae": "AED", "dubai": "AED", "dirham": "AED",
+  "saudi arabia": "SAR", "saudi": "SAR", "riyal": "SAR",
+  "argentina": "ARS", "argentine": "ARS", "argentinian": "ARS",
+  "chile": "CLP", "chilean": "CLP",
+  "colombia": "COP", "colombian": "COP",
+  "peru": "PEN", "peruvian": "PEN", "sol": "PEN",
+  "costa rica": "CRC", "costan rican": "CRC", "colon": "CRC",
+  "croatia": "HRK", "croatian": "HRK", "kuna": "HRK",
+  "czech republic": "CZK", "czech": "CZK", "czechia": "CZK", "koruna": "CZK",
+  "egypt": "EGP", "egyptian": "EGP",
+  "hungary": "HUF", "hungarian": "HUF", "forint": "HUF",
+  "israel": "ILS", "israeli": "ILS", "shekel": "ILS",
+  "morocco": "MAD", "moroccan": "MAD",
+  "poland": "PLN", "polish": "PLN", "zloty": "PLN",
+  "romania": "RON", "romanian": "RON", "leu": "RON",
+  "sri lanka": "LKR", "sri lankan": "LKR",
+  "ukraine": "UAH", "ukrainian": "UAH", "hryvnia": "UAH",
+  "uruguay": "UYU", "uruguayan": "UYU"
+};
+
+const resolveCurrency = (text) => {
+  if (!text) return null;
+  const q = text.trim().toLowerCase();
+  if (q.length === 3) {
+    return q.toUpperCase();
+  }
+  if (COUNTRY_CURRENCY_MAP[q]) {
+    return COUNTRY_CURRENCY_MAP[q];
+  }
+  const matchKey = Object.keys(COUNTRY_CURRENCY_MAP).find(k => k.includes(q) || q.includes(k));
+  if (matchKey) {
+    return COUNTRY_CURRENCY_MAP[matchKey];
+  }
+  return null;
+};
+
+const getHashtagSuggestions = (text, allTags = []) => {
+  if (!text) return [];
+  const words = text.trim().split(/\s+/);
+  const lastWord = words[words.length - 1];
+  if (!lastWord || lastWord.length < 2) return [];
+
+  if (lastWord.startsWith("#")) return [];
+
+  const cleanWord = lastWord.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  if (!cleanWord) return [];
+
+  const suggestions = [];
+  
+  // 1. Check if it matches any historical tag
+  const matchingHist = allTags.find(t => t.toLowerCase() === cleanWord || t.toLowerCase().startsWith(cleanWord));
+  if (matchingHist) {
+    suggestions.push(`#${matchingHist}`);
+  }
+
+  // 2. Otherwise suggest the cleaned word itself
+  const selfTag = `#${cleanWord}`;
+  if (!suggestions.includes(selfTag)) {
+    suggestions.push(selfTag);
+  }
+
+  return suggestions.slice(0, 3);
+};
+
 // Constants
 const CATEGORIES = ["Accommodation", "Transportation", "Food & Drink", "Everything Else"];
 
@@ -461,10 +567,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [rapidTitle, setRapidTitle] = useState("");
   const [rapidAmount, setRapidAmount] = useState("");
   const [rapidCurrency, setRapidCurrency] = useState(() => {
-    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
-    return lastUsed || trip.localCurrency || "USD";
+    return trip.localCurrency || "USD";
   });
-  const [rapidCategory, setRapidCategory] = useState("Food & Drink");
+  const [rapidCategory, setRapidCategory] = useState("Everything Else");
   const [rapidWorthIt, setRapidWorthIt] = useState(false);
   const [isAddingRapid, setIsAddingRapid] = useState(false);
 
@@ -474,6 +579,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, [trip?.localCurrency]);
 
+  useEffect(() => {
+    if (activeModal === "manual") {
+      setRapidTitle("");
+      setRapidAmount("");
+      setRapidCategory("Everything Else");
+      setRapidWorthIt(false);
+    }
+  }, [activeModal]);
+
   // Editable trip name state
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -481,6 +595,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [isEditingLocale, setIsEditingLocale] = useState(false);
   const [localeSearchQuery, setLocaleSearchQuery] = useState("");
   const [localeResults, setLocaleResults] = useState([]);
+
+  // Editable trip currencies state
+  const [isEditingHomeCurrency, setIsEditingHomeCurrency] = useState(false);
+  const [homeCurrencyInput, setHomeCurrencyInput] = useState("");
+  const [isEditingLocalCurrency, setIsEditingLocalCurrency] = useState(false);
+  const [localCurrencyInput, setLocalCurrencyInput] = useState("");
 
   // Offline background queue state
   const [syncQueue, setSyncQueue] = useState([]);
@@ -1298,6 +1418,44 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     });
   };
 
+  const handleSaveHomeCurrency = () => {
+    const resolved = resolveCurrency(homeCurrencyInput);
+    if (resolved) {
+      updateHomeCurrency(resolved);
+      if (!DEFAULT_RATES[resolved]) {
+        addCustomCurrency(resolved);
+      }
+    }
+    setIsEditingHomeCurrency(false);
+  };
+
+  const handleSaveLocalCurrency = () => {
+    const resolved = resolveCurrency(localCurrencyInput);
+    if (resolved) {
+      updateLocalCurrency(resolved);
+      setManualLocalCurrency(resolved);
+      localStorage.setItem("tracker_last_used_currency", resolved);
+      if (!DEFAULT_RATES[resolved]) {
+        addCustomCurrency(resolved);
+      }
+    }
+    setIsEditingLocalCurrency(false);
+  };
+
+  const allHistoricalTags = (() => {
+    const tagCounts = {};
+    expenses.forEach(e => {
+      if (e.tags) {
+        e.tags.forEach(t => {
+          if (!t.startsWith("spread-") && !t.startsWith("spread-group-")) {
+            tagCounts[t] = (tagCounts[t] || 0) + 1;
+          }
+        });
+      }
+    });
+    return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
+  })();
+
   const saveExpense = async (expense) => {
     if (expense.delete) {
       if (expense.deleteEntireGroup && expense.groupTag) {
@@ -1748,11 +1906,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         parsedTags.push(match[1].toLowerCase());
       }
       
+      const cleanNote = rapidTitle.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
       await saveExpense({
         amount: val,
         currency: rapidCurrency,
         category: rapidCategory,
-        note: rapidTitle.trim(),
+        note: cleanNote || rapidCategory,
         worthIt: rapidWorthIt,
         location: "",
         tags: parsedTags,
@@ -1836,9 +1995,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <button
                 type="button"
                 onClick={() => {
-                  const lastUsed = localStorage.getItem("tracker_last_used_currency");
-                  const localDefault = lastUsed && lastUsed !== trip.homeCurrency ? lastUsed : (trip.localCurrency || "EUR");
-                  setRapidCurrency(prev => prev === trip.homeCurrency ? localDefault : trip.homeCurrency);
+                  setRapidCurrency(prev => prev === trip.homeCurrency ? (trip.localCurrency || "USD") : trip.homeCurrency);
                 }}
                 style={{
                   background: "none",
@@ -1861,6 +2018,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </button>
             </div>
           </div>
+
+          {(() => {
+            const rapidSuggestions = getHashtagSuggestions(rapidTitle, allHistoricalTags);
+            if (rapidSuggestions.length === 0) return null;
+            return (
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "-2px", marginBottom: "4px" }}>
+                {rapidSuggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      const trimmed = rapidTitle.trim();
+                      setRapidTitle(trimmed ? `${trimmed} ${s}` : s);
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "12px",
+                      border: "none",
+                      backgroundColor: "rgba(133, 58, 81, 0.08)",
+                      color: "var(--color-purple)",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.1s"
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Category & Save Button Row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
@@ -1918,28 +2107,53 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={isAddingRapid}
-              style={{
-                backgroundColor: "var(--color-orange)",
-                color: "white",
-                border: "none",
-                borderRadius: "20px",
-                padding: "8px 20px",
-                fontSize: "0.82rem",
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                outline: "none",
-                transition: "opacity 0.2s"
-              }}
-            >
-              {isAddingRapid ? "Adding..." : "⚡ Add"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {(rapidTitle || rapidAmount) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRapidTitle("");
+                    setRapidAmount("");
+                    setRapidCategory("Everything Else");
+                    setRapidWorthIt(false);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: "0.8rem",
+                    color: "#9CA3AF",
+                    cursor: "pointer",
+                    padding: "4px 8px",
+                    fontWeight: 650,
+                    outline: "none"
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isAddingRapid}
+                style={{
+                  backgroundColor: "var(--color-orange)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "20px",
+                  padding: "8px 20px",
+                  fontSize: "0.82rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(232, 107, 50, 0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  outline: "none",
+                  transition: "opacity 0.2s"
+                }}
+              >
+                {isAddingRapid ? "Adding..." : "⚡ Add"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -2205,213 +2419,135 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
       {/* Main Content */}
       <main style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 120px" }}>
-        {/* Header (scrolls out of the way) */}
         <header style={{
           padding: "20px 20px 16px",
           backgroundColor: "white",
           borderBottom: "1px solid #eee",
           marginBottom: "20px"
         }}>
+          {/* Row 1: Back button and action buttons */}
           <div style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "10px",
-            gap: "12px"
+            marginBottom: "10px"
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
-              <button
-                type="button"
-                onClick={() => window.location.href = '/tracker/trips'}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.15rem",
-                  cursor: "pointer",
-                  color: "var(--color-purple)",
-                  padding: "4px 8px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(133, 58, 81, 0.05)",
-                  flexShrink: 0
-                }}
-                title="Back to My Trips"
-              >
-                ←
-              </button>
+            {/* Back Button */}
+            <button
+              type="button"
+              onClick={() => window.location.href = '/tracker/trips'}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "1.15rem",
+                cursor: "pointer",
+                color: "var(--color-purple)",
+                padding: "4px 8px",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(133, 58, 81, 0.05)",
+                flexShrink: 0
+              }}
+              title="Back to My Trips"
+            >
+              ←
+            </button>
 
-              {isEditingName ? (
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  onBlur={saveTripName}
-                  onKeyDown={(e) => e.key === "Enter" && saveTripName()}
-                  autoFocus
-                  maxLength={30}
-                  style={{
-                    fontSize: dynamicFontSize,
-                    fontWeight: 800,
-                    color: "var(--color-purple)",
-                    border: "none",
-                    borderBottom: "1.5px solid var(--color-purple)",
-                    outline: "none",
-                    background: "transparent",
-                    flex: 1,
-                    minWidth: 0,
-                    padding: 0
-                  }}
-                />
-              ) : (
-                <div 
-                  onClick={() => setIsEditingName(true)}
-                  style={{
-                    fontSize: dynamicFontSize,
-                    fontWeight: 800,
-                    color: "var(--color-purple)",
-                    margin: 0,
-                    whiteSpace: "normal",
-                    wordBreak: "break-word",
-                    lineHeight: "1.2",
-                    flex: 1,
-                    minWidth: 0,
-                    cursor: "pointer"
-                  }} 
-                  title={trip.name}
-                >
-                  <span>{(trip.name || "").slice(0, 30)}</span>
-                </div>
-              )}
-            </div>
+            {/* Actions on the right */}
             {supabase && (
-              <div style={{ flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                {/* Undo Button */}
+                {undoStack.length > 0 && (
+                  <button
+                    onClick={handleUndo}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--color-purple)",
+                      cursor: "pointer",
+                      padding: "2px",
+                      display: "flex",
+                      alignItems: "center",
+                      outline: "none"
+                    }}
+                    title="Undo"
+                  >
+                    <UndoIcon size={16} />
+                  </button>
+                )}
+                {/* Redo Button */}
+                {redoStack.length > 0 && (
+                  <button
+                    onClick={handleRedo}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--color-purple)",
+                      cursor: "pointer",
+                      padding: "2px",
+                      display: "flex",
+                      alignItems: "center",
+                      outline: "none"
+                    }}
+                    title="Redo"
+                  >
+                    <RedoIcon size={16} />
+                  </button>
+                )}
+
+                {/* Cloud Save & Sync (for Demo Mode) or Share & Sync for non-demo */}
                 {isDemo ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      {undoStack.length > 0 && (
-                        <button
-                          onClick={handleUndo}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "0.85rem",
-                            cursor: "pointer",
-                            padding: "2px",
-                            display: "flex",
-                            alignItems: "center",
-                            outline: "none"
-                          }}
-                          title="Undo"
-                        >
-                          ↩️
-                        </button>
-                      )}
-                      {redoStack.length > 0 && (
-                        <button
-                          onClick={handleRedo}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "0.85rem",
-                            cursor: "pointer",
-                            padding: "2px",
-                            display: "flex",
-                            alignItems: "center",
-                            outline: "none"
-                          }}
-                          title="Redo"
-                        >
-                          ↪️
-                        </button>
-                      )}
-                      <button
-                        onClick={handleSaveSyncClick}
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "white",
-                          backgroundColor: "var(--color-orange)",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "24px",
-                          height: "24px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          outline: "none",
-                          boxShadow: "0 2px 4px rgba(232, 107, 50, 0.15)"
-                        }}
-                        title="Save & Sync"
-                      >
-                        ☁️
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    onClick={handleSaveSyncClick}
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "white",
+                      backgroundColor: "var(--color-orange)",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: "22px",
+                      height: "22px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      outline: "none",
+                      boxShadow: "0 2px 4px rgba(232, 107, 50, 0.15)"
+                    }}
+                    title="Save & Sync"
+                  >
+                    ☁️
+                  </button>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      {undoStack.length > 0 && (
-                        <button
-                          onClick={handleUndo}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "0.85rem",
-                            cursor: "pointer",
-                            padding: "2px",
-                            display: "flex",
-                            alignItems: "center",
-                            outline: "none"
-                          }}
-                          title="Undo"
-                        >
-                          ↩️
-                        </button>
-                      )}
-                      {redoStack.length > 0 && (
-                        <button
-                          onClick={handleRedo}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "0.85rem",
-                            cursor: "pointer",
-                            padding: "2px",
-                            display: "flex",
-                            alignItems: "center",
-                            outline: "none"
-                          }}
-                          title="Redo"
-                        >
-                          ↪️
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setActiveModal("collaborators")}
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "var(--color-purple)",
-                          backgroundColor: "rgba(133, 58, 81, 0.08)",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "24px",
-                          height: "24px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          outline: "none"
-                        }}
-                        title="Share & Collaborate"
-                      >
-                        👥
-                      </button>
-                    </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    {/* Share & Collaborate */}
+                    <button
+                      onClick={() => setActiveModal("collaborators")}
+                      style={{
+                        fontSize: "0.78rem",
+                        color: "var(--color-purple)",
+                        backgroundColor: "rgba(133, 58, 81, 0.08)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "22px",
+                        height: "22px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        outline: "none"
+                      }}
+                      title="Share & Collaborate"
+                    >
+                      👥
+                    </button>
+
+                    {/* Sync Status Badge */}
                     {(() => {
                       let statusText = "Synced";
-                      let statusEmoji = "🟢";
+                      let statusEmoji = "●";
                       let badgeColor = "#10B981";
                       let badgeBg = "#ECFDF5";
                       let glow = "0 0 4px rgba(16, 185, 129, 0.25)";
@@ -2434,11 +2570,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         <span 
                           title={statusText}
                           style={{
-                            fontSize: "0.85rem",
+                            fontSize: "0.8rem",
                             color: badgeColor,
                             backgroundColor: badgeBg,
-                            width: "24px",
-                            height: "24px",
+                            width: "22px",
+                            height: "22px",
                             borderRadius: "50%",
                             display: "inline-flex",
                             alignItems: "center",
@@ -2448,12 +2584,60 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             cursor: "pointer"
                           }}
                         >
-                          {statusEmoji === "🟢" ? "●" : statusEmoji}
+                          {statusEmoji === "🟢" || statusEmoji === "●" ? "●" : statusEmoji}
                         </span>
                       );
                     })()}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Row 2: Editable Trip Title */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            marginTop: "6px"
+          }}>
+            {isEditingName ? (
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onBlur={saveTripName}
+                onKeyDown={(e) => e.key === "Enter" && saveTripName()}
+                autoFocus
+                maxLength={30}
+                style={{
+                  fontSize: dynamicFontSize,
+                  fontWeight: 800,
+                  color: "var(--color-purple)",
+                  border: "none",
+                  borderBottom: "1.5px solid var(--color-purple)",
+                  outline: "none",
+                  background: "transparent",
+                  width: "100%",
+                  padding: 0
+                }}
+              />
+            ) : (
+              <div 
+                onClick={() => setIsEditingName(true)}
+                style={{
+                  fontSize: dynamicFontSize,
+                  fontWeight: 800,
+                  color: "var(--color-purple)",
+                  margin: 0,
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  lineHeight: "1.2",
+                  width: "100%",
+                  cursor: "pointer"
+                }} 
+                title={trip.name}
+              >
+                <span>{(trip.name || "").slice(0, 30)}</span>
               </div>
             )}
           </div>
@@ -2653,43 +2837,103 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
               {/* Inline Currency Switchers */}
               {(() => {
-                const mostRecentlySpentLocal = (() => {
-                  const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                  const recentLocal = sorted.find(e => e.currency !== trip.homeCurrency);
-                  return recentLocal ? recentLocal.currency : (trip.localCurrency || "EUR");
-                })();
-                const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
+                const activeLocal = trip.localCurrency || "SGD";
                 return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
                       <span style={{ fontWeight: 600 }}>Home:</span>
-                      <SearchableCurrencySelect
-                        value={trip.homeCurrency}
-                        onChange={(val) => {
-                          updateHomeCurrency(val);
-                        }}
-                        rates={rates}
-                        customCurrencies={customCurrencies}
-                        onAddCustomCurrency={addCustomCurrency}
-                        style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                      />
+                      {isEditingHomeCurrency ? (
+                        <input
+                          type="text"
+                          value={homeCurrencyInput}
+                          onChange={(e) => setHomeCurrencyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveHomeCurrency();
+                            } else if (e.key === "Escape") {
+                              setIsEditingHomeCurrency(false);
+                            }
+                          }}
+                          onBlur={handleSaveHomeCurrency}
+                          autoFocus
+                          style={{
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            border: "1.5px solid var(--color-purple)",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            outline: "none",
+                            color: "#374151",
+                            width: "55px",
+                            textAlign: "center"
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setHomeCurrencyInput(trip.homeCurrency);
+                            setIsEditingHomeCurrency(true);
+                          }}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            borderBottom: "1px dashed var(--color-purple)",
+                            padding: "1px 2px"
+                          }}
+                          title="Tap to change home currency"
+                        >
+                          {trip.homeCurrency}
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
                       <span style={{ fontWeight: 600 }}>Local:</span>
-                      <SearchableCurrencySelect
-                        value={activeLocal}
-                        onChange={(val) => {
-                          updateLocalCurrency(val);
-                          setManualLocalCurrency(val);
-                          localStorage.setItem("tracker_last_used_currency", val);
-                        }}
-                        rates={rates}
-                        customCurrencies={customCurrencies}
-                        onAddCustomCurrency={addCustomCurrency}
-                        style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                        align="right"
-                      />
+                      {isEditingLocalCurrency ? (
+                        <input
+                          type="text"
+                          value={localCurrencyInput}
+                          onChange={(e) => setLocalCurrencyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveLocalCurrency();
+                            } else if (e.key === "Escape") {
+                              setIsEditingLocalCurrency(false);
+                            }
+                          }}
+                          onBlur={handleSaveLocalCurrency}
+                          autoFocus
+                          style={{
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            border: "1.5px solid var(--color-purple)",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            outline: "none",
+                            color: "#374151",
+                            width: "55px",
+                            textAlign: "center"
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setLocalCurrencyInput(activeLocal);
+                            setIsEditingLocalCurrency(true);
+                          }}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            borderBottom: "1px dashed var(--color-purple)",
+                            padding: "1px 2px"
+                          }}
+                          title="Tap to change local currency"
+                        >
+                          {activeLocal}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -2920,34 +3164,55 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
                     {/* Standalone Floating Search Button */}
                     {logView !== "insights" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowSearch(!showSearch);
-                          if (showSearch) {
-                            setSearchQuery("");
-                          }
-                        }}
-                        style={{
-                          fontSize: "0.85rem",
-                          color: showSearch ? "white" : "var(--color-purple)",
-                          backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "32px",
-                          height: "32px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
-                          transition: "all 0.15s",
-                          outline: "none"
-                        }}
-                        title="Search expenses"
-                      >
-                        🔍
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {hasFutureExpenses && !showSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setShowFuture(!showFuture)}
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              color: showFuture ? "#0369A1" : "#4B5563",
+                              backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
+                              border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
+                              borderRadius: "12px",
+                              padding: "4px 8px",
+                              cursor: "pointer",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {showFuture ? "Hide Future" : "Future"}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSearch(!showSearch);
+                            if (showSearch) {
+                              setSearchQuery("");
+                            }
+                          }}
+                          style={{
+                            fontSize: "0.85rem",
+                            color: showSearch ? "white" : "var(--color-purple)",
+                            backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "32px",
+                            height: "32px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
+                            transition: "all 0.15s",
+                            outline: "none"
+                          }}
+                          title="Search expenses"
+                        >
+                          🔍
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -2976,90 +3241,99 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         {historyViewMode === "cards" ? "📊" : "🗂️"}
                       </button>
                     )}
-
-                    {/* Future filter toggle */}
-                    {hasFutureExpenses && logView !== "insights" && (
-                      <button
-                        type="button"
-                        onClick={() => setShowFuture(!showFuture)}
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: 700,
-                          color: showFuture ? "#0369A1" : "#0284C7",
-                          backgroundColor: showFuture ? "#E0F2FE" : "rgba(2, 132, 199, 0.06)",
-                          border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid rgba(2, 132, 199, 0.1)",
-                          borderRadius: "20px",
-                          padding: "6px 12px",
-                          cursor: "pointer",
-                          transition: "all 0.2s"
-                        }}
-                      >
-                        {showFuture ? "Hide Future" : "Show Future"}
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {/* Slide-down Search Box */}
                 {showSearch && logView !== "insights" && (
                   <div style={{
-                    position: "relative",
-                    marginBottom: "12px"
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "12px",
+                    width: "100%"
                   }}>
-                    <span style={{
-                      position: "absolute",
-                      left: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: "0.95rem",
-                      color: "#9CA3AF",
-                      pointerEvents: "none"
-                    }}>🔍</span>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search notes, tags, or operators..."
-                      autoFocus
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px 8px 36px",
-                        borderRadius: "10px",
-                        border: "1.5px solid #E5E7EB",
-                        backgroundColor: "white",
-                        fontSize: "0.85rem",
-                        color: "#374151",
-                        outline: "none",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
-                        transition: "all 0.2s"
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = "var(--color-purple)";
-                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(133, 58, 81, 0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "#E5E7EB";
-                        e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.01)";
-                      }}
-                    />
-                    {searchQuery && (
+                    <div style={{
+                      position: "relative",
+                      flex: 1
+                    }}>
+                      <span style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: "0.95rem",
+                        color: "#9CA3AF",
+                        pointerEvents: "none"
+                      }}>🔍</span>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search notes, tags, or operators..."
+                        autoFocus
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px 8px 36px",
+                          borderRadius: "10px",
+                          border: "1.5px solid #E5E7EB",
+                          backgroundColor: "white",
+                          fontSize: "0.85rem",
+                          color: "#374151",
+                          outline: "none",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
+                          transition: "all 0.2s"
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "var(--color-purple)";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(133, 58, 81, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "#E5E7EB";
+                          e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.01)";
+                        }}
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          style={{
+                            position: "absolute",
+                            right: "12px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            border: "none",
+                            background: "transparent",
+                            fontSize: "0.9rem",
+                            color: "#9CA3AF",
+                            cursor: "pointer",
+                            padding: "4px"
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Compact Future Toggle alongside search input */}
+                    {hasFutureExpenses && (
                       <button
                         type="button"
-                        onClick={() => setSearchQuery("")}
+                        onClick={() => setShowFuture(!showFuture)}
                         style={{
-                          position: "absolute",
-                          right: "12px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          border: "none",
-                          background: "transparent",
-                          fontSize: "0.9rem",
-                          color: "#9CA3AF",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          color: showFuture ? "#0369A1" : "#4B5563",
+                          backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
+                          border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
+                          borderRadius: "12px",
+                          padding: "8px 10px",
                           cursor: "pointer",
-                          padding: "4px"
+                          transition: "all 0.2s",
+                          flexShrink: 0
                         }}
                       >
-                        ✕
+                        {showFuture ? "Hide Future" : "Future"}
                       </button>
                     )}
                   </div>
@@ -4121,7 +4395,7 @@ function ExpenseCard({
   const displayNote = rawDisplayNote.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
   const isRepeat = expense.tags?.includes("spread-mode-repeat");
   const spreadInfo = spreadMatch 
-    ? `${isRepeat ? "Repeat" : "Spread"}: Day ${spreadMatch[2]}/${spreadMatch[3]} (${spreadMatch[4]})` 
+    ? `Day ${spreadMatch[2]}/${spreadMatch[3]}` 
     : null;
 
   const firstLineNote = displayNote.split("\n")[0].trim();
@@ -4255,15 +4529,19 @@ function ExpenseCard({
             </div>
             {spreadInfo && (
               <div style={{
-                fontSize: "0.78rem",
+                fontSize: "0.74rem",
                 color: "var(--color-orange)",
-                fontWeight: 600,
+                fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
                 gap: "4px",
-                marginTop: "-2px"
+                marginTop: "-2px",
+                backgroundColor: "rgba(232, 107, 50, 0.08)",
+                padding: "2px 8px",
+                borderRadius: "12px",
+                width: "fit-content"
               }}>
-                🗓️ {spreadInfo}
+                {isRepeat ? "🔁" : "🗓️"} {spreadInfo}
               </div>
             )}
 
@@ -4473,6 +4751,13 @@ function ManualEntryModal({
   });
   const [isMounting, setIsMounting] = useState(true);
 
+  // Currency pills input states
+  const [showOtherCurrencyInput, setShowOtherCurrencyInput] = useState(false);
+  const [otherCurrencyQuery, setOtherCurrencyQuery] = useState("");
+
+  // Modal Lightbox state
+  const [showModalLightbox, setShowModalLightbox] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsMounting(false);
@@ -4561,10 +4846,7 @@ function ManualEntryModal({
   });
   const [currency, setCurrency] = useState(() => {
     if (expenseToEdit) return expenseToEdit.currency || trip.localCurrency;
-    const draft = getDraft();
-    if (draft && draft.currency) return draft.currency;
-    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
-    return lastUsed || trip.localCurrency;
+    return trip.localCurrency || "USD";
   });
   const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) {
@@ -4793,8 +5075,7 @@ function ManualEntryModal({
     if (expenseToEdit && expenseToEdit.currency !== trip.homeCurrency) {
       return expenseToEdit.currency;
     }
-    const lastUsed = typeof window !== 'undefined' ? localStorage.getItem("tracker_last_used_currency") : null;
-    return lastUsed && lastUsed !== trip.homeCurrency ? lastUsed : (trip.localCurrency || "EUR");
+    return trip.localCurrency || "USD";
   });
 
   // Sync editEntireGroup changes
@@ -4895,7 +5176,7 @@ function ManualEntryModal({
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 400;
+        const MAX_WIDTH = 1200;
         let width = img.width;
         let height = img.height;
 
@@ -4910,8 +5191,8 @@ function ManualEntryModal({
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Compress as JPEG with 0.7 quality
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+        // Compress as JPEG with 0.85 quality
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
         setPhotoUrl(compressedBase64);
       };
       img.src = event.target.result;
@@ -5090,11 +5371,12 @@ function ManualEntryModal({
             
             const finalTags = [...parsedTags, ...originalSpreadTags];
 
+            const cleanFullNote = fullNoteText.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
             onSave({
               amount: val,
               currency,
               category,
-              note: fullNoteText || category,
+              note: cleanFullNote || category,
               worthIt,
               location: establishment, // Pass parsed location
               photoUrl: photoUrl,
@@ -5193,6 +5475,37 @@ function ManualEntryModal({
                 </button>
               )}
             </div>
+            {(() => {
+              const suggestions = getHashtagSuggestions(title, tripHashtags.all);
+              if (suggestions.length === 0) return null;
+              return (
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        const trimmed = title.trim();
+                        setTitle(trimmed ? `${trimmed} ${s}` : s);
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "12px",
+                        border: "none",
+                        backgroundColor: "rgba(133, 58, 81, 0.08)",
+                        color: "var(--color-purple)",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Amount input block below Title */}
@@ -5210,92 +5523,22 @@ function ManualEntryModal({
               justifyContent: "space-between",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "8px 14px",
+              padding: "12px 16px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               marginBottom: "4px"
             }}>
-              {/* Left Side: Conversion and sideline currency selector */}
-              {(() => {
-                const sidelineCurrency = currency === trip.homeCurrency ? lastLocalCurrency : trip.homeCurrency;
-                const isSidelineChangeable = sidelineCurrency !== trip.homeCurrency;
-                const cleanAmt = evaluateMathExpression(amount);
-                const val = parseFloat(cleanAmt) || 0;
-                const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
-                const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                    <span style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 600 }}>
-                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
-                    </span>
-                    {isSidelineChangeable ? (
-                      <SearchableCurrencySelect
-                        value={lastLocalCurrency}
-                        onChange={(val) => {
-                          setLastLocalCurrency(val);
-                          localStorage.setItem("tracker_last_used_currency", val);
-                        }}
-                        rates={rates}
-                        customCurrencies={customCurrencies}
-                        onAddCustomCurrency={onAddCustomCurrency}
-                        style={{ fontSize: "0.8rem", fontWeight: 700 }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "0.8rem", fontWeight: 750, color: "var(--color-purple)", padding: "2px 6px" }}>
-                        {trip.homeCurrency}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Middle Side: Swap Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (currency === trip.homeCurrency) {
-                    setCurrency(lastLocalCurrency);
-                  } else {
-                    setLastLocalCurrency(currency);
-                    setCurrency(trip.homeCurrency);
-                  }
-                }}
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  border: "1px solid rgba(133, 58, 81, 0.2)",
-                  backgroundColor: "white",
-                  color: "var(--color-purple)",
-                  fontSize: "1rem",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 6px rgba(133, 58, 81, 0.08)",
-                  outline: "none",
-                  transition: "transform 0.15s ease",
-                  margin: "0 8px"
-                }}
-                onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
-                onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                ⇄
-              </button>
-
-              {/* Right Side: Active Symbol and Input Box */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "2 1 auto", justifyContent: "flex-end", minWidth: 0 }}>
-                <span style={{
-                  fontSize: "1.15rem",
-                  fontWeight: 800,
-                  color: "#1F2937",
-                  width: "42px",
-                  textAlign: "center",
-                  display: "inline-block",
-                  flexShrink: 0
-                }}>
-                  {CURRENCY_SYMBOLS[currency] || currency}
-                </span>
+              <span style={{
+                fontSize: "1.15rem",
+                fontWeight: 800,
+                color: "#1F2937",
+                width: "42px",
+                textAlign: "center",
+                display: "inline-block",
+                flexShrink: 0
+              }}>
+                {CURRENCY_SYMBOLS[currency] || currency}
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flex: 1 }}>
                 <input
                   type="text"
                   value={amount}
@@ -5317,13 +5560,167 @@ function ManualEntryModal({
                     fontWeight: 800,
                     outline: "none",
                     width: "100%",
-                    maxWidth: "150px",
                     color: "#111827",
                     textAlign: "right",
                     padding: "4px 0",
                     paddingRight: "8px"
                   }}
                 />
+                {/* Conversion Estimate sub-label directly inside Amount box */}
+                {(() => {
+                  const sidelineCurrency = currency === trip.homeCurrency ? (lastLocalCurrency || trip.localCurrency || "USD") : trip.homeCurrency;
+                  const cleanAmt = evaluateMathExpression(amount);
+                  const val = parseFloat(cleanAmt) || 0;
+                  const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
+                  const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
+                  if (val === 0) return null;
+                  return (
+                    <span style={{ fontSize: "0.78rem", color: "#6B7280", fontWeight: 700, paddingRight: "8px", marginTop: "-2px" }}>
+                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "6px",
+              marginBottom: "12px",
+              flexWrap: "wrap",
+              gap: "8px"
+            }}>
+              {/* Currency pills */}
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrency(trip.homeCurrency)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    border: "none",
+                    backgroundColor: currency === trip.homeCurrency ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                    color: currency === trip.homeCurrency ? "white" : "var(--color-purple)",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.15s"
+                  }}
+                >
+                  {trip.homeCurrency} (Home)
+                </button>
+                
+                {trip.localCurrency && trip.localCurrency !== trip.homeCurrency && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrency(trip.localCurrency)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "20px",
+                      border: "none",
+                      backgroundColor: currency === trip.localCurrency ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                      color: currency === trip.localCurrency ? "white" : "var(--color-purple)",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s"
+                    }}
+                  >
+                    {trip.localCurrency} (Local)
+                  </button>
+                )}
+
+                {/* If a third currency is active */}
+                {currency !== trip.homeCurrency && currency !== trip.localCurrency && (
+                  <button
+                    type="button"
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "20px",
+                      border: "none",
+                      backgroundColor: "var(--color-purple)",
+                      color: "white",
+                      fontSize: "0.78rem",
+                      fontWeight: 700
+                    }}
+                  >
+                    {currency}
+                  </button>
+                )}
+
+                {/* Custom Other Button or Input Overlay */}
+                {showOtherCurrencyInput ? (
+                  <input
+                    type="text"
+                    placeholder="Country/Code..."
+                    value={otherCurrencyQuery}
+                    onChange={(e) => setOtherCurrencyQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const resolved = resolveCurrency(otherCurrencyQuery);
+                        if (resolved) {
+                          setCurrency(resolved);
+                          if (resolved !== trip.homeCurrency) {
+                            setLastLocalCurrency(resolved);
+                          }
+                          if (!DEFAULT_RATES[resolved]) {
+                            onAddCustomCurrency(resolved);
+                          }
+                        }
+                        setShowOtherCurrencyInput(false);
+                        setOtherCurrencyQuery("");
+                      } else if (e.key === "Escape") {
+                        setShowOtherCurrencyInput(false);
+                        setOtherCurrencyQuery("");
+                      }
+                    }}
+                    onBlur={() => {
+                      const resolved = resolveCurrency(otherCurrencyQuery);
+                      if (resolved) {
+                        setCurrency(resolved);
+                        if (resolved !== trip.homeCurrency) {
+                          setLastLocalCurrency(resolved);
+                        }
+                        if (!DEFAULT_RATES[resolved]) {
+                          onAddCustomCurrency(resolved);
+                        }
+                      }
+                      setShowOtherCurrencyInput(false);
+                      setOtherCurrencyQuery("");
+                    }}
+                    autoFocus
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "20px",
+                      border: "1.5px solid var(--color-purple)",
+                      outline: "none",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      width: "110px",
+                      color: "#374151"
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherCurrencyInput(true)}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "20px",
+                      border: "1px dashed var(--color-purple)",
+                      backgroundColor: "transparent",
+                      color: "var(--color-purple)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s"
+                    }}
+                  >
+                    + Other
+                  </button>
+                )}
               </div>
             </div>
             {spreadExpense && (() => {
@@ -5433,10 +5830,18 @@ function ManualEntryModal({
                 marginTop: "4px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
               }}>
-                <img src={photoUrl} alt="Receipt" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img 
+                  src={photoUrl} 
+                  alt="Receipt" 
+                  onClick={() => setShowModalLightbox(true)}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                />
                 <button
                   type="button"
-                  onClick={() => setPhotoUrl("")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotoUrl("");
+                  }}
                   style={{
                     position: "absolute",
                     top: "4px",
@@ -5454,6 +5859,59 @@ function ManualEntryModal({
                     justifyContent: "center"
                   }}
                 >✕</button>
+              </div>
+            )}
+
+            {showModalLightbox && (
+              <div 
+                onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(0,0,0,0.85)",
+                  zIndex: 9999,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backdropFilter: "blur(5px)",
+                  padding: "20px"
+                }}
+              >
+                <img 
+                  src={photoUrl} 
+                  alt="Full receipt" 
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "80vh",
+                    objectFit: "contain",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+                  }} 
+                />
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
+                  style={{
+                    position: "absolute",
+                    top: "20px",
+                    right: "20px",
+                    background: "rgba(255,255,255,0.2)",
+                    border: "none",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "40px",
+                    height: "40px",
+                    fontSize: "20px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>
