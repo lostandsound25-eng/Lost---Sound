@@ -47,97 +47,9 @@ const RedoIcon = ({ size = 14 }) => (
   </svg>
 );
 
-const COUNTRY_CURRENCY_MAP = {
-  "japan": "JPY", "japanese": "JPY",
-  "vietnam": "VND", "vietnamese": "VND",
-  "united states": "USD", "usa": "USD", "america": "USD", "american": "USD", "us": "USD",
-  "thailand": "THB", "thai": "THB",
-  "europe": "EUR", "euro": "EUR", "european": "EUR", "germany": "EUR", "france": "EUR", "italy": "EUR", "spain": "EUR", "netherlands": "EUR", "greece": "EUR", "portugal": "EUR", "austria": "EUR", "belgium": "EUR", "ireland": "EUR", "finland": "EUR",
-  "philippines": "PHP", "philippine": "PHP", "filipino": "PHP", "manila": "PHP", "siargao": "PHP",
-  "indonesia": "IDR", "indonesian": "IDR", "bali": "IDR", "jakarta": "IDR",
-  "canada": "CAD", "canadian": "CAD",
-  "mexico": "MXN", "mexican": "MXN", "peso": "MXN",
-  "australia": "AUD", "australian": "AUD",
-  "united kingdom": "GBP", "uk": "GBP", "great britain": "GBP", "england": "GBP", "london": "GBP", "british": "GBP", "pound": "GBP",
-  "singapore": "SGD", "singaporean": "SGD",
-  "malaysia": "MYR", "malaysian": "MYR",
-  "new zealand": "NZD", "kiwi": "NZD",
-  "switzerland": "CHF", "swiss": "CHF", "franc": "CHF",
-  "china": "CNY", "chinese": "CNY", "yuan": "CNY", "renminbi": "CNY",
-  "hong kong": "HKD",
-  "taiwan": "TWD", "taiwanese": "TWD",
-  "south korea": "KRW", "korea": "KRW", "korean": "KRW", "won": "KRW",
-  "india": "INR", "indian": "INR", "rupee": "INR",
-  "brazil": "BRL", "brazilian": "BRL", "real": "BRL",
-  "south africa": "ZAR", "south african": "ZAR", "rand": "ZAR",
-  "norway": "NOK", "norwegian": "NOK", "krone": "NOK",
-  "sweden": "SEK", "swedish": "SEK", "krona": "SEK",
-  "denmark": "DKK", "danish": "DKK",
-  "turkey": "TRY", "turkish": "TRY", "lira": "TRY",
-  "russia": "RUB", "russian": "RUB", "ruble": "RUB",
-  "united arab emirates": "AED", "uae": "AED", "dubai": "AED", "dirham": "AED",
-  "saudi arabia": "SAR", "saudi": "SAR", "riyal": "SAR",
-  "argentina": "ARS", "argentine": "ARS", "argentinian": "ARS",
-  "chile": "CLP", "chilean": "CLP",
-  "colombia": "COP", "colombian": "COP",
-  "peru": "PEN", "peruvian": "PEN", "sol": "PEN",
-  "costa rica": "CRC", "costan rican": "CRC", "colon": "CRC",
-  "croatia": "HRK", "croatian": "HRK", "kuna": "HRK",
-  "czech republic": "CZK", "czech": "CZK", "czechia": "CZK", "koruna": "CZK",
-  "egypt": "EGP", "egyptian": "EGP",
-  "hungary": "HUF", "hungarian": "HUF", "forint": "HUF",
-  "israel": "ILS", "israeli": "ILS", "shekel": "ILS",
-  "morocco": "MAD", "moroccan": "MAD",
-  "poland": "PLN", "polish": "PLN", "zloty": "PLN",
-  "romania": "RON", "romanian": "RON", "leu": "RON",
-  "sri lanka": "LKR", "sri lankan": "LKR",
-  "ukraine": "UAH", "ukrainian": "UAH", "hryvnia": "UAH",
-  "uruguay": "UYU", "uruguayan": "UYU"
-};
 
-const resolveCurrency = (text) => {
-  if (!text) return null;
-  const q = text.trim().toLowerCase();
-  if (q.length === 3) {
-    return q.toUpperCase();
-  }
-  if (COUNTRY_CURRENCY_MAP[q]) {
-    return COUNTRY_CURRENCY_MAP[q];
-  }
-  const matchKey = Object.keys(COUNTRY_CURRENCY_MAP).find(k => k.includes(q) || q.includes(k));
-  if (matchKey) {
-    return COUNTRY_CURRENCY_MAP[matchKey];
-  }
-  return null;
-};
 
-const getHashtagSuggestions = (text, allTags = []) => {
-  if (!text) return [];
-  const words = text.trim().split(/\s+/);
-  const lastWord = words[words.length - 1];
-  if (!lastWord || lastWord.length < 2) return [];
 
-  if (lastWord.startsWith("#")) return [];
-
-  const cleanWord = lastWord.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-  if (!cleanWord) return [];
-
-  const suggestions = [];
-  
-  // 1. Check if it matches any historical tag
-  const matchingHist = allTags.find(t => t.toLowerCase() === cleanWord || t.toLowerCase().startsWith(cleanWord));
-  if (matchingHist) {
-    suggestions.push(`#${matchingHist}`);
-  }
-
-  // 2. Otherwise suggest the cleaned word itself
-  const selfTag = `#${cleanWord}`;
-  if (!suggestions.includes(selfTag)) {
-    suggestions.push(selfTag);
-  }
-
-  return suggestions.slice(0, 3);
-};
 
 // Constants
 const CATEGORIES = ["Accommodation", "Transportation", "Food & Drink", "Everything Else"];
@@ -552,6 +464,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setManualLocalCurrency(null);
   }, [expenses]);
 
+  const mostRecentlySpentLocal = (() => {
+    const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const recentLocal = sorted.find(e => e.currency !== trip?.homeCurrency);
+    return recentLocal ? recentLocal.currency : (trip?.localCurrency || "EUR");
+  })();
+  const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
+
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
       ...prev,
@@ -566,18 +485,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   // Rapid Expense state variables
   const [rapidTitle, setRapidTitle] = useState("");
   const [rapidAmount, setRapidAmount] = useState("");
-  const [rapidCurrency, setRapidCurrency] = useState(() => {
-    return trip.localCurrency || "USD";
-  });
+  const [rapidCurrency, setRapidCurrency] = useState(activeLocal);
   const [rapidCategory, setRapidCategory] = useState("Everything Else");
   const [rapidWorthIt, setRapidWorthIt] = useState(false);
   const [isAddingRapid, setIsAddingRapid] = useState(false);
 
   useEffect(() => {
-    if (trip && trip.localCurrency) {
-      setRapidCurrency(trip.localCurrency);
-    }
-  }, [trip?.localCurrency]);
+    setRapidCurrency(activeLocal);
+  }, [activeLocal]);
 
   useEffect(() => {
     if (activeModal === "manual") {
@@ -595,12 +510,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [isEditingLocale, setIsEditingLocale] = useState(false);
   const [localeSearchQuery, setLocaleSearchQuery] = useState("");
   const [localeResults, setLocaleResults] = useState([]);
-
-  // Editable trip currencies state
-  const [isEditingHomeCurrency, setIsEditingHomeCurrency] = useState(false);
-  const [homeCurrencyInput, setHomeCurrencyInput] = useState("");
-  const [isEditingLocalCurrency, setIsEditingLocalCurrency] = useState(false);
-  const [localCurrencyInput, setLocalCurrencyInput] = useState("");
 
   // Offline background queue state
   const [syncQueue, setSyncQueue] = useState([]);
@@ -1416,32 +1325,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       localStorage.setItem("tracker_custom_currencies", JSON.stringify(merged));
       return merged;
     });
-  };
-
-  const handleSaveHomeCurrency = () => {
-    const resolved = resolveCurrency(homeCurrencyInput);
-    if (resolved) {
-      updateHomeCurrency(resolved);
-      if (!DEFAULT_RATES[resolved]) {
-        addCustomCurrency(resolved);
-      }
-    }
-    setIsEditingHomeCurrency(false);
-  };
-
-  const handleSaveLocalCurrency = () => {
-    const resolved = resolveCurrency(localCurrencyInput);
-    if (resolved) {
-      updateLocalCurrency(resolved);
-      setManualLocalCurrency(resolved);
-      localStorage.setItem("tracker_last_used_currency", resolved);
-      if (!DEFAULT_RATES[resolved]) {
-        addCustomCurrency(resolved);
-      }
-    }
-    setIsEditingLocalCurrency(false);
-  };
-
   const allHistoricalTags = (() => {
     const tagCounts = {};
     expenses.forEach(e => {
@@ -1906,12 +1789,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         parsedTags.push(match[1].toLowerCase());
       }
       
-      const cleanNote = rapidTitle.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
       await saveExpense({
         amount: val,
         currency: rapidCurrency,
         category: rapidCategory,
-        note: cleanNote || rapidCategory,
+        note: rapidTitle.trim(),
         worthIt: rapidWorthIt,
         location: "",
         tags: parsedTags,
@@ -1995,7 +1877,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <button
                 type="button"
                 onClick={() => {
-                  setRapidCurrency(prev => prev === trip.homeCurrency ? (trip.localCurrency || "USD") : trip.homeCurrency);
+                  setRapidCurrency(prev => prev === trip.homeCurrency ? activeLocal : trip.homeCurrency);
                 }}
                 style={{
                   background: "none",
@@ -2019,37 +1901,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </div>
           </div>
 
-          {(() => {
-            const rapidSuggestions = getHashtagSuggestions(rapidTitle, allHistoricalTags);
-            if (rapidSuggestions.length === 0) return null;
-            return (
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "-2px", marginBottom: "4px" }}>
-                {rapidSuggestions.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      const trimmed = rapidTitle.trim();
-                      setRapidTitle(trimmed ? `${trimmed} ${s}` : s);
-                    }}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: "12px",
-                      border: "none",
-                      backgroundColor: "rgba(133, 58, 81, 0.08)",
-                      color: "var(--color-purple)",
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.1s"
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+
 
           {/* Category & Save Button Row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
@@ -2836,108 +2688,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </div>
 
               {/* Inline Currency Switchers */}
-              {(() => {
-                const activeLocal = trip.localCurrency || "SGD";
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                      <span style={{ fontWeight: 600 }}>Home:</span>
-                      {isEditingHomeCurrency ? (
-                        <input
-                          type="text"
-                          value={homeCurrencyInput}
-                          onChange={(e) => setHomeCurrencyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveHomeCurrency();
-                            } else if (e.key === "Escape") {
-                              setIsEditingHomeCurrency(false);
-                            }
-                          }}
-                          onBlur={handleSaveHomeCurrency}
-                          autoFocus
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "6px",
-                            border: "1.5px solid var(--color-purple)",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            outline: "none",
-                            color: "#374151",
-                            width: "55px",
-                            textAlign: "center"
-                          }}
-                        />
-                      ) : (
-                        <span
-                          onClick={() => {
-                            setHomeCurrencyInput(trip.homeCurrency);
-                            setIsEditingHomeCurrency(true);
-                          }}
-                          style={{
-                            fontSize: "0.82rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px"
-                          }}
-                          title="Tap to change home currency"
-                        >
-                          {trip.homeCurrency}
-                        </span>
-                      )}
-                    </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                  <span style={{ fontWeight: 600 }}>Home:</span>
+                  <SearchableCurrencySelect
+                    value={trip.homeCurrency}
+                    onChange={(val) => {
+                      updateHomeCurrency(val);
+                    }}
+                    rates={rates}
+                    customCurrencies={customCurrencies}
+                    onAddCustomCurrency={addCustomCurrency}
+                    style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                  />
+                </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                      <span style={{ fontWeight: 600 }}>Local:</span>
-                      {isEditingLocalCurrency ? (
-                        <input
-                          type="text"
-                          value={localCurrencyInput}
-                          onChange={(e) => setLocalCurrencyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveLocalCurrency();
-                            } else if (e.key === "Escape") {
-                              setIsEditingLocalCurrency(false);
-                            }
-                          }}
-                          onBlur={handleSaveLocalCurrency}
-                          autoFocus
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "6px",
-                            border: "1.5px solid var(--color-purple)",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            outline: "none",
-                            color: "#374151",
-                            width: "55px",
-                            textAlign: "center"
-                          }}
-                        />
-                      ) : (
-                        <span
-                          onClick={() => {
-                            setLocalCurrencyInput(activeLocal);
-                            setIsEditingLocalCurrency(true);
-                          }}
-                          style={{
-                            fontSize: "0.82rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px"
-                          }}
-                          title="Tap to change local currency"
-                        >
-                          {activeLocal}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+                <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                  <span style={{ fontWeight: 600 }}>Local:</span>
+                  <SearchableCurrencySelect
+                    value={activeLocal}
+                    onChange={(val) => {
+                      updateLocalCurrency(val);
+                      setManualLocalCurrency(val);
+                      localStorage.setItem("tracker_last_used_currency", val);
+                    }}
+                    rates={rates}
+                    customCurrencies={customCurrencies}
+                    onAddCustomCurrency={addCustomCurrency}
+                    style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                    align="right"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -4025,6 +3807,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onVoiceStart={startVoiceListening}
           expenses={expenses}
           onRefreshRates={() => fetchLatestRates(true)}
+          activeLocalCurrency={activeLocal}
         />
       )}
 
@@ -4715,7 +4498,8 @@ function ManualEntryModal({
   onAddCustomCurrency,
   onVoiceStart,
   expenses = [],
-  onRefreshRates
+  onRefreshRates,
+  activeLocalCurrency
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;
@@ -4845,8 +4629,10 @@ function ManualEntryModal({
     return draft ? !!draft.worthIt : false;
   });
   const [currency, setCurrency] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.currency || trip.localCurrency;
-    return trip.localCurrency || "USD";
+    if (expenseToEdit) return expenseToEdit.currency || activeLocalCurrency || trip.localCurrency;
+    const draft = getDraft();
+    if (draft && draft.currency) return draft.currency;
+    return activeLocalCurrency || trip.localCurrency || "USD";
   });
   const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) {
@@ -5075,7 +4861,7 @@ function ManualEntryModal({
     if (expenseToEdit && expenseToEdit.currency !== trip.homeCurrency) {
       return expenseToEdit.currency;
     }
-    return trip.localCurrency || "USD";
+    return activeLocalCurrency || trip.localCurrency || "USD";
   });
 
   // Sync editEntireGroup changes
@@ -5371,12 +5157,11 @@ function ManualEntryModal({
             
             const finalTags = [...parsedTags, ...originalSpreadTags];
 
-            const cleanFullNote = fullNoteText.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
             onSave({
               amount: val,
               currency,
               category,
-              note: cleanFullNote || category,
+              note: fullNoteText || category,
               worthIt,
               location: establishment, // Pass parsed location
               photoUrl: photoUrl,
@@ -5475,37 +5260,7 @@ function ManualEntryModal({
                 </button>
               )}
             </div>
-            {(() => {
-              const suggestions = getHashtagSuggestions(title, tripHashtags.all);
-              if (suggestions.length === 0) return null;
-              return (
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-                  {suggestions.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => {
-                        const trimmed = title.trim();
-                        setTitle(trimmed ? `${trimmed} ${s}` : s);
-                      }}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "12px",
-                        border: "none",
-                        backgroundColor: "rgba(133, 58, 81, 0.08)",
-                        color: "var(--color-purple)",
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
+
           </div>
 
           {/* Amount input block below Title */}
@@ -5523,22 +5278,92 @@ function ManualEntryModal({
               justifyContent: "space-between",
               backgroundColor: "#F9F6ED",
               borderRadius: "16px",
-              padding: "12px 16px",
+              padding: "8px 14px",
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               marginBottom: "4px"
             }}>
-              <span style={{
-                fontSize: "1.15rem",
-                fontWeight: 800,
-                color: "#1F2937",
-                width: "42px",
-                textAlign: "center",
-                display: "inline-block",
-                flexShrink: 0
-              }}>
-                {CURRENCY_SYMBOLS[currency] || currency}
-              </span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flex: 1 }}>
+              {/* Left Side: Conversion and sideline currency selector */}
+              {(() => {
+                const sidelineCurrency = currency === trip.homeCurrency ? lastLocalCurrency : trip.homeCurrency;
+                const isSidelineChangeable = sidelineCurrency !== trip.homeCurrency;
+                const cleanAmt = evaluateMathExpression(amount);
+                const val = parseFloat(cleanAmt) || 0;
+                const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
+                const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                    <span style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 600 }}>
+                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
+                    </span>
+                    {isSidelineChangeable ? (
+                      <SearchableCurrencySelect
+                        value={lastLocalCurrency}
+                        onChange={(val) => {
+                          setLastLocalCurrency(val);
+                          localStorage.setItem("tracker_last_used_currency", val);
+                        }}
+                        rates={rates}
+                        customCurrencies={customCurrencies}
+                        onAddCustomCurrency={onAddCustomCurrency}
+                        style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "0.8rem", fontWeight: 750, color: "var(--color-purple)", padding: "2px 6px" }}>
+                        {trip.homeCurrency}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Middle Side: Swap Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (currency === trip.homeCurrency) {
+                    setCurrency(lastLocalCurrency);
+                  } else {
+                    setLastLocalCurrency(currency);
+                    setCurrency(trip.homeCurrency);
+                  }
+                }}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  border: "1px solid rgba(133, 58, 81, 0.2)",
+                  backgroundColor: "white",
+                  color: "var(--color-purple)",
+                  fontSize: "1rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 6px rgba(133, 58, 81, 0.08)",
+                  outline: "none",
+                  transition: "transform 0.15s ease",
+                  margin: "0 8px"
+                }}
+                onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+                onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                ⇄
+              </button>
+
+              {/* Right Side: Active Symbol and Input Box */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "2 1 auto", justifyContent: "flex-end", minWidth: 0 }}>
+                <span style={{
+                  fontSize: "1.15rem",
+                  fontWeight: 800,
+                  color: "#1F2937",
+                  width: "42px",
+                  textAlign: "center",
+                  display: "inline-block",
+                  flexShrink: 0
+                }}>
+                  {CURRENCY_SYMBOLS[currency] || currency}
+                </span>
                 <input
                   type="text"
                   value={amount}
@@ -5560,167 +5385,13 @@ function ManualEntryModal({
                     fontWeight: 800,
                     outline: "none",
                     width: "100%",
+                    maxWidth: "150px",
                     color: "#111827",
                     textAlign: "right",
                     padding: "4px 0",
                     paddingRight: "8px"
                   }}
                 />
-                {/* Conversion Estimate sub-label directly inside Amount box */}
-                {(() => {
-                  const sidelineCurrency = currency === trip.homeCurrency ? (lastLocalCurrency || trip.localCurrency || "USD") : trip.homeCurrency;
-                  const cleanAmt = evaluateMathExpression(amount);
-                  const val = parseFloat(cleanAmt) || 0;
-                  const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
-                  const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
-                  if (val === 0) return null;
-                  return (
-                    <span style={{ fontSize: "0.78rem", color: "#6B7280", fontWeight: 700, paddingRight: "8px", marginTop: "-2px" }}>
-                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "6px",
-              marginBottom: "12px",
-              flexWrap: "wrap",
-              gap: "8px"
-            }}>
-              {/* Currency pills */}
-              <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => setCurrency(trip.homeCurrency)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    border: "none",
-                    backgroundColor: currency === trip.homeCurrency ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                    color: currency === trip.homeCurrency ? "white" : "var(--color-purple)",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.15s"
-                  }}
-                >
-                  {trip.homeCurrency} (Home)
-                </button>
-                
-                {trip.localCurrency && trip.localCurrency !== trip.homeCurrency && (
-                  <button
-                    type="button"
-                    onClick={() => setCurrency(trip.localCurrency)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "20px",
-                      border: "none",
-                      backgroundColor: currency === trip.localCurrency ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                      color: currency === trip.localCurrency ? "white" : "var(--color-purple)",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.15s"
-                    }}
-                  >
-                    {trip.localCurrency} (Local)
-                  </button>
-                )}
-
-                {/* If a third currency is active */}
-                {currency !== trip.homeCurrency && currency !== trip.localCurrency && (
-                  <button
-                    type="button"
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "20px",
-                      border: "none",
-                      backgroundColor: "var(--color-purple)",
-                      color: "white",
-                      fontSize: "0.78rem",
-                      fontWeight: 700
-                    }}
-                  >
-                    {currency}
-                  </button>
-                )}
-
-                {/* Custom Other Button or Input Overlay */}
-                {showOtherCurrencyInput ? (
-                  <input
-                    type="text"
-                    placeholder="Country/Code..."
-                    value={otherCurrencyQuery}
-                    onChange={(e) => setOtherCurrencyQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const resolved = resolveCurrency(otherCurrencyQuery);
-                        if (resolved) {
-                          setCurrency(resolved);
-                          if (resolved !== trip.homeCurrency) {
-                            setLastLocalCurrency(resolved);
-                          }
-                          if (!DEFAULT_RATES[resolved]) {
-                            onAddCustomCurrency(resolved);
-                          }
-                        }
-                        setShowOtherCurrencyInput(false);
-                        setOtherCurrencyQuery("");
-                      } else if (e.key === "Escape") {
-                        setShowOtherCurrencyInput(false);
-                        setOtherCurrencyQuery("");
-                      }
-                    }}
-                    onBlur={() => {
-                      const resolved = resolveCurrency(otherCurrencyQuery);
-                      if (resolved) {
-                        setCurrency(resolved);
-                        if (resolved !== trip.homeCurrency) {
-                          setLastLocalCurrency(resolved);
-                        }
-                        if (!DEFAULT_RATES[resolved]) {
-                          onAddCustomCurrency(resolved);
-                        }
-                      }
-                      setShowOtherCurrencyInput(false);
-                      setOtherCurrencyQuery("");
-                    }}
-                    autoFocus
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "20px",
-                      border: "1.5px solid var(--color-purple)",
-                      outline: "none",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      width: "110px",
-                      color: "#374151"
-                    }}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowOtherCurrencyInput(true)}
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: "20px",
-                      border: "1px dashed var(--color-purple)",
-                      backgroundColor: "transparent",
-                      color: "var(--color-purple)",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.15s"
-                    }}
-                  >
-                    + Other
-                  </button>
-                )}
               </div>
             </div>
             {spreadExpense && (() => {
