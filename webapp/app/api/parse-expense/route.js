@@ -31,9 +31,9 @@ Strict JSON Schema Output (Return ONLY a raw JSON block, do not include markdown
   "amount": number (the expense amount in the logged currency, e.g. 300.00. Extract from text.),
   "currency": string (3-letter currency code, e.g. "PHP", "USD", "EUR", "THB", "VND", "IDR", "CAD", "MXN", "AUD". Default to local currency "${localCurrency}" unless another currency is explicitly mentioned, e.g., "dollars", "USD", "euros", "baht", etc.),
   "category": string (one of the available categories listed above. Be smart: "coffee"/"latte"/"lunch"/"dinner"/"food"/"restaurant"/"drink" is Food & Drink. "hotel"/"airbnb"/"stay" is Accommodation. "taxi"/"bus"/"grab"/"scooter"/"flight" is Transportation. Otherwise Everything Else.),
-  "note": string (a short clean description of what it was, e.g. "Caramel macchiato at Siargao Coffee Company" or "Taxi ride", with the amount/currency clean-removed),
-  "location": string (the city, town, or specific place/establishment where it occurred, e.g. "Siargao coffee company" or "Bangkok", extracted from the text if possible. Defaults to "${currentLocation}" if no specific location/establishment is mentioned),
-  "tags": string[] (array of 1-3 lowercase keywords that represent details for down-the-road insights, e.g. ["coffee", "cafe", "sweets"] or ["grab", "ride", "commute"]),
+  "note": string (a short clean description of what it was, e.g. "Caramel macchiato" or "Taxi ride", with the amount, currency, location/establishment, and hashtag words completely clean-removed. Do not merge the location or establishment name into this note.),
+  "location": string (the city, town, or specific place/establishment where it occurred, e.g. "Siargao Coffee Company" or "Bangkok", extracted from the text if possible. Defaults to "${currentLocation}" if no specific location/establishment is mentioned. Keep it strictly separate from the note field.),
+  "tags": string[] (array of lowercase keywords extracted from the input text ONLY if they are explicitly prefixed with a '#' in the input string, e.g., if the user wrote "#coffee", extract "coffee". Do not extract any tags if there are no explicit '#' words in the input text),
   "worthIt": boolean (set to true if the text implies it was worth it, a highlight, highly recommended, or high quality, e.g. contains "worth it", "delicious", "amazing", "great", "love it", etc. Otherwise false)
 }`;
 
@@ -156,13 +156,12 @@ function localParse(text, localCurrency, currentLocation) {
     extractedLocation = locationMatch[1].trim();
   }
 
-  // Extract tags (simple keyword match)
-  const tagKeywords = ['coffee', 'beer', 'drinks', 'tuktuk', 'taxi', 'rent', 'massage', 'scooter', 'surf', 'tour', 'sim'];
+  // Extract tags (strictly requiring '#' prefix)
   const tags = [];
-  for (const tag of tagKeywords) {
-    if (textLower.includes(tag)) {
-      tags.push(tag);
-    }
+  const tagRegex = /#([a-zA-Z0-9_-]+)/g;
+  let match;
+  while ((match = tagRegex.exec(text)) !== null) {
+    tags.push(match[1].toLowerCase());
   }
 
   // Build note by removing amount and worth it keywords
@@ -170,6 +169,13 @@ function localParse(text, localCurrency, currentLocation) {
   if (amountMatch) {
     note = note.replace(amountMatch[0], '');
   }
+  // Remove location text from note if matched
+  if (locationMatch && locationMatch[0]) {
+    note = note.replace(locationMatch[0], '');
+  }
+  // Remove hashtags from note
+  note = note.replace(/#[a-zA-Z0-9_-]+/g, '');
+
   // Clean up currency terms and "worth it"
   const cleanTerms = [
     'worth it', 'worthit', 'usd', 'dollars', 'dollar', 'euros', 'euro', 'eur', 'baht', 'thb', 

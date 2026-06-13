@@ -47,9 +47,97 @@ const RedoIcon = ({ size = 14 }) => (
   </svg>
 );
 
+const COUNTRY_CURRENCY_MAP = {
+  "japan": "JPY", "japanese": "JPY",
+  "vietnam": "VND", "vietnamese": "VND",
+  "united states": "USD", "usa": "USD", "america": "USD", "american": "USD", "us": "USD",
+  "thailand": "THB", "thai": "THB",
+  "europe": "EUR", "euro": "EUR", "european": "EUR", "germany": "EUR", "france": "EUR", "italy": "EUR", "spain": "EUR", "netherlands": "EUR", "greece": "EUR", "portugal": "EUR", "austria": "EUR", "belgium": "EUR", "ireland": "EUR", "finland": "EUR",
+  "philippines": "PHP", "philippine": "PHP", "filipino": "PHP", "manila": "PHP", "siargao": "PHP",
+  "indonesia": "IDR", "indonesian": "IDR", "bali": "IDR", "jakarta": "IDR",
+  "canada": "CAD", "canadian": "CAD",
+  "mexico": "MXN", "mexican": "MXN", "peso": "MXN",
+  "australia": "AUD", "australian": "AUD",
+  "united kingdom": "GBP", "uk": "GBP", "great britain": "GBP", "england": "GBP", "london": "GBP", "british": "GBP", "pound": "GBP",
+  "singapore": "SGD", "singaporean": "SGD",
+  "malaysia": "MYR", "malaysian": "MYR",
+  "new zealand": "NZD", "kiwi": "NZD",
+  "switzerland": "CHF", "swiss": "CHF", "franc": "CHF",
+  "china": "CNY", "chinese": "CNY", "yuan": "CNY", "renminbi": "CNY",
+  "hong kong": "HKD",
+  "taiwan": "TWD", "taiwanese": "TWD",
+  "south korea": "KRW", "korea": "KRW", "korean": "KRW", "won": "KRW",
+  "india": "INR", "indian": "INR", "rupee": "INR",
+  "brazil": "BRL", "brazilian": "BRL", "real": "BRL",
+  "south africa": "ZAR", "south african": "ZAR", "rand": "ZAR",
+  "norway": "NOK", "norwegian": "NOK", "krone": "NOK",
+  "sweden": "SEK", "swedish": "SEK", "krona": "SEK",
+  "denmark": "DKK", "danish": "DKK",
+  "turkey": "TRY", "turkish": "TRY", "lira": "TRY",
+  "russia": "RUB", "russian": "RUB", "ruble": "RUB",
+  "united arab emirates": "AED", "uae": "AED", "dubai": "AED", "dirham": "AED",
+  "saudi arabia": "SAR", "saudi": "SAR", "riyal": "SAR",
+  "argentina": "ARS", "argentine": "ARS", "argentinian": "ARS",
+  "chile": "CLP", "chilean": "CLP",
+  "colombia": "COP", "colombian": "COP",
+  "peru": "PEN", "peruvian": "PEN", "sol": "PEN",
+  "costa rica": "CRC", "costan rican": "CRC", "colon": "CRC",
+  "croatia": "HRK", "croatian": "HRK", "kuna": "HRK",
+  "czech republic": "CZK", "czech": "CZK", "czechia": "CZK", "koruna": "CZK",
+  "egypt": "EGP", "egyptian": "EGP",
+  "hungary": "HUF", "hungarian": "HUF", "forint": "HUF",
+  "israel": "ILS", "israeli": "ILS", "shekel": "ILS",
+  "morocco": "MAD", "moroccan": "MAD",
+  "poland": "PLN", "polish": "PLN", "zloty": "PLN",
+  "romania": "RON", "romanian": "RON", "leu": "RON",
+  "sri lanka": "LKR", "sri lankan": "LKR",
+  "ukraine": "UAH", "ukrainian": "UAH", "hryvnia": "UAH",
+  "uruguay": "UYU", "uruguayan": "UYU"
+};
 
+const resolveCurrency = (text) => {
+  if (!text) return null;
+  const q = text.trim().toLowerCase();
+  if (q.length === 3) {
+    return q.toUpperCase();
+  }
+  if (COUNTRY_CURRENCY_MAP[q]) {
+    return COUNTRY_CURRENCY_MAP[q];
+  }
+  const matchKey = Object.keys(COUNTRY_CURRENCY_MAP).find(k => k.includes(q) || q.includes(k));
+  if (matchKey) {
+    return COUNTRY_CURRENCY_MAP[matchKey];
+  }
+  return null;
+};
 
+const getHashtagSuggestions = (text, allTags = []) => {
+  if (!text) return [];
+  const words = text.trim().split(/\s+/);
+  const lastWord = words[words.length - 1];
+  if (!lastWord || lastWord.length < 2) return [];
 
+  if (lastWord.startsWith("#")) return [];
+
+  const cleanWord = lastWord.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  if (!cleanWord) return [];
+
+  const suggestions = [];
+  
+  // 1. Check if it matches any historical tag
+  const matchingHist = allTags.find(t => t.toLowerCase() === cleanWord || t.toLowerCase().startsWith(cleanWord));
+  if (matchingHist) {
+    suggestions.push(`#${matchingHist}`);
+  }
+
+  // 2. Otherwise suggest the cleaned word itself
+  const selfTag = `#${cleanWord}`;
+  if (!suggestions.includes(selfTag)) {
+    suggestions.push(selfTag);
+  }
+
+  return suggestions.slice(0, 3);
+};
 
 // Constants
 const CATEGORIES = ["Accommodation", "Transportation", "Food & Drink", "Everything Else"];
@@ -464,13 +552,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setManualLocalCurrency(null);
   }, [expenses]);
 
-  const mostRecentlySpentLocal = (() => {
-    const sorted = [...expenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const recentLocal = sorted.find(e => e.currency !== trip?.homeCurrency);
-    return recentLocal ? recentLocal.currency : (trip?.localCurrency || "EUR");
-  })();
-  const activeLocal = manualLocalCurrency || mostRecentlySpentLocal;
-
   const toggleOlderCategory = (dateKey, cat) => {
     setExpandedOlderCategory((prev) => ({
       ...prev,
@@ -485,14 +566,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   // Rapid Expense state variables
   const [rapidTitle, setRapidTitle] = useState("");
   const [rapidAmount, setRapidAmount] = useState("");
-  const [rapidCurrency, setRapidCurrency] = useState(activeLocal);
+  const [rapidCurrency, setRapidCurrency] = useState(() => {
+    return trip.localCurrency || "USD";
+  });
   const [rapidCategory, setRapidCategory] = useState("Everything Else");
   const [rapidWorthIt, setRapidWorthIt] = useState(false);
   const [isAddingRapid, setIsAddingRapid] = useState(false);
 
   useEffect(() => {
-    setRapidCurrency(activeLocal);
-  }, [activeLocal]);
+    if (trip && trip.localCurrency) {
+      setRapidCurrency(trip.localCurrency);
+    }
+  }, [trip?.localCurrency]);
 
   useEffect(() => {
     if (activeModal === "manual") {
@@ -510,6 +595,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [isEditingLocale, setIsEditingLocale] = useState(false);
   const [localeSearchQuery, setLocaleSearchQuery] = useState("");
   const [localeResults, setLocaleResults] = useState([]);
+
+  // Editable trip currencies state
+  const [isEditingHomeCurrency, setIsEditingHomeCurrency] = useState(false);
+  const [homeCurrencyInput, setHomeCurrencyInput] = useState("");
+  const [isEditingLocalCurrency, setIsEditingLocalCurrency] = useState(false);
+  const [localCurrencyInput, setLocalCurrencyInput] = useState("");
 
   // Offline background queue state
   const [syncQueue, setSyncQueue] = useState([]);
@@ -1325,6 +1416,32 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       localStorage.setItem("tracker_custom_currencies", JSON.stringify(merged));
       return merged;
     });
+  };
+
+  const handleSaveHomeCurrency = () => {
+    const resolved = resolveCurrency(homeCurrencyInput);
+    if (resolved) {
+      updateHomeCurrency(resolved);
+      if (!DEFAULT_RATES[resolved]) {
+        addCustomCurrency(resolved);
+      }
+    }
+    setIsEditingHomeCurrency(false);
+  };
+
+  const handleSaveLocalCurrency = () => {
+    const resolved = resolveCurrency(localCurrencyInput);
+    if (resolved) {
+      updateLocalCurrency(resolved);
+      setManualLocalCurrency(resolved);
+      localStorage.setItem("tracker_last_used_currency", resolved);
+      if (!DEFAULT_RATES[resolved]) {
+        addCustomCurrency(resolved);
+      }
+    }
+    setIsEditingLocalCurrency(false);
+  };
+
   const allHistoricalTags = (() => {
     const tagCounts = {};
     expenses.forEach(e => {
@@ -1789,11 +1906,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         parsedTags.push(match[1].toLowerCase());
       }
       
+      const cleanNote = rapidTitle.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
       await saveExpense({
         amount: val,
         currency: rapidCurrency,
         category: rapidCategory,
-        note: rapidTitle.trim(),
+        note: cleanNote || rapidCategory,
         worthIt: rapidWorthIt,
         location: "",
         tags: parsedTags,
@@ -1877,7 +1995,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <button
                 type="button"
                 onClick={() => {
-                  setRapidCurrency(prev => prev === trip.homeCurrency ? activeLocal : trip.homeCurrency);
+                  setRapidCurrency(prev => prev === trip.homeCurrency ? (trip.localCurrency || "USD") : trip.homeCurrency);
                 }}
                 style={{
                   background: "none",
@@ -1901,7 +2019,37 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </div>
           </div>
 
-
+          {(() => {
+            const rapidSuggestions = getHashtagSuggestions(rapidTitle, allHistoricalTags);
+            if (rapidSuggestions.length === 0) return null;
+            return (
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "-2px", marginBottom: "4px" }}>
+                {rapidSuggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      const trimmed = rapidTitle.trim();
+                      setRapidTitle(trimmed ? `${trimmed} ${s}` : s);
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "12px",
+                      border: "none",
+                      backgroundColor: "rgba(133, 58, 81, 0.08)",
+                      color: "var(--color-purple)",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.1s"
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Category & Save Button Row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
@@ -2688,38 +2836,108 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </div>
 
               {/* Inline Currency Switchers */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                  <span style={{ fontWeight: 600 }}>Home:</span>
-                  <SearchableCurrencySelect
-                    value={trip.homeCurrency}
-                    onChange={(val) => {
-                      updateHomeCurrency(val);
-                    }}
-                    rates={rates}
-                    customCurrencies={customCurrencies}
-                    onAddCustomCurrency={addCustomCurrency}
-                    style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                  />
-                </div>
+              {(() => {
+                const activeLocal = trip.localCurrency || "SGD";
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <span style={{ fontWeight: 600 }}>Home:</span>
+                      {isEditingHomeCurrency ? (
+                        <input
+                          type="text"
+                          value={homeCurrencyInput}
+                          onChange={(e) => setHomeCurrencyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveHomeCurrency();
+                            } else if (e.key === "Escape") {
+                              setIsEditingHomeCurrency(false);
+                            }
+                          }}
+                          onBlur={handleSaveHomeCurrency}
+                          autoFocus
+                          style={{
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            border: "1.5px solid var(--color-purple)",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            outline: "none",
+                            color: "#374151",
+                            width: "55px",
+                            textAlign: "center"
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setHomeCurrencyInput(trip.homeCurrency);
+                            setIsEditingHomeCurrency(true);
+                          }}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            borderBottom: "1px dashed var(--color-purple)",
+                            padding: "1px 2px"
+                          }}
+                          title="Tap to change home currency"
+                        >
+                          {trip.homeCurrency}
+                        </span>
+                      )}
+                    </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                  <span style={{ fontWeight: 600 }}>Local:</span>
-                  <SearchableCurrencySelect
-                    value={activeLocal}
-                    onChange={(val) => {
-                      updateLocalCurrency(val);
-                      setManualLocalCurrency(val);
-                      localStorage.setItem("tracker_last_used_currency", val);
-                    }}
-                    rates={rates}
-                    customCurrencies={customCurrencies}
-                    onAddCustomCurrency={addCustomCurrency}
-                    style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                    align="right"
-                  />
-                </div>
-              </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <span style={{ fontWeight: 600 }}>Local:</span>
+                      {isEditingLocalCurrency ? (
+                        <input
+                          type="text"
+                          value={localCurrencyInput}
+                          onChange={(e) => setLocalCurrencyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveLocalCurrency();
+                            } else if (e.key === "Escape") {
+                              setIsEditingLocalCurrency(false);
+                            }
+                          }}
+                          onBlur={handleSaveLocalCurrency}
+                          autoFocus
+                          style={{
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            border: "1.5px solid var(--color-purple)",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            outline: "none",
+                            color: "#374151",
+                            width: "55px",
+                            textAlign: "center"
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setLocalCurrencyInput(activeLocal);
+                            setIsEditingLocalCurrency(true);
+                          }}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            borderBottom: "1px dashed var(--color-purple)",
+                            padding: "1px 2px"
+                          }}
+                          title="Tap to change local currency"
+                        >
+                          {activeLocal}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -3807,7 +4025,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onVoiceStart={startVoiceListening}
           expenses={expenses}
           onRefreshRates={() => fetchLatestRates(true)}
-          activeLocalCurrency={activeLocal}
         />
       )}
 
@@ -4498,8 +4715,7 @@ function ManualEntryModal({
   onAddCustomCurrency,
   onVoiceStart,
   expenses = [],
-  onRefreshRates,
-  activeLocalCurrency
+  onRefreshRates
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;
@@ -4629,10 +4845,8 @@ function ManualEntryModal({
     return draft ? !!draft.worthIt : false;
   });
   const [currency, setCurrency] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.currency || activeLocalCurrency || trip.localCurrency;
-    const draft = getDraft();
-    if (draft && draft.currency) return draft.currency;
-    return activeLocalCurrency || trip.localCurrency || "USD";
+    if (expenseToEdit) return expenseToEdit.currency || trip.localCurrency;
+    return trip.localCurrency || "USD";
   });
   const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) {
@@ -4861,7 +5075,7 @@ function ManualEntryModal({
     if (expenseToEdit && expenseToEdit.currency !== trip.homeCurrency) {
       return expenseToEdit.currency;
     }
-    return activeLocalCurrency || trip.localCurrency || "USD";
+    return trip.localCurrency || "USD";
   });
 
   // Sync editEntireGroup changes
@@ -5070,7 +5284,7 @@ function ManualEntryModal({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const evaluatedAmount = evaluateMathExpression(amount);
+            const evaluatedAmount = evaluateMathExpression(amount.replace(/,/g, ''));
             const val = parseFloat(evaluatedAmount);
             if (!amount || isNaN(val) || val <= 0) {
               alert("Please enter a valid positive amount.");
@@ -5157,11 +5371,12 @@ function ManualEntryModal({
             
             const finalTags = [...parsedTags, ...originalSpreadTags];
 
+            const cleanFullNote = fullNoteText.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
             onSave({
               amount: val,
               currency,
               category,
-              note: fullNoteText || category,
+              note: cleanFullNote || category,
               worthIt,
               location: establishment, // Pass parsed location
               photoUrl: photoUrl,
@@ -5179,7 +5394,7 @@ function ManualEntryModal({
           style={{ display: "flex", flexDirection: "column", gap: "12px" }}
         >
           {/* Title (Notes Description) at the very top */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px", position: "relative" }}>
             <label style={{
               fontSize: "0.75rem",
               fontWeight: 700,
@@ -5196,9 +5411,24 @@ function ManualEntryModal({
               border: "1.5px solid rgba(133, 58, 81, 0.15)"
             }}>
               <input
+                ref={titleInputRef}
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTitle(val);
+                  
+                  const selStart = e.target.selectionStart;
+                  const textBeforeCursor = val.substring(0, selStart);
+                  const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                  if (hashtagMatch) {
+                    setShowHashtagsDropdown(true);
+                    setHashtagFilter(hashtagMatch[1]);
+                  } else {
+                    setShowHashtagsDropdown(false);
+                    setHashtagFilter("");
+                  }
+                }}
                 placeholder="Coffee before train"
                 required
                 style={{
@@ -5212,6 +5442,75 @@ function ManualEntryModal({
                   padding: "4px 0"
                 }}
               />
+
+              {/* Hashtag # button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHashtagsDropdown(true);
+                  setTitle(prev => {
+                    const trimmed = prev || "";
+                    if (trimmed.endsWith("#")) return prev;
+                    if (trimmed.length === 0) return "#";
+                    if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return prev + "#";
+                    return prev + " #";
+                  });
+                  setHashtagFilter("");
+                  setTimeout(() => {
+                    if (titleInputRef.current) {
+                      titleInputRef.current.focus();
+                      const len = titleInputRef.current.value.length;
+                      titleInputRef.current.setSelectionRange(len, len);
+                    }
+                  }, 50);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-purple)",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.05rem",
+                  fontWeight: "bold",
+                  marginRight: "4px",
+                  outline: "none"
+                }}
+                title="Attach tag"
+              >
+                #
+              </button>
+
+              {/* Pin button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLocSearchInput(true);
+                  setTimeout(() => {
+                    if (establishmentInputRef.current) {
+                      establishmentInputRef.current.focus();
+                    }
+                  }, 50);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-purple)",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.05rem",
+                  marginRight: "4px",
+                  outline: "none"
+                }}
+                title="Attach establishment"
+              >
+                📍
+              </button>
               
               {/* Photo attachment camera button */}
               <button
@@ -5227,7 +5526,8 @@ function ManualEntryModal({
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: "50%",
-                  marginRight: "4px"
+                  marginRight: "4px",
+                  outline: "none"
                 }}
               >
                 <CameraIcon />
@@ -5253,7 +5553,8 @@ function ManualEntryModal({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderRadius: "50%"
+                    borderRadius: "50%",
+                    outline: "none"
                   }}
                 >
                   <MicIcon />
@@ -5261,6 +5562,104 @@ function ManualEntryModal({
               )}
             </div>
 
+            {/* Hashtags Dropdown */}
+            {(() => {
+              const filteredHashtags = hashtagFilter
+                ? (tripHashtags.all || []).filter(tag => tag.toLowerCase().startsWith(hashtagFilter.toLowerCase()))
+                : (tripHashtags.top5 || []);
+              
+              if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
+
+              return (
+                <div style={{ position: "relative", width: "100%" }}>
+                  <div
+                    ref={hashtagsDropdownRef}
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+                      zIndex: 200,
+                      maxHeight: "150px",
+                      overflowY: "auto",
+                      padding: "6px",
+                      marginTop: "4px"
+                    }}
+                  >
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px" }}>
+                      {filteredHashtags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            if (titleInputRef.current) {
+                              const el = titleInputRef.current;
+                              const val = el.value;
+                              const selStart = el.selectionStart;
+                              
+                              const textBeforeCursor = val.substring(0, selStart);
+                              const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                              
+                              if (hashtagMatch) {
+                                const matchIndex = hashtagMatch.index;
+                                const beforeMatch = textBeforeCursor.substring(0, matchIndex);
+                                const afterCursor = val.substring(selStart);
+                                const newVal = beforeMatch + `#${tag}` + afterCursor;
+                                setTitle(newVal);
+                                
+                                setTimeout(() => {
+                                  el.focus();
+                                  const newCursorPos = beforeMatch.length + tag.length + 1;
+                                  el.setSelectionRange(newCursorPos, newCursorPos);
+                                }, 50);
+                              } else {
+                                if (!val.includes(`#${tag}`)) {
+                                  const trimmed = val.trim();
+                                  let newVal = trimmed;
+                                  if (trimmed.length === 0) newVal = `#${tag}`;
+                                  else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) newVal = trimmed + `#${tag}`;
+                                  else newVal = trimmed + ` #${tag}`;
+                                  setTitle(newVal);
+                                }
+                              }
+                            } else {
+                              setTitle(prev => {
+                                const trimmed = prev || "";
+                                if (trimmed.endsWith("#")) return trimmed.slice(0, -1) + `#${tag}`;
+                                if (!trimmed.includes(`#${tag}`)) {
+                                  if (trimmed.length === 0) return `#${tag}`;
+                                  if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return trimmed + `#${tag}`;
+                                  return trimmed + ` #${tag}`;
+                                }
+                                return prev;
+                              });
+                            }
+                            setShowHashtagsDropdown(false);
+                            setHashtagFilter("");
+                          }}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            backgroundColor: "#F3F4F6",
+                            border: "none",
+                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            color: "var(--color-purple)",
+                            cursor: "pointer"
+                          }}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Amount input block below Title */}
@@ -5282,102 +5681,95 @@ function ManualEntryModal({
               border: "1.5px solid rgba(133, 58, 81, 0.15)",
               marginBottom: "4px"
             }}>
-              {/* Left Side: Conversion and sideline currency selector */}
-              {(() => {
-                const sidelineCurrency = currency === trip.homeCurrency ? lastLocalCurrency : trip.homeCurrency;
-                const isSidelineChangeable = sidelineCurrency !== trip.homeCurrency;
-                const cleanAmt = evaluateMathExpression(amount);
-                const val = parseFloat(cleanAmt) || 0;
-                const convertedVal = convertCurrency(val, currency, sidelineCurrency, rates);
-                const sidelineSymbol = CURRENCY_SYMBOLS[sidelineCurrency] || sidelineCurrency;
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                    <span style={{ fontSize: "0.82rem", color: "#6B7280", fontWeight: 600 }}>
-                      ≈ {sidelineSymbol.length > 1 ? `${sidelineSymbol} ` : sidelineSymbol}{convertedVal.toFixed(2)}
-                    </span>
-                    {isSidelineChangeable ? (
-                      <SearchableCurrencySelect
-                        value={lastLocalCurrency}
-                        onChange={(val) => {
-                          setLastLocalCurrency(val);
-                          localStorage.setItem("tracker_last_used_currency", val);
-                        }}
-                        rates={rates}
-                        customCurrencies={customCurrencies}
-                        onAddCustomCurrency={onAddCustomCurrency}
-                        style={{ fontSize: "0.8rem", fontWeight: 700 }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "0.8rem", fontWeight: 750, color: "var(--color-purple)", padding: "2px 6px" }}>
-                        {trip.homeCurrency}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
+              {/* Left Side: Currency Selector & Reset Button */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                {currency !== trip.homeCurrency && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrency(trip.homeCurrency);
+                      localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#6B7280",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      padding: "2px",
+                      outline: "none",
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                    title={`Reset to home currency (${trip.homeCurrency})`}
+                  >
+                    🏠
+                  </button>
+                )}
+                <SearchableCurrencySelect
+                  value={currency}
+                  onChange={(val) => {
+                    setCurrency(val);
+                    localStorage.setItem("tracker_last_used_currency", val);
+                  }}
+                  rates={rates}
+                  customCurrencies={customCurrencies}
+                  onAddCustomCurrency={onAddCustomCurrency}
+                  style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                  recentCurrencies={(() => {
+                    const unique = Array.from(new Set(expenses.map(e => e.currency)));
+                    return unique.slice(0, 5);
+                  })()}
+                  customTrigger={({ onClick, value }) => (
+                    <button
+                      type="button"
+                      onClick={onClick}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--color-purple)",
+                        fontSize: "0.95rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        padding: "4px 2px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "1px",
+                        outline: "none"
+                      }}
+                    >
+                      {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
+                    </button>
+                  )}
+                />
+              </div>
 
-              {/* Middle Side: Swap Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (currency === trip.homeCurrency) {
-                    setCurrency(lastLocalCurrency);
-                  } else {
-                    setLastLocalCurrency(currency);
-                    setCurrency(trip.homeCurrency);
-                  }
-                }}
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  border: "1px solid rgba(133, 58, 81, 0.2)",
-                  backgroundColor: "white",
-                  color: "var(--color-purple)",
-                  fontSize: "1rem",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 6px rgba(133, 58, 81, 0.08)",
-                  outline: "none",
-                  transition: "transform 0.15s ease",
-                  margin: "0 8px"
-                }}
-                onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
-                onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              >
-                ⇄
-              </button>
-
-              {/* Right Side: Active Symbol and Input Box */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "2 1 auto", justifyContent: "flex-end", minWidth: 0 }}>
-                <span style={{
-                  fontSize: "1.15rem",
-                  fontWeight: 800,
-                  color: "#1F2937",
-                  width: "42px",
-                  textAlign: "center",
-                  display: "inline-block",
-                  flexShrink: 0
-                }}>
-                  {CURRENCY_SYMBOLS[currency] || currency}
-                </span>
+              {/* Right Side: Input Box */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
                 <input
                   type="text"
                   value={amount}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (/^[0-9+\-*/().\s]*$/.test(val)) {
-                      setAmount(val);
+                    if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                      const cleanVal = val.replace(/,/g, '');
+                      setAmount(formatInputWithCommas(cleanVal));
                     }
                   }}
                   onBlur={() => {
-                    const evaluated = evaluateMathExpression(amount);
-                    setAmount(evaluated);
+                    const cleanAmt = amount.replace(/,/g, '');
+                    const evaluated = evaluateMathExpression(cleanAmt);
+                    setAmount(formatInputWithCommas(evaluated));
                   }}
-                  placeholder="0.00"
+                  placeholder={(() => {
+                    if (currency === trip.homeCurrency) return "0.00";
+                    const rateVal = convertCurrency(1, trip.homeCurrency, currency, rates);
+                    if (rateVal > 0) {
+                      const formattedRate = rateVal < 1 ? rateVal.toFixed(4) : rateVal.toFixed(2);
+                      return `1 ${trip.homeCurrency} ≈ ${formattedRate} ${currency}`;
+                    }
+                    return "0.00";
+                  })()}
                   style={{
                     border: "none",
                     background: "transparent",
@@ -5385,7 +5777,6 @@ function ManualEntryModal({
                     fontWeight: 800,
                     outline: "none",
                     width: "100%",
-                    maxWidth: "150px",
                     color: "#111827",
                     textAlign: "right",
                     padding: "4px 0",
@@ -5399,7 +5790,7 @@ function ManualEntryModal({
               const end = new Date(spreadEnd);
               if (isNaN(start) || isNaN(end) || end < start) return null;
               const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-              const val = parseFloat(evaluateMathExpression(amount)) || 0;
+              const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
               const daily = spreadMode === "repeat" ? val : (val / days);
               const total = spreadMode === "repeat" ? (val * days) : val;
               return (
@@ -5436,31 +5827,18 @@ function ManualEntryModal({
               const diffMs = Date.now() - parseInt(lastRates, 10);
               const diffMin = Math.round(diffMs / 60000);
               const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
-              
-              const rateVal = convertCurrency(1, currency, trip.homeCurrency, rates);
-              const inverseRateVal = rateVal > 0 ? 1 / rateVal : 0;
-              
-              let rateText = "";
-              if (rateVal > 0) {
-                if (rateVal >= 1) {
-                  rateText = `1 ${currency} ≈ ${rateVal.toFixed(2)} ${trip.homeCurrency}`;
-                } else {
-                  rateText = `1 ${trip.homeCurrency} ≈ ${inverseRateVal.toFixed(2)} ${currency}`;
-                }
-              }
 
               return (
                 <div style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
+                  justifyContent: "flex-end",
                   fontSize: "0.75rem",
                   color: "#6B7280",
                   marginTop: "-2px",
                   padding: "0 4px",
                   marginBottom: "6px"
                 }}>
-                  <span>{rateText}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                     <span>Rates: {ratesTimeText}</span>
                     <button
@@ -5792,7 +6170,7 @@ function ManualEntryModal({
 
                 if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
                   const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                  const val = parseFloat(evaluateMathExpression(amount)) || 0;
+                  const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
                   const daily = spreadMode === "repeat" ? val : (val / days);
                   const total = spreadMode === "repeat" ? (val * days) : val;
 
@@ -5910,194 +6288,23 @@ function ManualEntryModal({
               letterSpacing: "0.5px"
             }}>Notes</label>
             
-            <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
-              <textarea
-                ref={notesInputRef}
-                value={extraNotes}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setExtraNotes(val);
-                  
-                  const selStart = e.target.selectionStart;
-                  const textBeforeCursor = val.substring(0, selStart);
-                  const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
-                  if (hashtagMatch) {
-                    setShowHashtagsDropdown(true);
-                    setHashtagFilter(hashtagMatch[1]);
-                  } else {
-                    setShowHashtagsDropdown(false);
-                    setHashtagFilter("");
-                  }
-                }}
-                placeholder="Add details, or use # to further categorize your spending"
-                rows={2}
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
-                  fontSize: "15px",
-                  outline: "none",
-                  resize: "none",
-                  fontFamily: "inherit"
-                }}
-              />
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", justifyContent: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowHashtagsDropdown(!showHashtagsDropdown);
-                    setExtraNotes(prev => {
-                      const trimmed = prev || "";
-                      if (trimmed.endsWith("#")) return prev;
-                      if (trimmed.length === 0) return "#";
-                      if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return prev + "#";
-                      return prev + " #";
-                    });
-                    setHashtagFilter("");
-                    setTimeout(() => {
-                      if (notesInputRef.current) {
-                        notesInputRef.current.focus();
-                        const len = notesInputRef.current.value.length;
-                        notesInputRef.current.setSelectionRange(len, len);
-                      }
-                    }, 50);
-                  }}
-                  style={{
-                    backgroundColor: "#F3F4F6",
-                    border: "1px solid #D1D5DB",
-                    borderRadius: "8px",
-                    width: "36px",
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    fontSize: "0.95rem",
-                    color: "var(--color-purple)",
-                    fontWeight: "bold",
-                    outline: "none"
-                  }}
-                  title="Attach tag"
-                >
-                  #
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLocSearchInput(!showLocSearchInput)}
-                  style={{
-                    backgroundColor: "#F3F4F6",
-                    border: "1px solid #D1D5DB",
-                    borderRadius: "8px",
-                    width: "36px",
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    fontSize: "0.95rem",
-                    outline: "none"
-                  }}
-                  title="Attach establishment"
-                >
-                  📍
-                </button>
-              </div>
-            </div>
-
-            {/* Hashtags Dropdown */}
-            {(() => {
-              const filteredHashtags = hashtagFilter
-                ? (tripHashtags.all || []).filter(tag => tag.toLowerCase().includes(hashtagFilter.toLowerCase()))
-                : (tripHashtags.top5 || []);
-              
-              if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
-
-              return (
-                <div style={{ position: "relative" }}>
-                  <div style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    backgroundColor: "white",
-                    border: "1px solid #E5E7EB",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-                    zIndex: 200,
-                    maxHeight: "150px",
-                    overflowY: "auto",
-                    padding: "6px",
-                    marginTop: "4px"
-                  }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px" }}>
-                      {filteredHashtags.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => {
-                            if (notesInputRef.current) {
-                              const el = notesInputRef.current;
-                              const val = el.value;
-                              const selStart = el.selectionStart;
-                              
-                              const textBeforeCursor = val.substring(0, selStart);
-                              const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
-                              
-                              if (hashtagMatch) {
-                                const matchIndex = hashtagMatch.index;
-                                const beforeMatch = textBeforeCursor.substring(0, matchIndex);
-                                const afterCursor = val.substring(selStart);
-                                const newVal = beforeMatch + `#${tag}` + afterCursor;
-                                setExtraNotes(newVal);
-                                
-                                setTimeout(() => {
-                                  el.focus();
-                                  const newCursorPos = beforeMatch.length + tag.length + 1;
-                                  el.setSelectionRange(newCursorPos, newCursorPos);
-                                }, 50);
-                              } else {
-                                if (!val.includes(`#${tag}`)) {
-                                  const trimmed = val.trim();
-                                  if (trimmed.length === 0) setExtraNotes(`#${tag}`);
-                                  else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) setExtraNotes(trimmed + `#${tag}`);
-                                  else setExtraNotes(trimmed + ` #${tag}`);
-                                }
-                              }
-                            } else {
-                              setExtraNotes(prev => {
-                                const trimmed = prev || "";
-                                if (trimmed.endsWith("#")) return trimmed.slice(0, -1) + `#${tag}`;
-                                if (!trimmed.includes(`#${tag}`)) {
-                                  if (trimmed.length === 0) return `#${tag}`;
-                                  if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return trimmed + `#${tag}`;
-                                  return trimmed + ` #${tag}`;
-                                }
-                                return prev;
-                              });
-                            }
-                            setShowHashtagsDropdown(false);
-                            setHashtagFilter("");
-                          }}
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            backgroundColor: "#F3F4F6",
-                            border: "none",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            color: "var(--color-purple)",
-                            cursor: "pointer"
-                          }}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            <textarea
+              ref={notesInputRef}
+              value={extraNotes}
+              onChange={(e) => setExtraNotes(e.target.value)}
+              placeholder="Add details, or use # to further categorize your spending"
+              rows={2}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: "12px",
+                border: "1px solid #E5E7EB",
+                fontSize: "15px",
+                outline: "none",
+                resize: "none",
+                fontFamily: "inherit"
+              }}
+            />
 
             {/* Plain Text Location/Establishment Input */}
             {showLocSearchInput && (
@@ -6115,6 +6322,7 @@ function ManualEntryModal({
                   letterSpacing: "0.5px"
                 }}>Location / Establishment</label>
                 <input
+                  ref={establishmentInputRef}
                   type="text"
                   value={establishment}
                   onChange={(e) => setEstablishment(e.target.value)}
