@@ -4744,6 +4744,9 @@ function ManualEntryModal({
 
   const fileInputRef = useRef(null);
   const notesInputRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const hashtagsDropdownRef = useRef(null);
+  const establishmentInputRef = useRef(null);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
   const [hashtagFilter, setHashtagFilter] = useState("");
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
@@ -4763,6 +4766,25 @@ function ManualEntryModal({
       setIsMounting(false);
     }, 300);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        hashtagsDropdownRef.current &&
+        !hashtagsDropdownRef.current.contains(event.target) &&
+        titleInputRef.current &&
+        !titleInputRef.current.contains(event.target)
+      ) {
+        setShowHashtagsDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const tripHashtags = (() => {
