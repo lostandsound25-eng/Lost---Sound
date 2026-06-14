@@ -355,9 +355,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
+  const [selectedPlannerDates, setSelectedPlannerDates] = useState([]);
+  const [editingItineraryCell, setEditingItineraryCell] = useState(null); // { date: "YYYY-MM-DD", field: "location" | "notes" }
+  const [plannerClipboard, setPlannerClipboard] = useState(null); // { location: "...", notes: "..." }
+  const [batchLocationInput, setBatchLocationInput] = useState("");
+  const [batchNotesInput, setBatchNotesInput] = useState("");
+  const [pastOffset, setPastOffset] = useState(3);
+  const [futureOffset, setFutureOffset] = useState(10);
+
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
-      return trip.itinerary[dateStr];
+      const item = trip.itinerary[dateStr];
+      if (typeof item === "string") return item;
+      return item.location || "";
     }
     const todayStr = new Date().toLocaleDateString('en-CA');
     if (dateStr === todayStr && trip.currentLocation) {
@@ -372,6 +382,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     });
     const expLoc = dayExps.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc);
     return expLoc || "";
+  };
+
+  const getResolvedDayNotes = (dateStr) => {
+    if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
+      const item = trip.itinerary[dateStr];
+      if (typeof item === "string") return "";
+      return item.notes || "";
+    }
+    return "";
   };
   const [isHomeCurrencyLocked, setIsHomeCurrencyLocked] = useState(true);
   const calendarContainerRef = useRef(null);
@@ -1387,9 +1406,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
   const updateItineraryLocation = async (dateKey, locationText) => {
+    const existing = trip.itinerary?.[dateKey];
+    const existingObj = typeof existing === "string"
+      ? { location: existing, notes: "" }
+      : (existing || { location: "", notes: "" });
+
     const updatedItinerary = {
       ...(trip.itinerary || {}),
-      [dateKey]: locationText
+      [dateKey]: {
+        ...existingObj,
+        location: locationText
+      }
     };
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
     if (!isDemo && tripId && supabase) {
@@ -1401,11 +1428,50 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
 
-  const updateItineraryLocationsBatch = async (updates) => {
+  const updateItineraryNotes = async (dateKey, notesText) => {
+    const existing = trip.itinerary?.[dateKey];
+    const existingObj = typeof existing === "string"
+      ? { location: existing, notes: "" }
+      : (existing || { location: "", notes: "" });
+
     const updatedItinerary = {
       ...(trip.itinerary || {}),
-      ...updates
+      [dateKey]: {
+        ...existingObj,
+        notes: notesText
+      }
     };
+    setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
+    if (!isDemo && tripId && supabase) {
+      try {
+        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
+      } catch (e) {
+        console.error("Failed to sync itinerary notes to cloud:", e);
+      }
+    }
+  };
+
+  const updateItineraryLocationsBatch = async (updates) => {
+    const updatedItinerary = { ...(trip.itinerary || {}) };
+    Object.entries(updates).forEach(([dateKey, val]) => {
+      const existing = updatedItinerary[dateKey];
+      const existingObj = typeof existing === "string"
+        ? { location: existing, notes: "" }
+        : (existing || { location: "", notes: "" });
+
+      if (typeof val === "string") {
+        updatedItinerary[dateKey] = {
+          ...existingObj,
+          location: val
+        };
+      } else {
+        updatedItinerary[dateKey] = {
+          ...existingObj,
+          ...val
+        };
+      }
+    });
+
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
     if (!isDemo && tripId && supabase) {
       try {
@@ -2489,791 +2555,597 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const renderPlanner = () => {
-    const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = today.toLocaleDateString('en-CA');
 
-    const changePlanMonth = (dir) => {
-      let m = planMonth + dir;
-      let y = planYear;
-      if (m < 0) {
-        m = 11;
-        y--;
-      } else if (m > 11) {
-        m = 0;
-        y++;
-      }
-      setPlanMonth(m);
-      setPlanYear(y);
-    };
+    const getPlannerDays = () => {
+      let minDate = new Date(today);
+      minDate.setDate(minDate.getDate() - pastOffset);
 
-    const changePlanWeek = (dir) => {
-      const d = new Date(planWeekStart);
-      d.setDate(d.getDate() + dir * 7);
-      setPlanWeekStart(d);
-    };
+      expenses.forEach(e => {
+        const d = new Date(e.timestamp);
+        if (d < minDate) {
+          minDate = new Date(d);
+        }
+      });
 
-    const getWeeklyDays = () => {
+      let maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + futureOffset);
+
+      expenses.forEach(e => {
+        const d = new Date(e.timestamp);
+        if (d > maxDate) {
+          maxDate = new Date(d);
+        }
+      });
+
+      Object.keys(trip.itinerary || {}).forEach(k => {
+        const d = new Date(k + "T00:00:00");
+        if (d > maxDate) {
+          maxDate = new Date(d);
+        }
+      });
+
+      minDate.setHours(0,0,0,0);
+      maxDate.setHours(23,59,59,999);
+
       const days = [];
-      const start = new Date(planWeekStart);
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
+      const curr = new Date(minDate);
+      while (curr <= maxDate) {
         days.push({
-          date: d,
-          dateStr: d.toLocaleDateString('en-CA')
+          date: new Date(curr),
+          dateStr: curr.toLocaleDateString('en-CA')
         });
+        curr.setDate(curr.getDate() + 1);
       }
       return days;
     };
 
-    const getDragRange = () => {
-      if (!planDragStart || !planDragEnd) return null;
-      const s = planDragStart;
-      const e = planDragEnd;
-      return s <= e ? { start: s, end: e } : { start: e, end: s };
-    };
+    const plannerDays = getPlannerDays();
 
-    const dragRange = getDragRange();
-
-    const handlePlannerCellMouseDown = (dateStr) => {
-      setPlanDragStart(dateStr);
-      setPlanDragEnd(dateStr);
-      setIsPlanDragging(true);
-      setSelectedPlanDate(dateStr);
-    };
-
-    const handlePlannerCellMouseEnter = (dateStr) => {
-      if (isPlanDragging) {
-        setPlanDragEnd(dateStr);
-      }
-    };
-
-    const handlePlannerCellMouseUp = () => {
-      if (isPlanDragging) {
-        setIsPlanDragging(false);
-        if (planDragStart && planDragEnd && planDragStart !== planDragEnd) {
-          setShowPlanDestModal(true);
-        }
-      }
-    };
-
-    const handlePlannerTouchStart = (e, dateStr) => {
-      setPlanDragStart(dateStr);
-      setPlanDragEnd(dateStr);
-      setIsPlanDragging(true);
-      setSelectedPlanDate(dateStr);
-    };
-
-    const handlePlannerTouchMove = (e) => {
-      if (!isPlanDragging) return;
-      const touch = e.touches[0];
-      const target = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (target) {
-        const cell = target.closest("[data-plan-date]");
-        if (cell) {
-          const dateStr = cell.getAttribute("data-plan-date");
-          setPlanDragEnd(dateStr);
-        }
-      }
-    };
-
-    const handlePlannerTouchEnd = () => {
-      if (isPlanDragging) {
-        setIsPlanDragging(false);
-        if (planDragStart && planDragEnd && planDragStart !== planDragEnd) {
-          setShowPlanDestModal(true);
-        }
-      }
-    };
-
-    const getPlannerDaysGrid = (year, month) => {
-      const firstDay = new Date(year, month, 1);
-      const startDayOfWeek = firstDay.getDay();
-      const daysGrid = [];
-      const prevMonthDays = new Date(year, month, 0).getDate();
-      for (let i = startDayOfWeek - 1; i >= 0; i--) {
-        const d = new Date(year, month - 1, prevMonthDays - i);
-        daysGrid.push({
-          day: prevMonthDays - i,
-          isCurrentMonth: false,
-          dateStr: d.toLocaleDateString('en-CA')
-        });
-      }
-      const currentMonthDays = new Date(year, month + 1, 0).getDate();
-      for (let i = 1; i <= currentMonthDays; i++) {
-        const d = new Date(year, month, i);
-        daysGrid.push({
-          day: i,
-          isCurrentMonth: true,
-          dateStr: d.toLocaleDateString('en-CA')
-        });
-      }
-      const remaining = 42 - daysGrid.length;
-      for (let i = 1; i <= remaining; i++) {
-        const d = new Date(year, month + 1, i);
-        daysGrid.push({
-          day: i,
-          isCurrentMonth: false,
-          dateStr: d.toLocaleDateString('en-CA')
-        });
-      }
-      return daysGrid;
-    };
-
-    const renderCellIndicators = (dateStr) => {
-      const dayExpenses = expenses.filter(e => {
-        try {
-          return new Date(e.timestamp).toLocaleDateString('en-CA') === dateStr;
-        } catch (err) {
-          return false;
+    const toggleSelectDate = (dateStr) => {
+      setSelectedPlannerDates(prev => {
+        if (prev.includes(dateStr)) {
+          return prev.filter(d => d !== dateStr);
+        } else {
+          return [...prev, dateStr];
         }
       });
-      const resolvedDest = getResolvedDayLocation(dateStr, dayExpenses);
-      const hasPlannedDest = !!resolvedDest;
-      const hasFlight = dayExpenses.some(e => 
-        e.category === "Transport" && 
-        (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)
-      );
-      const hasActivity = dayExpenses.some(e => 
-        (e.category === "Entertainment" || e.category === "Everything Else") && 
-        (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/)
-      );
-
-      if (dayExpenses.length === 0 && !hasPlannedDest) return null;
-      
-      return (
-        <div style={{ 
-          display: "flex", 
-          gap: "2px", 
-          justifyContent: "center", 
-          alignItems: "center", 
-          marginTop: "2px",
-          height: "12px",
-          overflow: "hidden"
-        }}>
-          {hasPlannedDest && <span title={`Location: ${resolvedDest}`} style={{ fontSize: "0.62rem", lineHeight: 1 }}>📍</span>}
-          {hasFlight && <span title="Flight booked" style={{ fontSize: "0.62rem", lineHeight: 1 }}>✈️</span>}
-          {hasActivity && <span title="Activity booked" style={{ fontSize: "0.62rem", lineHeight: 1 }}>🎟️</span>}
-          {!hasFlight && !hasActivity && dayExpenses.length > 0 && (
-            <span style={{ fontSize: "0.45rem", color: "var(--color-purple)", opacity: 0.6, lineHeight: 1 }}>●</span>
-          )}
-        </div>
-      );
     };
 
-    const renderSelectedDateDetails = () => {
-      if (!selectedPlanDate) return null;
-      const d = new Date(selectedPlanDate + "T00:00:00");
-      const formatted = d.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-      const resolvedDest = getResolvedDayLocation(selectedPlanDate);
-      const dayExpenses = expenses.filter(e => {
-        try {
-          return new Date(e.timestamp).toLocaleDateString('en-CA') === selectedPlanDate;
-        } catch (err) {
-          return false;
-        }
+    const toggleSelectAll = () => {
+      if (selectedPlannerDates.length === plannerDays.length) {
+        setSelectedPlannerDates([]);
+      } else {
+        setSelectedPlannerDates(plannerDays.map(d => d.dateStr));
+      }
+    };
+
+    const handleCopyDay = (dateStr) => {
+      const location = getResolvedDayLocation(dateStr);
+      const notes = getResolvedDayNotes(dateStr);
+      setPlannerClipboard({ location, notes });
+    };
+
+    const handlePasteDay = async (dateStr) => {
+      if (!plannerClipboard) return;
+      await updateItineraryLocationsBatch({
+        [dateStr]: plannerClipboard
       });
+    };
 
-      return (
-        <div style={{
-          backgroundColor: "white",
-          borderRadius: "16px",
-          padding: "16px",
-          border: "1.5px solid rgba(133, 58, 81, 0.08)",
-          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.01)",
-          marginTop: "16px"
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
-            <div>
-              <h4 style={{ margin: 0, fontSize: "0.88rem", fontWeight: 850, color: "var(--color-purple)" }}>
-                {formatted}
-              </h4>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6B7280" }}>Destination:</span>
-                {editingItineraryDate === selectedPlanDate ? (
-                  <div style={{ display: "inline-flex", gap: "4px" }}>
-                    <input
-                      type="text"
-                      value={itineraryInput}
-                      onChange={(e) => setItineraryInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          updateItineraryLocation(selectedPlanDate, itineraryInput);
-                          setEditingItineraryDate(null);
-                        } else if (e.key === "Escape") {
-                          setEditingItineraryDate(null);
-                        }
-                      }}
-                      autoFocus
-                      style={{
-                        padding: "2px 6px",
-                        fontSize: "0.78rem",
-                        borderRadius: "6px",
-                        border: "1.5px solid var(--color-orange)",
-                        outline: "none"
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateItineraryLocation(selectedPlanDate, itineraryInput);
-                        setEditingItineraryDate(null);
-                      }}
-                      style={{
-                        backgroundColor: "var(--color-orange)",
-                        border: "none",
-                        color: "white",
-                        padding: "2px 6px",
-                        borderRadius: "6px",
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        cursor: "pointer"
-                      }}
-                    >
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <span 
-                    onClick={() => {
-                      setEditingItineraryDate(selectedPlanDate);
-                      setItineraryInput(resolvedDest || "");
-                    }}
-                    style={{ 
-                      fontSize: "0.78rem", 
-                      fontWeight: 750, 
-                      color: resolvedDest ? "var(--color-orange)" : "#9CA3AF",
-                      borderBottom: "1px dashed",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {resolvedDest || "📍 Set destination"}
-                  </span>
-                )}
-              </div>
-            </div>
-            {dayExpenses.length > 0 && (
-              <span style={{
-                fontSize: "0.72rem",
-                fontWeight: 755,
-                color: "var(--color-purple)",
-                backgroundColor: "rgba(133, 58, 81, 0.05)",
-                padding: "2px 8px",
-                borderRadius: "12px"
-              }}>
-                {dayExpenses.length} Expense{dayExpenses.length > 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
+    const handlePasteToSelected = async () => {
+      if (!plannerClipboard || selectedPlannerDates.length === 0) return;
+      const updates = {};
+      selectedPlannerDates.forEach(dateStr => {
+        updates[dateStr] = plannerClipboard;
+      });
+      await updateItineraryLocationsBatch(updates);
+      setSelectedPlannerDates([]);
+    };
 
-          {dayExpenses.length === 0 ? (
-            <p style={{ margin: 0, fontSize: "0.8rem", color: "#9CA3AF", fontStyle: "italic" }}>
-              No expenses logged for this date.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {dayExpenses.map(exp => (
-                <div key={exp.id} style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "8px 12px",
-                  borderRadius: "10px",
-                  backgroundColor: "rgba(133, 58, 81, 0.03)",
-                  fontSize: "0.8rem"
-                }}>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    <span>{CATEGORY_EMOJIS[exp.category] || "📦"}</span>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "#374151" }}>{exp.note || exp.category}</div>
-                      {exp.location && <div style={{ fontSize: "0.7rem", color: "#6B7280" }}>📍 {exp.location.split(" | ")[0]}</div>}
-                    </div>
-                  </div>
-                  <div style={{ fontWeight: 800, color: "var(--color-purple)" }}>
-                    {formatMoney(exp.amount, exp.currency)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
+    const getNextDateStr = (dateStr) => {
+      const d = new Date(dateStr + "T00:00:00");
+      d.setDate(d.getDate() + 1);
+      return d.toLocaleDateString('en-CA');
+    };
+
+    const handleFillDown = async (dateStr) => {
+      const nextDateStr = getNextDateStr(dateStr);
+      const location = getResolvedDayLocation(dateStr);
+      const notes = getResolvedDayNotes(dateStr);
+      await updateItineraryLocationsBatch({
+        [nextDateStr]: { location, notes }
+      });
+    };
+
+    const handleApplyBatchChanges = async () => {
+      if (selectedPlannerDates.length === 0) return;
+      const updates = {};
+      selectedPlannerDates.forEach(dateStr => {
+        updates[dateStr] = {
+          location: batchLocationInput.trim() !== "" ? batchLocationInput.trim() : undefined,
+          notes: batchNotesInput.trim() !== "" ? batchNotesInput.trim() : undefined
+        };
+      });
+      await updateItineraryLocationsBatch(updates);
+      setBatchLocationInput("");
+      setBatchNotesInput("");
+      setSelectedPlannerDates([]);
     };
 
     return (
-      <div 
-        onMouseUp={handlePlannerCellMouseUp}
-        onTouchEnd={handlePlannerTouchEnd}
-        style={{
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        animation: "fadeInUp 0.2s ease-out"
+      }}>
+        {/* Header summary & Load Earlier button */}
+        <div style={{
           display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          animation: "fadeInUp 0.2s ease-out"
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            display: "flex",
-            backgroundColor: "rgba(133, 58, 81, 0.05)",
-            padding: "3px",
-            borderRadius: "8px",
-            gap: "2px"
-          }}>
-            <button
-              type="button"
-              onClick={() => setPlannerViewMode("monthly")}
-              style={{
-                fontSize: "0.74rem",
-                fontWeight: plannerViewMode === "monthly" ? 750 : 500,
-                color: plannerViewMode === "monthly" ? "var(--color-purple)" : "#6B7280",
-                backgroundColor: plannerViewMode === "monthly" ? "white" : "transparent",
-                border: "none",
-                borderRadius: "6px",
-                padding: "4px 12px",
-                cursor: "pointer",
-                boxShadow: plannerViewMode === "monthly" ? "0 2px 4px rgba(0,0,0,0.04)" : "none",
-                transition: "all 0.15s"
-              }}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setPlannerViewMode("weekly")}
-              style={{
-                fontSize: "0.74rem",
-                fontWeight: plannerViewMode === "weekly" ? 750 : 500,
-                color: plannerViewMode === "weekly" ? "var(--color-purple)" : "#6B7280",
-                backgroundColor: plannerViewMode === "weekly" ? "white" : "transparent",
-                border: "none",
-                borderRadius: "6px",
-                padding: "4px 12px",
-                cursor: "pointer",
-                boxShadow: plannerViewMode === "weekly" ? "0 2px 4px rgba(0,0,0,0.04)" : "none",
-                transition: "all 0.15s"
-              }}
-            >
-              Weekly
-            </button>
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "4px"
+        }}>
+          <button
+            type="button"
+            onClick={() => setPastOffset(prev => prev + 7)}
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 750,
+              color: "var(--color-purple)",
+              backgroundColor: "rgba(133, 58, 81, 0.05)",
+              border: "1px solid rgba(133, 58, 81, 0.15)",
+              borderRadius: "10px",
+              padding: "5px 12px",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            🗓️ Load Earlier Days
+          </button>
+
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <input 
+              type="checkbox"
+              id="planner-select-all"
+              checked={plannerDays.length > 0 && selectedPlannerDates.length === plannerDays.length}
+              onChange={toggleSelectAll}
+              style={{ cursor: "pointer" }}
+            />
+            <label htmlFor="planner-select-all" style={{ fontSize: "0.74rem", fontWeight: 750, color: "#4B5563", cursor: "pointer" }}>
+              Select All
+            </label>
           </div>
-          <span style={{ fontSize: "0.72rem", color: "var(--color-orange)", fontWeight: 700 }}>
-            {plannerViewMode === "monthly" ? "💡 Drag cells to set destination" : "Weekly Timeline"}
-          </span>
         </div>
 
-        {plannerViewMode === "monthly" ? (
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "20px",
-            padding: "16px 12px",
-            border: "1.5px solid rgba(133, 58, 81, 0.08)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.01)"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-              <button 
-                type="button" 
-                onClick={() => changePlanMonth(-1)}
-                style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
-              >
-                ◀
-              </button>
-              <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
-                {months[planMonth]} {planYear}
-              </span>
-              <button 
-                type="button" 
-                onClick={() => changePlanMonth(1)}
-                style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
-              >
-                ▶
-              </button>
-            </div>
+        {/* List of days */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {plannerDays.map((dayObj) => {
+            const isToday = dayObj.dateStr === todayStr;
+            const plannedDest = getResolvedDayLocation(dayObj.dateStr);
+            const plannedNotes = getResolvedDayNotes(dayObj.dateStr);
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.72rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-            </div>
+            const dayExpenses = expenses.filter(e => {
+              try {
+                return new Date(e.timestamp).toLocaleDateString('en-CA') === dayObj.dateStr;
+              } catch (err) {
+                return false;
+              }
+            });
 
-            <div 
-              onTouchMove={handlePlannerTouchMove}
-              style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "3px" }}
-            >
-              {getPlannerDaysGrid(planYear, planMonth).map((item, idx) => {
-                const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
-                
-                const isInDragRange = dragRange && item.dateStr >= dragRange.start && item.dateStr <= dragRange.end;
-                const isSelected = selectedPlanDate === item.dateStr;
+            const daySpent = dayExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
 
-                let bg = "transparent";
-                let color = item.isCurrentMonth ? "#374151" : "#D1D5DB";
-                let border = "1.5px solid transparent";
-                let fontWeight = 600;
+            const bookings = dayExpenses.filter(e => 
+              (e.category === "Transport" && (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)) ||
+              ((e.category === "Entertainment" || e.category === "Everything Else") && (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/))
+            );
 
-                if (isToday) {
-                  bg = "rgba(133, 58, 81, 0.06)";
-                  color = "var(--color-purple)";
-                  fontWeight = 800;
-                }
-                if (isSelected) {
-                  border = "1.5px solid var(--color-purple)";
-                }
-                if (isInDragRange) {
-                  bg = "rgba(232, 107, 50, 0.08)";
-                  border = "1.5px dashed var(--color-orange)";
-                }
-
-                return (
-                  <div
-                    key={idx}
-                    data-plan-date={item.dateStr}
-                    onMouseDown={() => handlePlannerCellMouseDown(item.dateStr)}
-                    onMouseEnter={() => handlePlannerCellMouseEnter(item.dateStr)}
-                    onTouchStart={(e) => handlePlannerTouchStart(e, item.dateStr)}
-                    style={{
-                      aspectRatio: "1",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      borderRadius: "10px",
-                      padding: "4px 2px",
-                      cursor: "pointer",
-                      backgroundColor: bg,
-                      border: border,
-                      color: color,
-                      fontWeight: fontWeight,
-                      transition: "all 0.15s",
-                      userSelect: "none",
-                      overflow: "hidden",
-                      minWidth: 0,
-                      minHeight: 0
-                    }}
-                  >
-                    <span style={{ fontSize: "0.78rem" }}>{item.day}</span>
-                    {renderCellIndicators(item.dateStr)}
-                  </div>
-                );
-              })}
-            </div>
-
-            {showPlanDestModal && (() => {
-              const range = getDragRange();
-              if (!range) return null;
-              const sDate = new Date(range.start + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-              const eDate = new Date(range.end + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
-              return (
-                <div style={{
-                  backgroundColor: "rgba(232, 107, 50, 0.03)",
-                  borderRadius: "16px",
-                  border: "1.5px solid rgba(232, 107, 50, 0.25)",
-                  padding: "14px",
-                  marginTop: "12px",
+            return (
+              <div 
+                key={dayObj.dateStr} 
+                style={{
                   display: "flex",
-                  flexDirection: "column",
-                  gap: "8px"
-                }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--color-orange)" }}>
-                    📍 Set Destination for {sDate} – {eDate}
-                  </div>
-                  <input
-                    type="text"
-                    value={planDestinationInput}
-                    onChange={(e) => setPlanDestinationInput(e.target.value)}
-                    placeholder="e.g. Yogyakarta, Indonesia"
-                    autoFocus
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter") {
-                        const updates = {};
-                        const currentDate = new Date(range.start + "T00:00:00");
-                        const endDate = new Date(range.end + "T00:00:00");
-                        while (currentDate <= endDate) {
-                          const k = currentDate.toLocaleDateString('en-CA');
-                          updates[k] = planDestinationInput.trim();
-                          currentDate.setDate(currentDate.getDate() + 1);
-                        }
-                        await updateItineraryLocationsBatch(updates);
-                        setShowPlanDestModal(false);
-                        setPlanDestinationInput("");
-                        setPlanDragStart(null);
-                        setPlanDragEnd(null);
-                      }
-                    }}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "10px",
-                      border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                      backgroundColor: "#F9F6ED",
-                      fontSize: "14px",
-                      outline: "none",
-                      width: "100%"
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPlanDestModal(false);
-                        setPlanDestinationInput("");
-                        setPlanDragStart(null);
-                        setPlanDragEnd(null);
-                      }}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#E5E7EB",
-                        color: "#4B5563",
-                        fontSize: "0.74rem",
-                        fontWeight: 700,
-                        cursor: "pointer"
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const updates = {};
-                        const currentDate = new Date(range.start + "T00:00:00");
-                        const endDate = new Date(range.end + "T00:00:00");
-                        while (currentDate <= endDate) {
-                          const k = currentDate.toLocaleDateString('en-CA');
-                          updates[k] = planDestinationInput.trim();
-                          currentDate.setDate(currentDate.getDate() + 1);
-                        }
-                        await updateItineraryLocationsBatch(updates);
-                        setShowPlanDestModal(false);
-                        setPlanDestinationInput("");
-                        setPlanDragStart(null);
-                        setPlanDragEnd(null);
-                      }}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "var(--color-orange)",
-                        color: "white",
-                        fontSize: "0.74rem",
-                        fontWeight: 700,
-                        cursor: "pointer"
-                      }}
-                    >
-                      Save Destination
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+                  alignItems: "flex-start",
+                  padding: "12px 10px",
+                  borderRadius: "14px",
+                  backgroundColor: isToday ? "rgba(133, 58, 81, 0.04)" : "white",
+                  border: isToday ? "1.5px solid var(--color-purple)" : "1px solid rgba(133, 58, 81, 0.08)",
+                  gap: "10px",
+                  transition: "all 0.15s"
+                }}
+              >
+                {/* Select Checkbox */}
+                <input 
+                  type="checkbox" 
+                  checked={selectedPlannerDates.includes(dayObj.dateStr)}
+                  onChange={() => toggleSelectDate(dayObj.dateStr)}
+                  style={{ marginTop: "4px", width: "16px", height: "16px", cursor: "pointer" }}
+                />
 
-            {renderSelectedDateDetails()}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <button 
-                type="button" 
-                onClick={() => changePlanWeek(-1)}
-                style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
-              >
-                ◀ Prev 7 Days
-              </button>
-              <span style={{ fontWeight: 800, color: "var(--color-purple)", fontSize: "0.85rem" }}>
-                Timeline: {new Date(planWeekStart).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })} – {(() => {
-                  const end = new Date(planWeekStart);
-                  end.setDate(end.getDate() + 6);
-                  return end.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-                })()}
+                {/* Day Info */}
+                <div style={{ display: "flex", flexDirection: "column", width: "65px", flexShrink: 0 }}>
+                  <span style={{ fontSize: "0.76rem", fontWeight: 800, color: isToday ? "var(--color-purple)" : "#6B7280" }}>
+                    {dayObj.date.toLocaleDateString("en-US", { weekday: 'short' })}
+                  </span>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 900, color: isToday ? "var(--color-orange)" : "var(--color-purple)" }}>
+                    {dayObj.date.toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}
+                  </span>
+                  {isToday && (
+                    <span style={{
+                      fontSize: "0.55rem",
+                      fontWeight: 800,
+                      color: "white",
+                      backgroundColor: "var(--color-purple)",
+                      padding: "1px 4px",
+                      borderRadius: "4px",
+                      marginTop: "3px",
+                      textAlign: "center",
+                      letterSpacing: "0.2px"
+                    }}>
+                      TODAY
+                    </span>
+                  )}
+                </div>
+
+                {/* Editable Fields Stack */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
+                  {/* Destination Row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "0.85rem", opacity: 0.8 }} title="Destination">📍</span>
+                    {editingItineraryCell?.date === dayObj.dateStr && editingItineraryCell?.field === "location" ? (
+                      <input
+                        type="text"
+                        value={itineraryInput}
+                        onChange={(e) => setItineraryInput(e.target.value)}
+                        onBlur={() => {
+                          updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                          setEditingItineraryCell(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                            setEditingItineraryCell(null);
+                          } else if (e.key === "Escape") {
+                            setEditingItineraryCell(null);
+                          }
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          padding: "2px 6px",
+                          fontSize: "0.8rem",
+                          borderRadius: "6px",
+                          border: "1.5px solid var(--color-orange)",
+                          outline: "none",
+                          backgroundColor: "#FFFDF9"
+                        }}
+                      />
+                    ) : (
+                      <span 
+                        onClick={() => {
+                          setEditingItineraryCell({ date: dayObj.dateStr, field: "location" });
+                          setItineraryInput(plannedDest);
+                        }}
+                        style={{
+                          flex: 1,
+                          fontSize: "0.82rem",
+                          fontWeight: 750,
+                          color: plannedDest ? "#111827" : "#9CA3AF",
+                          borderBottom: "1px dashed rgba(0,0,0,0.15)",
+                          cursor: "pointer",
+                          padding: "2px 0",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        {plannedDest || "Set destination..."}
+                      </span>
+                    )}
+
+                    {/* Day Actions */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyDay(dayObj.dateStr)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "0.78rem",
+                          padding: "4px",
+                          borderRadius: "4px",
+                          display: "flex",
+                          alignItems: "center"
+                        }}
+                        title="Copy day plan"
+                      >
+                        📋
+                      </button>
+                      {plannerClipboard && (
+                        <button
+                          type="button"
+                          onClick={() => handlePasteDay(dayObj.dateStr)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.78rem",
+                            padding: "4px",
+                            borderRadius: "4px",
+                            display: "flex",
+                            alignItems: "center"
+                          }}
+                          title="Paste plan to this day"
+                        >
+                          📥
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleFillDown(dayObj.dateStr)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "0.78rem",
+                          padding: "4px",
+                          borderRadius: "4px",
+                          display: "flex",
+                          alignItems: "center"
+                        }}
+                        title="Fill down to next day"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Notes Row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "0.85rem", opacity: 0.8 }} title="Notes/Todo">📝</span>
+                    {editingItineraryCell?.date === dayObj.dateStr && editingItineraryCell?.field === "notes" ? (
+                      <input
+                        type="text"
+                        value={itineraryInput}
+                        onChange={(e) => setItineraryInput(e.target.value)}
+                        onBlur={() => {
+                          updateItineraryNotes(dayObj.dateStr, itineraryInput);
+                          setEditingItineraryCell(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateItineraryNotes(dayObj.dateStr, itineraryInput);
+                            setEditingItineraryCell(null);
+                          } else if (e.key === "Escape") {
+                            setEditingItineraryCell(null);
+                          }
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          padding: "2px 6px",
+                          fontSize: "0.8rem",
+                          borderRadius: "6px",
+                          border: "1.5px solid var(--color-orange)",
+                          outline: "none",
+                          backgroundColor: "#FFFDF9"
+                        }}
+                      />
+                    ) : (
+                      <span 
+                        onClick={() => {
+                          setEditingItineraryCell({ date: dayObj.dateStr, field: "notes" });
+                          setItineraryInput(plannedNotes);
+                        }}
+                        style={{
+                          flex: 1,
+                          fontSize: "0.8rem",
+                          fontWeight: 500,
+                          color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                          borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                          cursor: "pointer",
+                          padding: "2px 0",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        {plannedNotes || "Add plans/todo notes..."}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bookings / Spent Row */}
+                  {(bookings.length > 0 || daySpent > 0) && (
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "2px" }}>
+                      {bookings.map((b, bIdx) => (
+                        <span 
+                          key={bIdx}
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor: "rgba(2, 132, 199, 0.08)",
+                            color: "#0284C7",
+                            border: "1px solid rgba(2, 132, 199, 0.2)",
+                            padding: "1px 6px",
+                            borderRadius: "8px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "2px"
+                          }}
+                          title={b.note}
+                        >
+                          {b.category === "Transport" ? "✈️" : "🎟️"} {b.note.substring(0, 15)}{b.note.length > 15 && "..."}
+                        </span>
+                      ))}
+                      {daySpent > 0 && (
+                        <span style={{
+                          fontSize: "0.7rem",
+                          fontWeight: 800,
+                          backgroundColor: "rgba(16, 185, 129, 0.08)",
+                          color: "#10B981",
+                          padding: "1px 6px",
+                          borderRadius: "8px"
+                        }}>
+                          Spent: {formatMoney(daySpent, trip.homeCurrency)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Load Later button */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "4px" }}>
+          <button
+            type="button"
+            onClick={() => setFutureOffset(prev => prev + 7)}
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 750,
+              color: "var(--color-purple)",
+              backgroundColor: "rgba(133, 58, 81, 0.05)",
+              border: "1px solid rgba(133, 58, 81, 0.15)",
+              borderRadius: "10px",
+              padding: "5px 16px",
+              cursor: "pointer",
+              outline: "none",
+              width: "100%"
+            }}
+          >
+            🗓️ Load More Future Days
+          </button>
+        </div>
+
+        {/* Floating Batch Edit Action Bar */}
+        {selectedPlannerDates.length > 0 && (
+          <div style={{
+            position: "fixed",
+            bottom: "80px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 32px)",
+            maxWidth: "380px",
+            backgroundColor: "#FFFDF9",
+            borderRadius: "20px",
+            border: "1.5px solid rgba(232, 107, 50, 0.3)",
+            boxShadow: "0 10px 25px -5px rgba(232, 107, 50, 0.2)",
+            padding: "14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            zIndex: 999,
+            animation: "fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
+          }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              borderBottom: "1px solid rgba(232, 107, 50, 0.1)",
+              paddingBottom: "6px"
+            }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "var(--color-orange)" }}>
+                Selected: {selectedPlannerDates.length} Days
               </span>
-              <button 
-                type="button" 
-                onClick={() => changePlanWeek(1)}
-                style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+              <button
+                type="button"
+                onClick={() => setSelectedPlannerDates([])}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "0.85rem",
+                  color: "#9CA3AF",
+                  cursor: "pointer",
+                  fontWeight: 700
+                }}
               >
-                Next 7 Days ▶
+                Clear
               </button>
             </div>
 
-            <div style={{
-              backgroundColor: "white",
-              borderRadius: "20px",
-              padding: "16px 20px",
-              border: "1.5px solid rgba(133, 58, 81, 0.08)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.01)",
-              display: "flex",
-              flexDirection: "column"
-            }}>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {getWeeklyDays().map((dayObj, index) => {
-                  const todayStr = new Date().toLocaleDateString('en-CA');
-                  const isToday = dayObj.dateStr === todayStr;
-                  
-                  let dayLabel = "";
-                  if (isToday) {
-                    dayLabel = "Today";
-                  } else {
-                    const tom = new Date();
-                    tom.setDate(tom.getDate() + 1);
-                    if (dayObj.dateStr === tom.toLocaleDateString('en-CA')) {
-                      dayLabel = "Tomorrow";
-                    } else {
-                      dayLabel = dayObj.date.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' });
-                    }
-                  }
-
-                  const plannedDest = getResolvedDayLocation(dayObj.dateStr);
-                  const dayExpenses = expenses.filter(e => {
-                    try {
-                      return new Date(e.timestamp).toLocaleDateString('en-CA') === dayObj.dateStr;
-                    } catch (err) {
-                      return false;
-                    }
-                  });
-
-                  const bookings = dayExpenses.filter(e => 
-                    (e.category === "Transport" && (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)) ||
-                    ((e.category === "Entertainment" || e.category === "Everything Else") && (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/))
-                  );
-
-                  return (
-                    <div 
-                      key={dayObj.dateStr} 
-                      style={{
-                        display: "flex",
-                        padding: "12px 0",
-                        borderBottom: index === 6 ? "none" : "1.5px solid rgba(133, 58, 81, 0.05)",
-                        position: "relative",
-                        gap: "12px"
-                      }}
-                    >
-                      <div style={{
-                        width: "80px",
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "flex-start",
-                        paddingTop: "2px"
-                      }}>
-                        <span style={{ 
-                          fontWeight: isToday ? 900 : 750, 
-                          fontSize: "0.8rem", 
-                          color: isToday ? "var(--color-orange)" : "var(--color-purple)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.3px"
-                        }}>
-                          {dayLabel}
-                        </span>
-                      </div>
-
-                      <div style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "6px"
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                          {editingItineraryDate === dayObj.dateStr ? (
-                            <div style={{ display: "inline-flex", gap: "4px", width: "100%" }}>
-                              <input
-                                type="text"
-                                value={itineraryInput}
-                                onChange={(e) => setItineraryInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    updateItineraryLocation(dayObj.dateStr, itineraryInput);
-                                    setEditingItineraryDate(null);
-                                  } else if (e.key === "Escape") {
-                                    setEditingItineraryDate(null);
-                                  }
-                                }}
-                                autoFocus
-                                style={{
-                                  padding: "2px 6px",
-                                  fontSize: "0.78rem",
-                                  borderRadius: "6px",
-                                  border: "1.5px solid var(--color-orange)",
-                                  outline: "none",
-                                  flex: 1,
-                                  minWidth: 0
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  updateItineraryLocation(dayObj.dateStr, itineraryInput);
-                                  setEditingItineraryDate(null);
-                                }}
-                                style={{
-                                  backgroundColor: "var(--color-orange)",
-                                  border: "none",
-                                  color: "white",
-                                  padding: "2px 8px",
-                                  borderRadius: "6px",
-                                  fontSize: "0.72rem",
-                                  fontWeight: 700,
-                                  cursor: "pointer"
-                                }}
-                              >
-                                Save
-                              </button>
-                            </div>
-                          ) : (
-                            <span 
-                              onClick={() => {
-                                setEditingItineraryDate(dayObj.dateStr);
-                                setItineraryInput(plannedDest || "");
-                              }}
-                              style={{ 
-                                fontSize: "0.82rem", 
-                                fontWeight: 750, 
-                                color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
-                                cursor: "pointer",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px"
-                              }}
-                            >
-                              📍 {plannedDest || <span style={{ textDecoration: "underline", decorationStyle: "dashed", opacity: 0.7 }}>Set location</span>}
-                            </span>
-                          )}
-                        </div>
-
-                        {bookings.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {bookings.map(exp => {
-                              const isFlight = exp.category === "Transport" && (exp.note || "").toLowerCase().match(/flight|plane|flying|flight/);
-                              return (
-                                <div 
-                                  key={exp.id} 
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    fontSize: "0.75rem",
-                                    backgroundColor: isFlight ? "rgba(3, 105, 161, 0.08)" : "rgba(245, 158, 11, 0.08)",
-                                    border: isFlight ? "1px solid rgba(3, 105, 161, 0.18)" : "1px solid rgba(245, 158, 11, 0.18)",
-                                    borderRadius: "6px",
-                                    padding: "4px 8px",
-                                    color: isFlight ? "#0369A1" : "#B45309",
-                                    fontWeight: 700
-                                  }}
-                                >
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                    {isFlight ? "✈️" : "🎟️"} {exp.note || exp.category}
-                                  </span>
-                                  <span style={{ fontWeight: 800 }}>
-                                    {formatMoney(exp.amount, exp.currency)}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Batch Inputs */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "0.85rem" }}>📍</span>
+                <input
+                  type="text"
+                  placeholder="Set destination for selected..."
+                  value={batchLocationInput}
+                  onChange={(e) => setBatchLocationInput(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    fontSize: "0.8rem",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(133, 58, 81, 0.15)",
+                    outline: "none",
+                    backgroundColor: "#F9F6ED"
+                  }}
+                />
               </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "0.85rem" }}>📝</span>
+                <input
+                  type="text"
+                  placeholder="Set notes/todos for selected..."
+                  value={batchNotesInput}
+                  onChange={(e) => setBatchNotesInput(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    fontSize: "0.8rem",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(133, 58, 81, 0.15)",
+                    outline: "none",
+                    backgroundColor: "#F9F6ED"
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              {plannerClipboard && (
+                <button
+                  type="button"
+                  onClick={handlePasteToSelected}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(232, 107, 50, 0.3)",
+                    backgroundColor: "transparent",
+                    color: "var(--color-orange)",
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Paste Copied
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleApplyBatchChanges}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "8px",
+                  border: "none",
+                  backgroundColor: "var(--color-orange)",
+                  color: "white",
+                  fontSize: "0.74rem",
+                  fontWeight: 750,
+                  cursor: "pointer"
+                }}
+              >
+                Apply Changes
+              </button>
             </div>
           </div>
         )}
@@ -5739,6 +5611,8 @@ function ManualEntryModal({
   });
 
   const fileInputRef = useRef(null);
+  const totalInputRef = useRef(null);
+  const dailyInputRef = useRef(null);
   const notesInputRef = useRef(null);
   const titleInputRef = useRef(null);
   const hashtagsDropdownRef = useRef(null);
@@ -6107,6 +5981,27 @@ function ManualEntryModal({
     }
     return "divide";
   });
+
+  const handleSetSpreadMode = (newMode) => {
+    if (newMode === spreadMode) return;
+
+    const start = new Date(spreadStart + "T00:00:00");
+    const end = new Date(spreadEnd + "T00:00:00");
+    const days = (isNaN(start) || isNaN(end) || end < start) ? 1 : Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    const cleanAmt = amount.replace(/,/g, '');
+    const evaluated = evaluateMathExpression(cleanAmt);
+    const rawAmtVal = parseFloat(evaluated) || 0;
+
+    if (newMode === "divide") {
+      const total = rawAmtVal * days;
+      setAmount(formatInputWithCommas(total.toFixed(2)));
+    } else {
+      const daily = rawAmtVal / days;
+      setAmount(formatInputWithCommas(daily.toFixed(2)));
+    }
+    setSpreadMode(newMode);
+  };
 
   const getFutureDateString = (days) => {
     const d = new Date();
@@ -6687,175 +6582,442 @@ function ManualEntryModal({
                 );
               })()}
             </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              backgroundColor: "#F9F6ED",
-              borderRadius: "16px",
-              padding: "8px 14px",
-              border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              marginBottom: "4px"
-            }}>
-              <style>{`
-                .amount-input-placeholder::placeholder {
-                  font-size: 0.82rem !important;
-                  font-weight: 500 !important;
-                  color: #9CA3AF !important;
-                  opacity: 0.8 !important;
-                }
-              `}</style>
-              {/* Left Side: Currency Selector & Reset Button & Spread Breakdown */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (currency !== trip.homeCurrency) {
-                      setCurrency(trip.homeCurrency);
-                      localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
-                    }
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#6B7280",
-                    fontSize: "0.85rem",
-                    cursor: currency === trip.homeCurrency ? "default" : "pointer",
-                    padding: "2px",
-                    outline: "none",
+            {(() => {
+              const start = new Date(spreadStart + "T00:00:00");
+              const end = new Date(spreadEnd + "T00:00:00");
+              const days = (isNaN(start) || isNaN(end) || end < start) ? 1 : Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+              const isSeriesActive = spreadExpense && days > 1;
+
+              if (isSeriesActive) {
+                const rawAmtVal = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
+                
+                // Calculate values
+                const dailyVal = spreadMode === "repeat" ? rawAmtVal : (rawAmtVal / days);
+                const totalVal = spreadMode === "repeat" ? (rawAmtVal * days) : rawAmtVal;
+
+                // Format display values
+                const dailyStr = spreadMode === "repeat" ? amount : formatInputWithCommas(dailyVal.toFixed(2));
+                const totalStr = spreadMode === "divide" ? amount : formatInputWithCommas(totalVal.toFixed(2));
+
+                const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
+
+                return (
+                  <div style={{
                     display: "flex",
-                    alignItems: "center",
-                    opacity: currency === trip.homeCurrency ? 0.35 : 1,
-                    transition: "opacity 0.2s"
-                  }}
-                  title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
-                >
-                  🏠
-                </button>
-                <SearchableCurrencySelect
-                  value={currency}
-                  onChange={(val) => {
-                    setCurrency(val);
-                    localStorage.setItem("tracker_last_used_currency", val);
-                    if (val !== trip.homeCurrency) {
-                      localStorage.setItem("tracker_last_used_non_home_currency", val);
+                    flexDirection: "column",
+                    gap: "10px",
+                    padding: "14px",
+                    backgroundColor: "rgba(232, 107, 50, 0.04)",
+                    borderRadius: "16px",
+                    border: "1.5px solid rgba(232, 107, 50, 0.25)",
+                    marginBottom: "4px",
+                    position: "relative"
+                  }}>
+                    {/* Header: Title and Currency Selector */}
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderBottom: "1px solid rgba(232, 107, 50, 0.1)",
+                      paddingBottom: "8px",
+                      marginBottom: "2px"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{
+                          fontSize: "0.78rem",
+                          fontWeight: 800,
+                          color: "#C2410C",
+                          backgroundColor: "rgba(232, 107, 50, 0.12)",
+                          padding: "3px 8px",
+                          borderRadius: "20px",
+                          letterSpacing: "0.3px",
+                          textTransform: "uppercase"
+                        }}>
+                          🔁 Series Mode
+                        </span>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9A3412" }}>
+                          {days} Days
+                        </span>
+                      </div>
+                      
+                      {/* Currency controls on the right */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currency !== trip.homeCurrency) {
+                              setCurrency(trip.homeCurrency);
+                              localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
+                            }
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#6B7280",
+                            fontSize: "0.85rem",
+                            cursor: currency === trip.homeCurrency ? "default" : "pointer",
+                            padding: "2px",
+                            outline: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            opacity: currency === trip.homeCurrency ? 0.35 : 1,
+                            transition: "opacity 0.2s"
+                          }}
+                          title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
+                        >
+                          🏠
+                        </button>
+                        <SearchableCurrencySelect
+                          value={currency}
+                          onChange={(val) => {
+                            setCurrency(val);
+                            localStorage.setItem("tracker_last_used_currency", val);
+                            if (val !== trip.homeCurrency) {
+                              localStorage.setItem("tracker_last_used_non_home_currency", val);
+                            }
+                          }}
+                          rates={rates}
+                          customCurrencies={customCurrencies}
+                          onAddCustomCurrency={onAddCustomCurrency}
+                          style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                          recentCurrencies={(() => {
+                            const unique = Array.from(new Set(expenses.map(e => e.currency)));
+                            return unique.slice(0, 5);
+                          })()}
+                          customTrigger={({ onClick, value }) => (
+                            <button
+                              type="button"
+                              onClick={onClick}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "var(--color-purple)",
+                                fontSize: "0.9rem",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                padding: "2px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "1px",
+                                outline: "none"
+                              }}
+                            >
+                              {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.55rem", opacity: 0.7 }}>▼</span>
+                            </button>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 1: Total Cost (Editable in Split/Divide Mode) */}
+                    <div 
+                      onClick={() => {
+                        if (spreadMode !== "divide") {
+                          handleSetSpreadMode("divide");
+                          setTimeout(() => {
+                            totalInputRef.current?.focus();
+                            totalInputRef.current?.select();
+                          }, 50);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderRadius: "12px",
+                        backgroundColor: spreadMode === "divide" ? "#FFFFFF" : "transparent",
+                        border: spreadMode === "divide" 
+                          ? "1.5px solid rgba(232, 107, 50, 0.3)" 
+                          : "1px solid rgba(232, 107, 50, 0.08)",
+                        cursor: spreadMode === "divide" ? "default" : "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ 
+                          fontSize: "0.72rem", 
+                          fontWeight: 800, 
+                          color: spreadMode === "divide" ? "#C2410C" : "#9CA3AF",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3px"
+                        }}>
+                          Total Cost {spreadMode === "divide" && "●"}
+                        </span>
+                        <span style={{ fontSize: "0.68rem", color: spreadMode === "divide" ? "#EA580C" : "#9CA3AF" }}>
+                          {spreadMode === "divide" ? "Editable (Split cost)" : "Calculated"}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{
+                          fontSize: "1rem",
+                          fontWeight: 800,
+                          color: spreadMode === "divide" ? "#111827" : "#D97706",
+                          opacity: spreadMode === "divide" ? 1 : 0.7
+                        }}>
+                          {currencySymbol}
+                        </span>
+                        <input
+                          type="text"
+                          ref={totalInputRef}
+                          value={totalStr}
+                          readOnly={spreadMode !== "divide"}
+                          onChange={(e) => {
+                            if (spreadMode === "divide") {
+                              const val = e.target.value;
+                              if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                                const cleanVal = val.replace(/,/g, '');
+                                setAmount(formatInputWithCommas(cleanVal));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            if (spreadMode === "divide") {
+                              const cleanAmt = amount.replace(/,/g, '');
+                              const evaluated = evaluateMathExpression(cleanAmt);
+                              setAmount(formatInputWithCommas(evaluated));
+                            }
+                          }}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontSize: "1.2rem",
+                            fontWeight: 800,
+                            outline: "none",
+                            color: spreadMode === "divide" ? "#111827" : "#D97706",
+                            textAlign: "right",
+                            width: "140px",
+                            padding: "0",
+                            cursor: spreadMode === "divide" ? "text" : "pointer"
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 2: Daily Cost (Editable in Repeat Mode) */}
+                    <div 
+                      onClick={() => {
+                        if (spreadMode !== "repeat") {
+                          handleSetSpreadMode("repeat");
+                          setTimeout(() => {
+                            dailyInputRef.current?.focus();
+                            dailyInputRef.current?.select();
+                          }, 50);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px",
+                        borderRadius: "12px",
+                        backgroundColor: spreadMode === "repeat" ? "#FFFFFF" : "transparent",
+                        border: spreadMode === "repeat" 
+                          ? "1.5px solid rgba(232, 107, 50, 0.3)" 
+                          : "1px solid rgba(232, 107, 50, 0.08)",
+                        cursor: spreadMode === "repeat" ? "default" : "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ 
+                          fontSize: "0.72rem", 
+                          fontWeight: 800, 
+                          color: spreadMode === "repeat" ? "#C2410C" : "#9CA3AF",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3px"
+                        }}>
+                          Daily Cost {spreadMode === "repeat" && "●"}
+                        </span>
+                        <span style={{ fontSize: "0.68rem", color: spreadMode === "repeat" ? "#EA580C" : "#9CA3AF" }}>
+                          {spreadMode === "repeat" ? "Editable (Repeated cost)" : "Calculated"}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{
+                          fontSize: "1rem",
+                          fontWeight: 800,
+                          color: spreadMode === "repeat" ? "#111827" : "#D97706",
+                          opacity: spreadMode === "repeat" ? 1 : 0.7
+                        }}>
+                          {currencySymbol}
+                        </span>
+                        <input
+                          type="text"
+                          ref={dailyInputRef}
+                          value={dailyStr}
+                          readOnly={spreadMode !== "repeat"}
+                          onChange={(e) => {
+                            if (spreadMode === "repeat") {
+                              const val = e.target.value;
+                              if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                                const cleanVal = val.replace(/,/g, '');
+                                setAmount(formatInputWithCommas(cleanVal));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            if (spreadMode === "repeat") {
+                              const cleanAmt = amount.replace(/,/g, '');
+                              const evaluated = evaluateMathExpression(cleanAmt);
+                              setAmount(formatInputWithCommas(evaluated));
+                            }
+                          }}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontSize: "1.2rem",
+                            fontWeight: 800,
+                            outline: "none",
+                            color: spreadMode === "repeat" ? "#111827" : "#D97706",
+                            textAlign: "right",
+                            width: "140px",
+                            padding: "0",
+                            cursor: spreadMode === "repeat" ? "text" : "pointer"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Standard Amount Field
+              return (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: "#F9F6ED",
+                  borderRadius: "16px",
+                  padding: "8px 14px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                  marginBottom: "4px"
+                }}>
+                  <style>{`
+                    .amount-input-placeholder::placeholder {
+                      font-size: 0.82rem !important;
+                      font-weight: 500 !important;
+                      color: #9CA3AF !important;
+                      opacity: 0.8 !important;
                     }
-                  }}
-                  rates={rates}
-                  customCurrencies={customCurrencies}
-                  onAddCustomCurrency={onAddCustomCurrency}
-                  style={{ fontSize: "0.8rem", fontWeight: 700 }}
-                  recentCurrencies={(() => {
-                    const unique = Array.from(new Set(expenses.map(e => e.currency)));
-                    return unique.slice(0, 5);
-                  })()}
-                  customTrigger={({ onClick, value }) => (
+                  `}</style>
+                  {/* Left Side: Currency Selector & Reset Button */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
                     <button
                       type="button"
-                      onClick={onClick}
+                      onClick={() => {
+                        if (currency !== trip.homeCurrency) {
+                          setCurrency(trip.homeCurrency);
+                          localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
+                        }
+                      }}
                       style={{
                         background: "none",
                         border: "none",
-                        color: "var(--color-purple)",
-                        fontSize: "0.95rem",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        padding: "4px 2px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "1px",
-                        outline: "none"
-                      }}
-                    >
-                      {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
-                    </button>
-                  )}
-                />
-                
-                {spreadExpense && (() => {
-                  const start = new Date(spreadStart);
-                  const end = new Date(spreadEnd);
-                  if (isNaN(start) || isNaN(end) || end < start) return null;
-                  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                  const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
-                  const daily = spreadMode === "repeat" ? val : (val / days);
-                  const total = spreadMode === "repeat" ? (val * days) : val;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setSpreadMode(spreadMode === "repeat" ? "divide" : "repeat")}
-                      style={{
-                        fontSize: "0.72rem",
-                        fontWeight: 800,
-                        color: "#C2410C",
-                        backgroundColor: "rgba(232, 107, 50, 0.08)",
-                        border: "1px solid rgba(232, 107, 50, 0.18)",
-                        padding: "4px 8px",
-                        borderRadius: "8px",
-                        marginLeft: "6px",
-                        cursor: "pointer",
+                        color: "#6B7280",
+                        fontSize: "0.85rem",
+                        cursor: currency === trip.homeCurrency ? "default" : "pointer",
+                        padding: "2px",
+                        outline: "none",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px",
-                        outline: "none",
-                        whiteSpace: "nowrap"
+                        opacity: currency === trip.homeCurrency ? 0.35 : 1,
+                        transition: "opacity 0.2s"
                       }}
-                      title="Click to toggle Repeat vs Divide mode"
+                      title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
                     >
-                      <span>🔁 {days}d</span>
-                      <span>{spreadMode === "repeat" ? "Repeat" : "Divide"}</span>
-                      <span style={{ opacity: 0.8, fontSize: "0.65rem", fontWeight: 600 }}>
-                        {`(${formatMoney(daily, currency)}/d • Tot: ${formatMoney(total, currency)})`}
-                      </span>
+                      🏠
                     </button>
-                  );
-                })()}
-              </div>
+                    <SearchableCurrencySelect
+                      value={currency}
+                      onChange={(val) => {
+                        setCurrency(val);
+                        localStorage.setItem("tracker_last_used_currency", val);
+                        if (val !== trip.homeCurrency) {
+                          localStorage.setItem("tracker_last_used_non_home_currency", val);
+                        }
+                      }}
+                      rates={rates}
+                      customCurrencies={customCurrencies}
+                      onAddCustomCurrency={onAddCustomCurrency}
+                      style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                      recentCurrencies={(() => {
+                        const unique = Array.from(new Set(expenses.map(e => e.currency)));
+                        return unique.slice(0, 5);
+                      })()}
+                      customTrigger={({ onClick, value }) => (
+                        <button
+                          type="button"
+                          onClick={onClick}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "var(--color-purple)",
+                            fontSize: "0.95rem",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            padding: "4px 2px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "1px",
+                            outline: "none"
+                          }}
+                        >
+                          {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
+                        </button>
+                      )}
+                    />
+                  </div>
 
-              {/* Right Side: Input Box */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
-                <input
-                  type="text"
-                  className="amount-input-placeholder"
-                  value={amount}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^[0-9+\-*/().\s,]*$/.test(val)) {
-                      const cleanVal = val.replace(/,/g, '');
-                      setAmount(formatInputWithCommas(cleanVal));
-                    }
-                  }}
-                  onBlur={() => {
-                    const cleanAmt = amount.replace(/,/g, '');
-                    const evaluated = evaluateMathExpression(cleanAmt);
-                    setAmount(formatInputWithCommas(evaluated));
-                  }}
-                  placeholder={(() => {
-                    if (currency === trip.homeCurrency) return "0.00";
-                    const rateVal = convertCurrency(1, trip.homeCurrency, currency, rates);
-                    if (rateVal > 0) {
-                      const formattedRate = rateVal < 1 
-                        ? rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-                        : rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                      return `1 ${trip.homeCurrency} ≈ ${formattedRate} ${currency}`;
-                    }
-                    return "0.00";
-                  })()}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    fontSize: "1.4rem",
-                    fontWeight: 800,
-                    outline: "none",
-                    width: "100%",
-                    color: "#111827",
-                    textAlign: "right",
-                    padding: "4px 0",
-                    paddingRight: "8px"
-                  }}
-                />
-              </div>
-            </div>
+                  {/* Right Side: Input Box */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
+                    <input
+                      type="text"
+                      className="amount-input-placeholder"
+                      value={amount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                          const cleanVal = val.replace(/,/g, '');
+                          setAmount(formatInputWithCommas(cleanVal));
+                        }
+                      }}
+                      onBlur={() => {
+                        const cleanAmt = amount.replace(/,/g, '');
+                        const evaluated = evaluateMathExpression(cleanAmt);
+                        setAmount(formatInputWithCommas(evaluated));
+                      }}
+                      placeholder={(() => {
+                        if (currency === trip.homeCurrency) return "0.00";
+                        const rateVal = convertCurrency(1, trip.homeCurrency, currency, rates);
+                        if (rateVal > 0) {
+                          const formattedRate = rateVal < 1 
+                            ? rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                            : rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          return `1 ${trip.homeCurrency} ≈ ${formattedRate} ${currency}`;
+                        }
+                        return "0.00";
+                      })()}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        fontSize: "1.4rem",
+                        fontWeight: 800,
+                        outline: "none",
+                        width: "100%",
+                        color: "#111827",
+                        textAlign: "right",
+                        padding: "4px 0",
+                        paddingRight: "8px"
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             {/* Horizontal series mode breakdown is displayed inline inside the amount box */}
 
             {/* Compressed photo preview */}
@@ -7202,7 +7364,7 @@ function ManualEntryModal({
                       <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
                         <button
                           type="button"
-                          onClick={() => setSpreadMode("divide")}
+                          onClick={() => handleSetSpreadMode("divide")}
                           style={{
                             flex: 1,
                             padding: "8px 10px",
@@ -7222,7 +7384,7 @@ function ManualEntryModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSpreadMode("repeat")}
+                          onClick={() => handleSetSpreadMode("repeat")}
                           style={{
                             flex: 1,
                             padding: "8px 10px",
@@ -7238,7 +7400,7 @@ function ManualEntryModal({
                             outline: "none"
                           }}
                         >
-                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{val.toFixed(2)}/d)
+                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{daily.toFixed(2)}/d)
                         </button>
                       </div>
                     </div>
