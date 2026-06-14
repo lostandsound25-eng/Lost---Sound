@@ -3832,6 +3832,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       customCurrencies={customCurrencies}
                       onAddCustomCurrency={addCustomCurrency}
                       style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                      align="right"
                     />
                   </div>
                 )}
@@ -4308,9 +4309,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                     style={{
                                       fontSize: "0.65rem",
                                       fontWeight: 800,
-                                      color: showFuture ? "white" : "var(--color-orange)",
-                                      backgroundColor: showFuture ? "var(--orange-color, var(--color-orange))" : "rgba(232, 107, 50, 0.08)",
-                                      border: "1px solid rgba(232, 107, 50, 0.2)",
+                                      color: showFuture ? "white" : "#0284C7",
+                                      backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
+                                      border: "1px solid rgba(2, 132, 199, 0.2)",
                                       borderRadius: "12px",
                                       padding: "3px 8px",
                                       cursor: "pointer",
@@ -4425,9 +4426,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                       style={{
                                         fontSize: "0.65rem",
                                         fontWeight: 800,
-                                        color: showFuture ? "white" : "var(--color-orange)",
-                                        backgroundColor: showFuture ? "var(--color-orange)" : "rgba(232, 107, 50, 0.08)",
-                                        border: "1px solid rgba(232, 107, 50, 0.2)",
+                                        color: showFuture ? "white" : "#0284C7",
+                                        backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
+                                        border: "1px solid rgba(2, 132, 199, 0.2)",
                                         borderRadius: "12px",
                                         padding: "3px 8px",
                                         cursor: "pointer",
@@ -6634,13 +6635,58 @@ function ManualEntryModal({
 
           {/* Amount input block below Title */}
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <label style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#4B5563",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px"
-            }}>Amount</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "#4B5563",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
+              }}>Amount</label>
+              {(() => {
+                if (currency === trip.homeCurrency) return null;
+                const lastRates = localStorage.getItem("tracker_rates_last_updated");
+                if (!lastRates) return null;
+                const diffMs = Date.now() - parseInt(lastRates, 10);
+                const diffMin = Math.round(diffMs / 60000);
+                const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
+
+                return (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "0.7rem",
+                    color: "#6B7280"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span>Rates: {ratesTimeText}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (onRefreshRates) {
+                            await onRefreshRates();
+                          }
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                          fontSize: "0.75rem",
+                          color: "var(--color-purple)",
+                          display: "flex",
+                          alignItems: "center",
+                          outline: "none"
+                        }}
+                        title="Refresh exchange rates"
+                      >
+                        🔄
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
             <div style={{
               display: "flex",
               alignItems: "center",
@@ -6661,29 +6707,31 @@ function ManualEntryModal({
               `}</style>
               {/* Left Side: Currency Selector & Reset Button & Spread Breakdown */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
-                {currency !== trip.homeCurrency && (
-                  <button
-                    type="button"
-                    onClick={() => {
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currency !== trip.homeCurrency) {
                       setCurrency(trip.homeCurrency);
                       localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
-                    }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#6B7280",
-                      fontSize: "0.85rem",
-                      cursor: "pointer",
-                      padding: "2px",
-                      outline: "none",
-                      display: "flex",
-                      alignItems: "center"
-                    }}
-                    title={`Reset to home currency (${trip.homeCurrency})`}
-                  >
-                    🏠
-                  </button>
-                )}
+                    }
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6B7280",
+                    fontSize: "0.85rem",
+                    cursor: currency === trip.homeCurrency ? "default" : "pointer",
+                    padding: "2px",
+                    outline: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    opacity: currency === trip.homeCurrency ? 0.35 : 1,
+                    transition: "opacity 0.2s"
+                  }}
+                  title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
+                >
+                  🏠
+                </button>
                 <SearchableCurrencySelect
                   value={currency}
                   onChange={(val) => {
@@ -6809,54 +6857,6 @@ function ManualEntryModal({
               </div>
             </div>
             {/* Horizontal series mode breakdown is displayed inline inside the amount box */}
-            
-            {/* Rates time and refresh inside manual entry modal */}
-            {(() => {
-              if (currency === trip.homeCurrency) return null;
-              const lastRates = localStorage.getItem("tracker_rates_last_updated");
-              if (!lastRates) return null;
-              const diffMs = Date.now() - parseInt(lastRates, 10);
-              const diffMin = Math.round(diffMs / 60000);
-              const ratesTimeText = diffMin < 60 ? `${diffMin}m ago` : `${Math.round(diffMin / 60)}h ago`;
-
-              return (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  fontSize: "0.75rem",
-                  color: "#6B7280",
-                  marginTop: "-2px",
-                  padding: "0 4px",
-                  marginBottom: "6px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <span>Rates: {ratesTimeText}</span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (onRefreshRates) {
-                          await onRefreshRates();
-                        }
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        cursor: "pointer",
-                        fontSize: "0.8rem",
-                        color: "var(--color-purple)",
-                        display: "flex",
-                        alignItems: "center"
-                      }}
-                      title="Refresh exchange rates"
-                    >
-                      🔄
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Compressed photo preview */}
             {photoUrl && (
