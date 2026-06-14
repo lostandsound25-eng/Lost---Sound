@@ -201,6 +201,25 @@ const evaluateMathExpression = (expr) => {
   return expr;
 };
 
+const formatInputWithCommas = (str) => {
+  if (!str) return "";
+  const parts = str.split(/([+\-*/()])/);
+  const formattedParts = parts.map(part => {
+    if (/[+\-*/()]/.test(part)) return part;
+    const numParts = part.split('.');
+    let integerPart = numParts[0].replace(/\D/g, '');
+    if (integerPart) {
+      integerPart = parseInt(integerPart, 10).toLocaleString('en-US');
+    }
+    if (numParts.length > 1) {
+      const decimalPart = numParts[1].replace(/\D/g, '');
+      return `${integerPart}.${decimalPart}`;
+    }
+    return integerPart;
+  });
+  return formattedParts.join('');
+};
+
 // Formatting & Conversion Helpers
 const formatMoney = (amount, currency) => {
   const symbol = CURRENCY_SYMBOLS[currency] || currency;
@@ -325,6 +344,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
+  const [isHomeCurrencyLocked, setIsHomeCurrencyLocked] = useState(true);
+  const [isLocalCurrencyLocked, setIsLocalCurrencyLocked] = useState(true);
+  const [showEmptyPlanningDays, setShowEmptyPlanningDays] = useState(false);
+  const [isDragSelecting, setIsDragSelecting] = useState(false);
+  const [dragStartValue, setDragStartValue] = useState(null);
+  const calendarContainerRef = useRef(null);
+
+  const itineraryRef = useRef(null);
+  useEffect(() => {
+    itineraryRef.current = trip.itinerary;
+  }, [trip.itinerary]);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragSelecting) {
+        setIsDragSelecting(false);
+        setDragStartValue(null);
+        if (!isDemo && tripId && supabase && itineraryRef.current) {
+          supabase.from("trips").update({ itinerary: itineraryRef.current }).eq("id", tripId)
+            .catch(err => console.error("Failed to sync itinerary:", err));
+        }
+      }
+    };
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("touchend", handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("touchend", handleGlobalMouseUp);
+    };
+  }, [isDragSelecting, isDemo, tripId]);
 
   const pushToUndo = (action) => {
     setUndoStack(prev => [...prev, action]);
@@ -1337,6 +1386,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
 
+  const updateItineraryLocal = (dateKey, locationText) => {
+    setTrip((prev) => ({
+      ...prev,
+      itinerary: {
+        ...(prev.itinerary || {}),
+        [dateKey]: locationText
+      }
+    }));
+  };
+
   const updateItineraryLocation = async (dateKey, locationText) => {
     const updatedItinerary = {
       ...(trip.itinerary || {}),
@@ -1887,7 +1946,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const handleAddRapidExpense = async (e) => {
     e.preventDefault();
     if (isAddingRapid) return;
-    const val = parseFloat(rapidAmount);
+    const evaluatedAmount = evaluateMathExpression(rapidAmount.replace(/,/g, ''));
+    const val = parseFloat(evaluatedAmount);
     if (!rapidTitle.trim()) {
       alert("Please enter a title.");
       return;
@@ -1976,11 +2036,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             }}>
               <input
                 type="text"
-                placeholder="0.00"
+                placeholder={(() => {
+                  if (rapidCurrency === trip.homeCurrency) return "0.00";
+                  const rateVal = convertCurrency(1, trip.homeCurrency, rapidCurrency, rates);
+                  if (rateVal > 0) {
+                    const formattedRate = rateVal < 1 ? rateVal.toFixed(4) : rateVal.toFixed(2);
+                    return `1 ${trip.homeCurrency} ≈ ${formattedRate} ${rapidCurrency}`;
+                  }
+                  return "0.00";
+                })()}
                 value={rapidAmount}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (/^[0-9.]*$/.test(val)) setRapidAmount(val);
+                  if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                    const cleanVal = val.replace(/,/g, '');
+                    setRapidAmount(formatInputWithCommas(cleanVal));
+                  }
+                }}
+                onBlur={() => {
+                  const cleanAmt = rapidAmount.replace(/,/g, '');
+                  const evaluated = evaluateMathExpression(cleanAmt);
+                  setRapidAmount(formatInputWithCommas(evaluated));
                 }}
                 style={{
                   width: "100%",
@@ -1992,30 +2068,61 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   color: "#374151"
                 }}
               />
-              <button
-                type="button"
-                onClick={() => {
-                  setRapidCurrency(prev => prev === trip.homeCurrency ? (trip.localCurrency || "USD") : trip.homeCurrency);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--color-purple)",
-                  fontSize: "0.8rem",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  padding: "4px",
-                  width: "40px",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  outline: "none"
-                }}
-                title="Toggle currency"
-              >
-                {CURRENCY_SYMBOLS[rapidCurrency] || rapidCurrency}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                {rapidCurrency !== trip.homeCurrency && (
+                  <button
+                    type="button"
+                    onClick={() => setRapidCurrency(trip.homeCurrency)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#6B7280",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      padding: "2px",
+                      outline: "none",
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                    title={`Reset to home currency (${trip.homeCurrency})`}
+                  >
+                    🏠
+                  </button>
+                )}
+                <SearchableCurrencySelect
+                  value={rapidCurrency}
+                  onChange={(val) => setRapidCurrency(val)}
+                  rates={rates}
+                  customCurrencies={customCurrencies}
+                  onAddCustomCurrency={addCustomCurrency}
+                  style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                  recentCurrencies={(() => {
+                    const unique = Array.from(new Set(expenses.map(e => e.currency)));
+                    return unique.slice(0, 5);
+                  })()}
+                  customTrigger={({ onClick, value }) => (
+                    <button
+                      type="button"
+                      onClick={onClick}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--color-purple)",
+                        fontSize: "0.8rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        padding: "4px 2px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "1px",
+                        outline: "none"
+                      }}
+                    >
+                      {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
+                    </button>
+                  )}
+                />
+              </div>
             </div>
           </div>
 
@@ -2842,97 +2949,90 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
                       <span style={{ fontWeight: 600 }}>Home:</span>
-                      {isEditingHomeCurrency ? (
-                        <input
-                          type="text"
-                          value={homeCurrencyInput}
-                          onChange={(e) => setHomeCurrencyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveHomeCurrency();
-                            } else if (e.key === "Escape") {
-                              setIsEditingHomeCurrency(false);
-                            }
-                          }}
-                          onBlur={handleSaveHomeCurrency}
-                          autoFocus
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "6px",
-                            border: "1.5px solid var(--color-purple)",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            outline: "none",
-                            color: "#374151",
-                            width: "55px",
-                            textAlign: "center"
-                          }}
-                        />
-                      ) : (
+                      {isHomeCurrencyLocked ? (
                         <span
-                          onClick={() => {
-                            setHomeCurrencyInput(trip.homeCurrency);
-                            setIsEditingHomeCurrency(true);
-                          }}
+                          onClick={() => setIsHomeCurrencyLocked(false)}
                           style={{
                             fontSize: "0.82rem",
                             fontWeight: 700,
                             cursor: "pointer",
                             borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px"
+                            padding: "1px 2px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "2px"
                           }}
-                          title="Tap to change home currency"
+                          title="Click to unlock Home currency editing"
                         >
-                          {trip.homeCurrency}
+                          🔒 {trip.homeCurrency}
                         </span>
+                      ) : (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                          <span 
+                            onClick={() => setIsHomeCurrencyLocked(true)}
+                            style={{ cursor: "pointer", fontSize: "0.82rem" }}
+                            title="Click to lock Home currency editing"
+                          >
+                            🔓
+                          </span>
+                          <SearchableCurrencySelect
+                            value={trip.homeCurrency}
+                            onChange={(val) => {
+                              updateHomeCurrency(val);
+                              setIsHomeCurrencyLocked(true);
+                            }}
+                            rates={rates}
+                            customCurrencies={customCurrencies}
+                            onAddCustomCurrency={addCustomCurrency}
+                            style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                          />
+                        </div>
                       )}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
                       <span style={{ fontWeight: 600 }}>Local:</span>
-                      {isEditingLocalCurrency ? (
-                        <input
-                          type="text"
-                          value={localCurrencyInput}
-                          onChange={(e) => setLocalCurrencyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveLocalCurrency();
-                            } else if (e.key === "Escape") {
-                              setIsEditingLocalCurrency(false);
-                            }
-                          }}
-                          onBlur={handleSaveLocalCurrency}
-                          autoFocus
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "6px",
-                            border: "1.5px solid var(--color-purple)",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            outline: "none",
-                            color: "#374151",
-                            width: "55px",
-                            textAlign: "center"
-                          }}
-                        />
-                      ) : (
+                      {isLocalCurrencyLocked ? (
                         <span
-                          onClick={() => {
-                            setLocalCurrencyInput(activeLocal);
-                            setIsEditingLocalCurrency(true);
-                          }}
+                          onClick={() => setIsLocalCurrencyLocked(false)}
                           style={{
                             fontSize: "0.82rem",
                             fontWeight: 700,
                             cursor: "pointer",
                             borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px"
+                            padding: "1px 2px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "2px"
                           }}
-                          title="Tap to change local currency"
+                          title="Click to unlock Local currency editing"
                         >
-                          {activeLocal}
+                          🔒 {activeLocal}
                         </span>
+                      ) : (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                          <span 
+                            onClick={() => setIsLocalCurrencyLocked(true)}
+                            style={{ cursor: "pointer", fontSize: "0.82rem" }}
+                            title="Click to lock Local currency editing"
+                          >
+                            🔓
+                          </span>
+                          <SearchableCurrencySelect
+                            value={activeLocal}
+                            onChange={(val) => {
+                              updateLocalCurrency(val);
+                              setManualLocalCurrency(val);
+                              localStorage.setItem("tracker_last_used_currency", val);
+                              setIsLocalCurrencyLocked(true);
+                            }}
+                            rates={rates}
+                            customCurrencies={customCurrencies}
+                            onAddCustomCurrency={addCustomCurrency}
+                            style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                            align="right"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -3219,27 +3319,50 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     {/* Compact View Toggle in History */}
                     {logView === "history" && (
-                      <button
-                        type="button"
-                        onClick={() => setHistoryViewMode(historyViewMode === "cards" ? "spreadsheet" : "cards")}
-                        style={{
-                          fontSize: "0.95rem",
-                          color: "#C2410C",
-                          backgroundColor: "rgba(194, 65, 12, 0.05)",
-                          border: "none",
-                          borderRadius: "20px",
-                          width: "32px",
-                          height: "32px",
-                          cursor: "pointer",
-                          display: "flex",
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <label style={{
+                          display: "inline-flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          transition: "all 0.15s"
-                        }}
-                        title={historyViewMode === "cards" ? "Switch to Spreadsheet" : "Switch to Cards"}
-                      >
-                        {historyViewMode === "cards" ? "📊" : "🗂️"}
-                      </button>
+                          gap: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          color: "#4B5563",
+                          cursor: "pointer",
+                          userSelect: "none"
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={showEmptyPlanningDays}
+                            onChange={(e) => setShowEmptyPlanningDays(e.target.checked)}
+                            style={{
+                              cursor: "pointer",
+                              accentColor: "var(--color-purple)"
+                            }}
+                          />
+                          <span>Show empty planning days</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryViewMode(historyViewMode === "cards" ? "spreadsheet" : "cards")}
+                          style={{
+                            fontSize: "0.95rem",
+                            color: "#C2410C",
+                            backgroundColor: "rgba(194, 65, 12, 0.05)",
+                            border: "none",
+                            borderRadius: "20px",
+                            width: "32px",
+                            height: "32px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.15s"
+                          }}
+                          title={historyViewMode === "cards" ? "Switch to Spreadsheet" : "Switch to Cards"}
+                        >
+                          {historyViewMode === "cards" ? "📊" : "🗂️"}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -3395,72 +3518,53 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                     <div key={exp.id}>
                                       {showHeader && (
                                         <div style={{
-                                          fontSize: "0.8rem",
-                                          fontWeight: 800,
-                                          color: "var(--color-purple)",
-                                          backgroundColor: "rgba(133, 58, 81, 0.06)",
-                                          padding: "6px 12px",
-                                          borderRadius: "8px",
                                           marginTop: "16px",
                                           marginBottom: "8px",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: "6px",
-                                          textTransform: "uppercase",
-                                          letterSpacing: "0.5px"
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          alignItems: "flex-start",
+                                          gap: "4px"
                                         }}>
-                                          <span>{label}</span>
-                                          <span 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setEditingItineraryDate(dateKey);
-                                              setItineraryInput(dayLocation || "");
-                                            }}
-                                            style={{ 
-                                              color: dayLocation ? "var(--color-orange)" : "#9CA3AF", 
-                                              display: "inline-flex", 
-                                              alignItems: "center", 
-                                              gap: "2px",
-                                              cursor: "pointer",
-                                              textTransform: "none"
-                                            }}
-                                          >
-                                            {editingItineraryDate === dateKey ? (
-                                              <input
-                                                type="text"
-                                                value={itineraryInput}
-                                                onChange={(e) => setItineraryInput(e.target.value)}
-                                                onBlur={() => {
-                                                  updateItineraryLocation(dateKey, itineraryInput);
-                                                  setEditingItineraryDate(null);
-                                                }}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === "Enter") {
-                                                    updateItineraryLocation(dateKey, itineraryInput);
-                                                    setEditingItineraryDate(null);
-                                                  } else if (e.key === "Escape") {
-                                                    setEditingItineraryDate(null);
-                                                  }
-                                                }}
-                                                autoFocus
-                                                style={{
-                                                  fontSize: "0.8rem",
-                                                  fontWeight: 800,
-                                                  color: "var(--color-orange)",
-                                                  border: "none",
-                                                  borderBottom: "1px solid var(--color-orange)",
-                                                  outline: "none",
-                                                  width: "85px",
-                                                  background: "transparent",
-                                                  padding: 0
-                                                }}
-                                              />
-                                            ) : (
-                                              <span title="Click to edit destination">
-                                                📍 {dayLocation || "Add destination"}
-                                              </span>
-                                            )}
-                                          </span>
+                                          <div style={{
+                                            fontSize: "0.8rem",
+                                            fontWeight: 800,
+                                            color: "var(--color-purple)",
+                                            backgroundColor: "rgba(133, 58, 81, 0.06)",
+                                            padding: "6px 12px",
+                                            borderRadius: "8px",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.5px"
+                                          }}>
+                                            {label}
+                                          </div>
+                                          <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                            paddingLeft: "4px"
+                                          }}>
+                                            <span style={{ fontSize: "0.85rem" }}>📍</span>
+                                            <input
+                                              type="text"
+                                              placeholder="Add destination..."
+                                              value={trip.itinerary?.[dateKey] || ""}
+                                              onChange={(e) => updateItineraryLocal(dateKey, e.target.value)}
+                                              onBlur={() => updateItineraryLocation(dateKey, trip.itinerary?.[dateKey] || "")}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') e.target.blur();
+                                              }}
+                                              style={{
+                                                fontSize: "0.8rem",
+                                                fontWeight: 800,
+                                                color: "var(--color-orange)",
+                                                border: "none",
+                                                outline: "none",
+                                                width: "140px",
+                                                background: "transparent",
+                                                padding: "2px 0"
+                                              }}
+                                            />
+                                          </div>
                                         </div>
                                       )}
                                       <ExpenseCard
@@ -3520,6 +3624,41 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       } else {
                         // History View
                         const olderGroups = {};
+                        if (showEmptyPlanningDays) {
+                          let minDateVal = new Date();
+                          if (sortedExpenses.length > 0) {
+                            minDateVal = new Date(Math.min(...sortedExpenses.map(e => new Date(e.timestamp).getTime())));
+                          }
+                          let maxDateVal = new Date();
+                          if (sortedExpenses.length > 0) {
+                            const maxExpTime = Math.max(...sortedExpenses.map(e => new Date(e.timestamp).getTime()));
+                            if (maxExpTime > maxDateVal.getTime()) {
+                              maxDateVal = new Date(maxExpTime);
+                            }
+                          }
+                          if (trip.itinerary) {
+                            Object.keys(trip.itinerary).forEach((k) => {
+                              const dk = new Date(k + "T00:00:00");
+                              if (!isNaN(dk.getTime()) && dk.getTime() > maxDateVal.getTime()) {
+                                maxDateVal = dk;
+                              }
+                            });
+                          }
+                          const start = new Date(minDateVal.getFullYear(), minDateVal.getMonth(), minDateVal.getDate());
+                          const end = new Date(maxDateVal.getFullYear(), maxDateVal.getMonth(), maxDateVal.getDate());
+                          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                            const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            if (!olderGroups[dateKey]) {
+                              olderGroups[dateKey] = {
+                                dateDisplay: d.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }),
+                                dateKey: dateKey,
+                                totalSpend: 0,
+                                categories: {},
+                                locationsList: []
+                              };
+                            }
+                          }
+                        }
                         sortedExpenses.forEach((exp) => {
                           const d = new Date(exp.timestamp);
                           const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -3624,7 +3763,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
                                   <thead>
                                     <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
-                                      <th style={{ padding: "10px 10px", fontWeight: 700, color: "#4B5563" }}>Date & Location</th>
+                                      <th style={{ padding: "10px 10px", fontWeight: 700, color: "#4B5563" }}>Date</th>
+                                      <th style={{ padding: "10px 10px", fontWeight: 700, color: "#4B5563" }}>Location</th>
                                       <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Stay</th>
                                       <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Transit</th>
                                       <th style={{ padding: "10px 8px", fontWeight: 700, color: "#4B5563", textAlign: "right" }}>Food</th>
@@ -3653,61 +3793,58 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                             <div style={{ fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>
                                               {group.dateDisplay}
                                             </div>
-                                            <div 
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setEditingItineraryDate(group.dateKey);
-                                                setItineraryInput(group.location || "");
-                                              }}
-                                              style={{
-                                                fontSize: "0.7rem",
-                                                color: group.location ? "var(--color-orange)" : "#9CA3AF",
-                                                fontWeight: 700,
-                                                marginTop: "2px",
-                                                whiteSpace: "nowrap",
-                                                cursor: "pointer",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "2px",
-                                                maxWidth: "110px",
-                                                overflow: "hidden"
-                                              }}
-                                            >
-                                              {editingItineraryDate === group.dateKey ? (
-                                                <input
-                                                  type="text"
-                                                  value={itineraryInput}
-                                                  onChange={(e) => setItineraryInput(e.target.value)}
-                                                  onBlur={() => {
-                                                    updateItineraryLocation(group.dateKey, itineraryInput);
-                                                    setEditingItineraryDate(null);
-                                                  }}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                      updateItineraryLocation(group.dateKey, itineraryInput);
-                                                      setEditingItineraryDate(null);
-                                                    } else if (e.key === "Escape") {
-                                                      setEditingItineraryDate(null);
-                                                    }
-                                                  }}
-                                                  autoFocus
-                                                  style={{
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: 700,
-                                                    color: "var(--color-orange)",
-                                                    border: "none",
-                                                    borderBottom: "1px solid var(--color-orange)",
-                                                    outline: "none",
-                                                    width: "75px",
-                                                    background: "transparent",
-                                                    padding: 0
-                                                  }}
-                                                />
-                                              ) : (
-                                                <span title="Click to edit destination" style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
-                                                  📍 {group.location || "Add Location"}
-                                                </span>
-                                              )}
+                                          </td>
+                                          <td 
+                                            style={{ 
+                                              padding: "10px 10px",
+                                              verticalAlign: "middle"
+                                            }}
+                                          >
+                                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                              <span 
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
+                                                  setIsDragSelecting(true);
+                                                  setDragStartValue(trip.itinerary?.[group.dateKey] || "");
+                                                }}
+                                                style={{ 
+                                                  cursor: "grab", 
+                                                  color: "#9CA3AF", 
+                                                  userSelect: "none", 
+                                                  fontSize: "0.85rem",
+                                                  padding: "2px 4px",
+                                                  display: "inline-flex",
+                                                  alignItems: "center"
+                                                }}
+                                                title="Drag down/up to copy location"
+                                              >
+                                                ⋮⋮
+                                              </span>
+                                              <input
+                                                type="text"
+                                                placeholder="Add Location"
+                                                value={trip.itinerary?.[group.dateKey] || ""}
+                                                onChange={(e) => updateItineraryLocal(group.dateKey, e.target.value)}
+                                                onBlur={() => updateItineraryLocation(group.dateKey, trip.itinerary?.[group.dateKey] || "")}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter') e.target.blur();
+                                                }}
+                                                onMouseEnter={() => {
+                                                  if (isDragSelecting && dragStartValue !== null) {
+                                                    updateItineraryLocal(group.dateKey, dragStartValue);
+                                                  }
+                                                }}
+                                                style={{
+                                                  fontSize: "0.8rem",
+                                                  fontWeight: 600,
+                                                  color: "var(--color-orange)",
+                                                  border: "none",
+                                                  outline: "none",
+                                                  width: "110px",
+                                                  background: "transparent",
+                                                  padding: "2px 0"
+                                                }}
+                                              />
                                             </div>
                                           </td>
                                           {renderCell(group, "Accommodation", "Stay")}
@@ -3759,56 +3896,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                           {group.dateDisplay}
                                         </span>
                                         <div 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingItineraryDate(group.dateKey);
-                                            setItineraryInput(group.location || "");
-                                          }}
+                                          onClick={(e) => e.stopPropagation()}
                                           style={{ 
                                             fontSize: "0.75rem", 
-                                            color: group.location ? "var(--color-orange)" : "#9CA3AF", 
+                                            color: "var(--color-orange)", 
                                             display: "flex", 
                                             alignItems: "center", 
                                             gap: "2px", 
-                                            cursor: "pointer",
-                                            fontWeight: 600
+                                            fontWeight: 600,
+                                            marginTop: "2px"
                                           }}
                                         >
-                                          {editingItineraryDate === group.dateKey ? (
-                                            <input
-                                              type="text"
-                                              value={itineraryInput}
-                                              onChange={(e) => setItineraryInput(e.target.value)}
-                                              onBlur={() => {
-                                                updateItineraryLocation(group.dateKey, itineraryInput);
-                                                setEditingItineraryDate(null);
-                                              }}
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  updateItineraryLocation(group.dateKey, itineraryInput);
-                                                  setEditingItineraryDate(null);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingItineraryDate(null);
-                                                }
-                                              }}
-                                              autoFocus
-                                              style={{
-                                                fontSize: "0.75rem",
-                                                fontWeight: 600,
-                                                color: "var(--color-orange)",
-                                                border: "none",
-                                                borderBottom: "1px solid var(--color-orange)",
-                                                outline: "none",
-                                                width: "80px",
-                                                background: "transparent",
-                                                padding: 0
-                                              }}
-                                            />
-                                          ) : (
-                                            <span title="Click to edit destination">
-                                              📍 {group.location || "Add destination"}
-                                            </span>
-                                          )}
+                                          <span>📍</span>
+                                          <input
+                                            type="text"
+                                            placeholder="Add destination..."
+                                            value={trip.itinerary?.[group.dateKey] || ""}
+                                            onChange={(e) => updateItineraryLocal(group.dateKey, e.target.value)}
+                                            onBlur={() => updateItineraryLocation(group.dateKey, trip.itinerary?.[group.dateKey] || "")}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') e.target.blur();
+                                            }}
+                                            style={{
+                                              fontSize: "0.75rem",
+                                              fontWeight: 600,
+                                              color: "var(--color-orange)",
+                                              border: "none",
+                                              outline: "none",
+                                              width: "140px",
+                                              background: "transparent",
+                                              padding: "1px 0"
+                                            }}
+                                          />
                                         </div>
                                       </div>
                                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -3840,84 +3959,90 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        {Object.entries(group.categories).map(([cat, catData]) => {
-                                          const key = `${group.dateKey}-${cat}`;
-                                          const isCatExpanded = !!expandedOlderCategory[key];
-                                          return (
-                                            <div
-                                              key={cat}
-                                              style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "6px",
-                                                fontSize: "0.85rem",
-                                                color: "#4B5563",
-                                                borderBottom: "1px dashed #F3F4F6",
-                                                paddingBottom: "8px",
-                                                marginTop: "4px"
-                                              }}
-                                            >
+                                        {Object.keys(group.categories).length === 0 ? (
+                                          <div style={{ fontSize: "0.8rem", color: "#9CA3AF", fontStyle: "italic", textAlign: "center", padding: "10px 0" }}>
+                                            No expenses logged for this day.
+                                          </div>
+                                        ) : (
+                                          Object.entries(group.categories).map(([cat, catData]) => {
+                                            const key = `${group.dateKey}-${cat}`;
+                                            const isCatExpanded = !!expandedOlderCategory[key];
+                                            return (
                                               <div
+                                                key={cat}
                                                 style={{
                                                   display: "flex",
-                                                  justifyContent: "space-between",
-                                                  alignItems: "center",
-                                                  cursor: "pointer",
-                                                  width: "100%"
-                                                }}
-                                                onClick={() => toggleOlderCategory(group.dateKey, cat)}
-                                              >
-                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                  <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
-                                                  <span style={{ fontWeight: 600 }}>{cat}</span>
-                                                  <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
-                                                    ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
-                                                  </span>
-                                                </div>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                  <span style={{
-                                                    fontWeight: 700,
-                                                    color: CATEGORY_COLORS[cat] || "#111827"
-                                                  }}>
-                                                    {formatMoney(catData.total, trip.homeCurrency)}
-                                                  </span>
-                                                  <span style={{
-                                                    fontSize: "0.6rem",
-                                                    color: "#9CA3AF",
-                                                    transform: isCatExpanded ? "rotate(180deg)" : "none",
-                                                    transition: "transform 0.15s"
-                                                  }}>▼</span>
-                                                </div>
-                                              </div>
-
-                                              {isCatExpanded && (
-                                                <div style={{
-                                                  display: "flex",
                                                   flexDirection: "column",
-                                                  gap: "8px",
-                                                  paddingLeft: "16px",
-                                                  marginTop: "6px"
-                                                }}>
-                                                  {catData.list.map((exp) => (
-                                                    <ExpenseCard
-                                                      key={exp.id}
-                                                      expense={exp}
-                                                      onEdit={(e) => {
-                                                        setEditingExpense(e);
-                                                        setActiveModal("manual");
-                                                      }}
-                                                      onDelete={deleteExpense}
-                                                      formatMoney={formatMoney}
-                                                      convertCurrency={convertCurrency}
-                                                      homeCurrency={trip.homeCurrency}
-                                                      rates={rates}
-                                                    />
-                                                  ))}
+                                                  gap: "6px",
+                                                  fontSize: "0.85rem",
+                                                  color: "#4B5563",
+                                                  borderBottom: "1px dashed #F3F4F6",
+                                                  paddingBottom: "8px",
+                                                  marginTop: "4px"
+                                                }}
+                                              >
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                    cursor: "pointer",
+                                                    width: "100%"
+                                                  }}
+                                                  onClick={() => toggleOlderCategory(group.dateKey, cat)}
+                                                >
+                                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                    <span>{CATEGORY_EMOJIS[cat] || "📦"}</span>
+                                                    <span style={{ fontWeight: 600 }}>{cat}</span>
+                                                    <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>
+                                                      ({catData.list.length} {catData.list.length === 1 ? "item" : "items"})
+                                                    </span>
+                                                  </div>
+                                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                    <span style={{
+                                                      fontWeight: 700,
+                                                      color: CATEGORY_COLORS[cat] || "#111827"
+                                                    }}>
+                                                      {formatMoney(catData.total, trip.homeCurrency)}
+                                                    </span>
+                                                    <span style={{
+                                                      fontSize: "0.6rem",
+                                                      color: "#9CA3AF",
+                                                      transform: isCatExpanded ? "rotate(180deg)" : "none",
+                                                      transition: "transform 0.15s"
+                                                    }}>▼</span>
+                                                  </div>
                                                 </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
+
+                                                {isCatExpanded && (
+                                                  <div style={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: "8px",
+                                                    paddingLeft: "16px",
+                                                    marginTop: "6px"
+                                                  }}>
+                                                    {catData.list.map((exp) => (
+                                                      <ExpenseCard
+                                                        key={exp.id}
+                                                        expense={exp}
+                                                        onEdit={(e) => {
+                                                          setEditingExpense(e);
+                                                          setActiveModal("manual");
+                                                        }}
+                                                        onDelete={deleteExpense}
+                                                        formatMoney={formatMoney}
+                                                        convertCurrency={convertCurrency}
+                                                        homeCurrency={trip.homeCurrency}
+                                                        rates={rates}
+                                                      />
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -4747,6 +4872,8 @@ function ManualEntryModal({
   const titleInputRef = useRef(null);
   const hashtagsDropdownRef = useRef(null);
   const establishmentInputRef = useRef(null);
+  const calendarContainerRef = useRef(null);
+  const lastTapRef = useRef(0);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
   const [hashtagFilter, setHashtagFilter] = useState("");
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
@@ -4777,6 +4904,24 @@ function ManualEntryModal({
         !titleInputRef.current.contains(event.target)
       ) {
         setShowHashtagsDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        calendarContainerRef.current &&
+        !calendarContainerRef.current.contains(event.target) &&
+        !event.target.closest('button[style*="var(--color-purple)"]')
+      ) {
+        setIsDateExpanded(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -4930,7 +5075,24 @@ function ManualEntryModal({
     }
     
     const handleDayClick = (dayStr) => {
+      const now = Date.now();
+      const isDoubleTap = now - lastTapRef.current < 300;
+      lastTapRef.current = now;
+
+      if (isDoubleTap) {
+        setSpreadStart(dayStr);
+        setExpenseDate(dayStr);
+        setSpreadEnd(null);
+        setSpreadExpense(false);
+        setIsDateExpanded(false);
+        return;
+      }
+
       if (spreadExpense || !spreadStart || spreadEnd) {
+        if (!spreadExpense && expenseDate === dayStr) {
+          setIsDateExpanded(false);
+          return;
+        }
         setSpreadStart(dayStr);
         setExpenseDate(dayStr);
         setSpreadEnd(null);
@@ -6174,7 +6336,9 @@ function ManualEntryModal({
 
           {/* Collapsible Date Picker */}
           {isDateExpanded && (
-            <div style={{
+            <div
+              ref={calendarContainerRef}
+              style={{
               padding: "16px 12px",
               backgroundColor: "#F9F6ED",
               borderRadius: "20px",
