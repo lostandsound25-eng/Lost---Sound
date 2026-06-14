@@ -336,7 +336,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [expandedOlderCategory, setExpandedOlderCategory] = useState({});
   const [showFuture, setShowFuture] = useState(false);
   const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
-  const [logView, setLogView] = useState("recent"); // 'recent' or 'history'
+  const [logView, setLogView] = useState("recent"); // 'recent', 'plan', or 'history'
+  const [prevViewBeforeInsights, setPrevViewBeforeInsights] = useState("recent");
+  const [planMonth, setPlanMonth] = useState(new Date().getMonth());
+  const [planYear, setPlanYear] = useState(new Date().getFullYear());
+  const [plannerViewMode, setPlannerViewMode] = useState("monthly"); // "monthly" or "weekly"
+  const [planWeekStart, setPlanWeekStart] = useState(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // start at Monday
+    return new Date(today.setDate(diff));
+  });
+  const [planDragStart, setPlanDragStart] = useState(null);
+  const [planDragEnd, setPlanDragEnd] = useState(null);
+  const [isPlanDragging, setIsPlanDragging] = useState(false);
+  const [planDestinationInput, setPlanDestinationInput] = useState("");
+  const [showPlanDestModal, setShowPlanDestModal] = useState(false);
+  const [selectedPlanDate, setSelectedPlanDate] = useState(null);
   const [historyViewMode, setHistoryViewMode] = useState("cards"); // 'cards' or 'spreadsheet'
   const [drillDownExpenses, setDrillDownExpenses] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
@@ -1368,6 +1384,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
       } catch (e) {
         console.error("Failed to sync itinerary to cloud:", e);
+      }
+    }
+  };
+
+  const updateItineraryLocationsBatch = async (updates) => {
+    const updatedItinerary = {
+      ...(trip.itinerary || {}),
+      ...updates
+    };
+    setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
+    if (!isDemo && tripId && supabase) {
+      try {
+        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
+      } catch (e) {
+        console.error("Failed to sync itinerary batch to cloud:", e);
       }
     }
   };
@@ -2444,6 +2475,712 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     );
   };
 
+  const renderPlanner = () => {
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const changePlanMonth = (dir) => {
+      let m = planMonth + dir;
+      let y = planYear;
+      if (m < 0) {
+        m = 11;
+        y--;
+      } else if (m > 11) {
+        m = 0;
+        y++;
+      }
+      setPlanMonth(m);
+      setPlanYear(y);
+    };
+
+    const changePlanWeek = (dir) => {
+      const d = new Date(planWeekStart);
+      d.setDate(d.getDate() + dir * 7);
+      setPlanWeekStart(d);
+    };
+
+    const getWeeklyDays = () => {
+      const days = [];
+      const start = new Date(planWeekStart);
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        days.push({
+          date: d,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      return days;
+    };
+
+    const getDragRange = () => {
+      if (!planDragStart || !planDragEnd) return null;
+      const s = planDragStart;
+      const e = planDragEnd;
+      return s <= e ? { start: s, end: e } : { start: e, end: s };
+    };
+
+    const dragRange = getDragRange();
+
+    const handlePlannerCellMouseDown = (dateStr) => {
+      setPlanDragStart(dateStr);
+      setPlanDragEnd(dateStr);
+      setIsPlanDragging(true);
+      setSelectedPlanDate(dateStr);
+    };
+
+    const handlePlannerCellMouseEnter = (dateStr) => {
+      if (isPlanDragging) {
+        setPlanDragEnd(dateStr);
+      }
+    };
+
+    const handlePlannerCellMouseUp = () => {
+      if (isPlanDragging) {
+        setIsPlanDragging(false);
+        if (planDragStart && planDragEnd && planDragStart !== planDragEnd) {
+          setShowPlanDestModal(true);
+        }
+      }
+    };
+
+    const handlePlannerTouchStart = (e, dateStr) => {
+      setPlanDragStart(dateStr);
+      setPlanDragEnd(dateStr);
+      setIsPlanDragging(true);
+      setSelectedPlanDate(dateStr);
+    };
+
+    const handlePlannerTouchMove = (e) => {
+      if (!isPlanDragging) return;
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target) {
+        const cell = target.closest("[data-plan-date]");
+        if (cell) {
+          const dateStr = cell.getAttribute("data-plan-date");
+          setPlanDragEnd(dateStr);
+        }
+      }
+    };
+
+    const handlePlannerTouchEnd = () => {
+      if (isPlanDragging) {
+        setIsPlanDragging(false);
+        if (planDragStart && planDragEnd && planDragStart !== planDragEnd) {
+          setShowPlanDestModal(true);
+        }
+      }
+    };
+
+    const getPlannerDaysGrid = (year, month) => {
+      const firstDay = new Date(year, month, 1);
+      const startDayOfWeek = firstDay.getDay();
+      const daysGrid = [];
+      const prevMonthDays = new Date(year, month, 0).getDate();
+      for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const d = new Date(year, month - 1, prevMonthDays - i);
+        daysGrid.push({
+          day: prevMonthDays - i,
+          isCurrentMonth: false,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      const currentMonthDays = new Date(year, month + 1, 0).getDate();
+      for (let i = 1; i <= currentMonthDays; i++) {
+        const d = new Date(year, month, i);
+        daysGrid.push({
+          day: i,
+          isCurrentMonth: true,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      const remaining = 42 - daysGrid.length;
+      for (let i = 1; i <= remaining; i++) {
+        const d = new Date(year, month + 1, i);
+        daysGrid.push({
+          day: i,
+          isCurrentMonth: false,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      return daysGrid;
+    };
+
+    const renderCellIndicators = (dateStr) => {
+      const dayExpenses = expenses.filter(e => {
+        try {
+          return new Date(e.timestamp).toLocaleDateString('en-CA') === dateStr;
+        } catch (err) {
+          return false;
+        }
+      });
+      if (dayExpenses.length === 0) return null;
+      
+      const emojis = Array.from(new Set(dayExpenses.map(e => CATEGORY_EMOJIS[e.category] || "📦"))).slice(0, 3);
+      return (
+        <div style={{ display: "flex", gap: "2px", justifyContent: "center", marginTop: "2px" }}>
+          {emojis.map((emoji, idx) => (
+            <span key={idx} style={{ fontSize: "0.65rem" }}>{emoji}</span>
+          ))}
+        </div>
+      );
+    };
+
+    const renderSelectedDateDetails = () => {
+      if (!selectedPlanDate) return null;
+      const d = new Date(selectedPlanDate + "T00:00:00");
+      const formatted = d.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const plannedDest = trip.itinerary?.[selectedPlanDate] || "";
+      const dayExpenses = expenses.filter(e => {
+        try {
+          return new Date(e.timestamp).toLocaleDateString('en-CA') === selectedPlanDate;
+        } catch (err) {
+          return false;
+        }
+      });
+
+      return (
+        <div style={{
+          backgroundColor: "white",
+          borderRadius: "16px",
+          padding: "16px",
+          border: "1.5px solid rgba(133, 58, 81, 0.08)",
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.01)",
+          marginTop: "16px"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: "0.88rem", fontWeight: 850, color: "var(--color-purple)" }}>
+                {formatted}
+              </h4>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6B7280" }}>Destination:</span>
+                {editingItineraryDate === selectedPlanDate ? (
+                  <div style={{ display: "inline-flex", gap: "4px" }}>
+                    <input
+                      type="text"
+                      value={itineraryInput}
+                      onChange={(e) => setItineraryInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateItineraryLocation(selectedPlanDate, itineraryInput);
+                          setEditingItineraryDate(null);
+                        }
+                      }}
+                      autoFocus
+                      style={{
+                        padding: "2px 6px",
+                        fontSize: "0.78rem",
+                        borderRadius: "6px",
+                        border: "1.5px solid var(--color-orange)",
+                        outline: "none"
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateItineraryLocation(selectedPlanDate, itineraryInput);
+                        setEditingItineraryDate(null);
+                      }}
+                      style={{
+                        backgroundColor: "var(--color-orange)",
+                        border: "none",
+                        color: "white",
+                        padding: "2px 6px",
+                        borderRadius: "6px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <span 
+                    onClick={() => {
+                      setEditingItineraryDate(selectedPlanDate);
+                      setItineraryInput(plannedDest);
+                    }}
+                    style={{ 
+                      fontSize: "0.78rem", 
+                      fontWeight: 750, 
+                      color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
+                      borderBottom: "1px dashed",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {plannedDest || "📍 Set destination"}
+                  </span>
+                )}
+              </div>
+            </div>
+            {dayExpenses.length > 0 && (
+              <span style={{
+                fontSize: "0.72rem",
+                fontWeight: 755,
+                color: "var(--color-purple)",
+                backgroundColor: "rgba(133, 58, 81, 0.05)",
+                padding: "2px 8px",
+                borderRadius: "12px"
+              }}>
+                {dayExpenses.length} Expense{dayExpenses.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {dayExpenses.length === 0 ? (
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "#9CA3AF", fontStyle: "italic" }}>
+              No expenses logged for this date.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {dayExpenses.map(exp => (
+                <div key={exp.id} style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
+                  backgroundColor: "rgba(133, 58, 81, 0.03)",
+                  fontSize: "0.8rem"
+                }}>
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <span>{CATEGORY_EMOJIS[exp.category] || "📦"}</span>
+                    <div>
+                      <div style={{ fontWeight: 700, color: "#374151" }}>{exp.note || exp.category}</div>
+                      {exp.location && <div style={{ fontSize: "0.7rem", color: "#6B7280" }}>📍 {exp.location.split(" | ")[0]}</div>}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 800, color: "var(--color-purple)" }}>
+                    {formatMoney(exp.amount, exp.currency)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div 
+        onMouseUp={handlePlannerCellMouseUp}
+        onTouchEnd={handlePlannerTouchEnd}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          animation: "fadeInUp 0.2s ease-out"
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+          <div style={{
+            display: "flex",
+            backgroundColor: "rgba(133, 58, 81, 0.05)",
+            padding: "3px",
+            borderRadius: "8px",
+            gap: "2px"
+          }}>
+            <button
+              type="button"
+              onClick={() => setPlannerViewMode("monthly")}
+              style={{
+                fontSize: "0.74rem",
+                fontWeight: plannerViewMode === "monthly" ? 750 : 500,
+                color: plannerViewMode === "monthly" ? "var(--color-purple)" : "#6B7280",
+                backgroundColor: plannerViewMode === "monthly" ? "white" : "transparent",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                cursor: "pointer",
+                boxShadow: plannerViewMode === "monthly" ? "0 2px 4px rgba(0,0,0,0.04)" : "none",
+                transition: "all 0.15s"
+              }}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setPlannerViewMode("weekly")}
+              style={{
+                fontSize: "0.74rem",
+                fontWeight: plannerViewMode === "weekly" ? 750 : 500,
+                color: plannerViewMode === "weekly" ? "var(--color-purple)" : "#6B7280",
+                backgroundColor: plannerViewMode === "weekly" ? "white" : "transparent",
+                border: "none",
+                borderRadius: "6px",
+                padding: "4px 12px",
+                cursor: "pointer",
+                boxShadow: plannerViewMode === "weekly" ? "0 2px 4px rgba(0,0,0,0.04)" : "none",
+                transition: "all 0.15s"
+              }}
+            >
+              Weekly
+            </button>
+          </div>
+          <span style={{ fontSize: "0.72rem", color: "var(--color-orange)", fontWeight: 700 }}>
+            {plannerViewMode === "monthly" ? "💡 Drag cells to set destination" : "Weekly Timeline"}
+          </span>
+        </div>
+
+        {plannerViewMode === "monthly" ? (
+          <div style={{
+            backgroundColor: "white",
+            borderRadius: "20px",
+            padding: "16px 12px",
+            border: "1.5px solid rgba(133, 58, 81, 0.08)",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.01)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <button 
+                type="button" 
+                onClick={() => changePlanMonth(-1)}
+                style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+              >
+                ◀
+              </button>
+              <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
+                {months[planMonth]} {planYear}
+              </span>
+              <button 
+                type="button" 
+                onClick={() => changePlanMonth(1)}
+                style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+              >
+                ▶
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.72rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+            </div>
+
+            <div 
+              onTouchMove={handlePlannerTouchMove}
+              style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "3px" }}
+            >
+              {getPlannerDaysGrid(planYear, planMonth).map((item, idx) => {
+                const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
+                const plannedDest = trip.itinerary?.[item.dateStr] || "";
+                
+                const isInDragRange = dragRange && item.dateStr >= dragRange.start && item.dateStr <= dragRange.end;
+                const isSelected = selectedPlanDate === item.dateStr;
+
+                let bg = "transparent";
+                let color = item.isCurrentMonth ? "#374151" : "#D1D5DB";
+                let border = "1.5px solid transparent";
+                let fontWeight = 600;
+
+                if (isToday) {
+                  bg = "rgba(133, 58, 81, 0.06)";
+                  color = "var(--color-purple)";
+                  fontWeight = 800;
+                }
+                if (isSelected) {
+                  border = "1.5px solid var(--color-purple)";
+                }
+                if (isInDragRange) {
+                  bg = "rgba(232, 107, 50, 0.08)";
+                  border = "1.5px dashed var(--color-orange)";
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    data-plan-date={item.dateStr}
+                    onMouseDown={() => handlePlannerCellMouseDown(item.dateStr)}
+                    onMouseEnter={() => handlePlannerCellMouseEnter(item.dateStr)}
+                    onTouchStart={(e) => handlePlannerTouchStart(e, item.dateStr)}
+                    style={{
+                      aspectRatio: "1",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      borderRadius: "10px",
+                      padding: "4px 2px",
+                      cursor: "pointer",
+                      backgroundColor: bg,
+                      border: border,
+                      color: color,
+                      fontWeight: fontWeight,
+                      transition: "all 0.15s",
+                      userSelect: "none"
+                    }}
+                  >
+                    <span style={{ fontSize: "0.78rem" }}>{item.day}</span>
+                    {plannedDest && (
+                      <span style={{
+                        fontSize: "0.6rem",
+                        fontWeight: 800,
+                        color: "var(--color-orange)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "90%",
+                        textAlign: "center"
+                      }}>
+                        {plannedDest}
+                      </span>
+                    )}
+                    {renderCellIndicators(item.dateStr)}
+                  </div>
+                );
+              })}
+            </div>
+
+            {showPlanDestModal && (() => {
+              const range = getDragRange();
+              if (!range) return null;
+              const sDate = new Date(range.start + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+              const eDate = new Date(range.end + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+              return (
+                <div style={{
+                  backgroundColor: "rgba(232, 107, 50, 0.03)",
+                  borderRadius: "16px",
+                  border: "1.5px solid rgba(232, 107, 50, 0.25)",
+                  padding: "14px",
+                  marginTop: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--color-orange)" }}>
+                    📍 Set Destination for {sDate} – {eDate}
+                  </div>
+                  <input
+                    type="text"
+                    value={planDestinationInput}
+                    onChange={(e) => setPlanDestinationInput(e.target.value)}
+                    placeholder="e.g. Yogyakarta, Indonesia"
+                    autoFocus
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        const updates = {};
+                        const currentDate = new Date(range.start + "T00:00:00");
+                        const endDate = new Date(range.end + "T00:00:00");
+                        while (currentDate <= endDate) {
+                          const k = currentDate.toLocaleDateString('en-CA');
+                          updates[k] = planDestinationInput.trim();
+                          currentDate.setDate(currentDate.getDate() + 1);
+                        }
+                        await updateItineraryLocationsBatch(updates);
+                        setShowPlanDestModal(false);
+                        setPlanDestinationInput("");
+                        setPlanDragStart(null);
+                        setPlanDragEnd(null);
+                      }
+                    }}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "10px",
+                      border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                      backgroundColor: "#F9F6ED",
+                      fontSize: "14px",
+                      outline: "none",
+                      width: "100%"
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPlanDestModal(false);
+                        setPlanDestinationInput("");
+                        setPlanDragStart(null);
+                        setPlanDragEnd(null);
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        border: "none",
+                        backgroundColor: "#E5E7EB",
+                        color: "#4B5563",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updates = {};
+                        const currentDate = new Date(range.start + "T00:00:00");
+                        const endDate = new Date(range.end + "T00:00:00");
+                        while (currentDate <= endDate) {
+                          const k = currentDate.toLocaleDateString('en-CA');
+                          updates[k] = planDestinationInput.trim();
+                          currentDate.setDate(currentDate.getDate() + 1);
+                        }
+                        await updateItineraryLocationsBatch(updates);
+                        setShowPlanDestModal(false);
+                        setPlanDestinationInput("");
+                        setPlanDragStart(null);
+                        setPlanDragEnd(null);
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        border: "none",
+                        backgroundColor: "var(--color-orange)",
+                        color: "white",
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Save Destination
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {renderSelectedDateDetails()}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <button 
+                type="button" 
+                onClick={() => changePlanWeek(-1)}
+                style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+              >
+                ◀ Previous Week
+              </button>
+              <span style={{ fontWeight: 800, color: "var(--color-purple)", fontSize: "0.85rem" }}>
+                Week of {new Date(planWeekStart).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}
+              </span>
+              <button 
+                type="button" 
+                onClick={() => changePlanWeek(1)}
+                style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+              >
+                Next Week ▶
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {getWeeklyDays().map((dayObj) => {
+                const label = dayObj.date.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' });
+                const plannedDest = trip.itinerary?.[dayObj.dateStr] || "";
+                const dayExpenses = expenses.filter(e => {
+                  try {
+                    return new Date(e.timestamp).toLocaleDateString('en-CA') === dayObj.dateStr;
+                  } catch (err) {
+                    return false;
+                  }
+                });
+
+                return (
+                  <div key={dayObj.dateStr} style={{
+                    backgroundColor: "white",
+                    borderRadius: "16px",
+                    padding: "12px 14px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.06)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 800, fontSize: "0.85rem", color: "var(--color-purple)" }}>{label}</span>
+                      
+                      {editingItineraryDate === dayObj.dateStr ? (
+                        <div style={{ display: "inline-flex", gap: "4px" }}>
+                          <input
+                            type="text"
+                            value={itineraryInput}
+                            onChange={(e) => setItineraryInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                                setEditingItineraryDate(null);
+                              }
+                            }}
+                            autoFocus
+                            style={{
+                              padding: "2px 6px",
+                              fontSize: "0.78rem",
+                              borderRadius: "6px",
+                              border: "1.5px solid var(--color-orange)",
+                              outline: "none",
+                              width: "120px"
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                              setEditingItineraryDate(null);
+                            }}
+                            style={{
+                              backgroundColor: "var(--color-orange)",
+                              border: "none",
+                              color: "white",
+                              padding: "2px 6px",
+                              borderRadius: "6px",
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              cursor: "pointer"
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      ) : (
+                        <span 
+                          onClick={() => {
+                            setEditingItineraryDate(dayObj.dateStr);
+                            setItineraryInput(plannedDest);
+                          }}
+                          style={{ 
+                            fontSize: "0.78rem", 
+                            fontWeight: 750, 
+                            color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
+                            borderBottom: "1px dashed",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {plannedDest || "📍 Set destination"}
+                        </span>
+                      )}
+                    </div>
+
+                    {dayExpenses.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F3F4F6", paddingTop: "6px" }}>
+                        {dayExpenses.map(exp => (
+                          <div key={exp.id} style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "0.78rem"
+                          }}>
+                            <span style={{ color: "#4B5563" }}>
+                              {CATEGORY_EMOJIS[exp.category] || "📦"} {exp.note || exp.category}
+                            </span>
+                            <span style={{ fontWeight: 750, color: "var(--color-purple)" }}>
+                              {formatMoney(exp.amount, exp.currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const nameLength = trip.name ? Math.min(trip.name.length, 30) : 0;
   const dynamicFontSize = nameLength > 24 
     ? "1.55rem" 
@@ -2489,8 +3226,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       <main style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 120px" }}>
         <header style={{
           padding: "20px 20px 16px",
-          backgroundColor: "white",
-          borderBottom: "1px solid #eee",
+          background: "linear-gradient(135deg, #FAF6EE 0%, #FFFDF9 50%, #FAF6EE 100%)",
+          borderBottom: "1.5px solid rgba(133, 58, 81, 0.12)",
           marginBottom: "20px"
         }}>
           {/* Row 1: Back button and action buttons */}
@@ -2500,28 +3237,51 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             alignItems: "center",
             marginBottom: "10px"
           }}>
-            {/* Back Button */}
-            <button
-              type="button"
-              onClick={() => window.location.href = '/tracker/trips'}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: "1.15rem",
-                cursor: "pointer",
-                color: "var(--color-purple)",
-                padding: "4px 8px",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(133, 58, 81, 0.05)",
-                flexShrink: 0
-              }}
-              title="Back to My Trips"
-            >
-              ←
-            </button>
+            {/* Back & Settings Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={() => window.location.href = '/tracker/trips'}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.15rem",
+                  cursor: "pointer",
+                  color: "var(--color-purple)",
+                  padding: "4px 8px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  flexShrink: 0
+                }}
+                title="Back to My Trips"
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal("settings")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.15rem",
+                  cursor: "pointer",
+                  color: "var(--color-purple)",
+                  padding: "4px 8px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  flexShrink: 0
+                }}
+                title="Settings"
+              >
+                ⚙️
+              </button>
+            </div>
 
             {/* Actions on the right */}
             {supabase && (
@@ -2797,16 +3557,45 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 }}>
                   Daily Avg ({daysActive}d)
                 </span>
-                <p style={{
-                  fontSize: "1.25rem",
-                  fontWeight: 900,
-                  color: "var(--color-purple)",
-                  fontFamily: "var(--font-heading)",
-                  margin: 0,
-                  lineHeight: 1.1
-                }}>
-                  {formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}
-                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <p style={{
+                    fontSize: "1.25rem",
+                    fontWeight: 900,
+                    color: "var(--color-purple)",
+                    fontFamily: "var(--font-heading)",
+                    margin: 0,
+                    lineHeight: 1.1
+                  }}>
+                    {formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (logView === "insights") {
+                        setLogView(prevViewBeforeInsights || "recent");
+                      } else {
+                        setPrevViewBeforeInsights(logView);
+                        setLogView("insights");
+                      }
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: "1.2rem",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "50%",
+                      backgroundColor: logView === "insights" ? "rgba(232, 107, 50, 0.12)" : "transparent",
+                      transition: "background-color 0.2s"
+                    }}
+                    title="Toggle Insights"
+                  >
+                    💡
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2903,104 +3692,49 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 )}
               </div>
 
-              {/* Inline Currency Switchers */}
-              {(() => {
-                const activeLocal = trip.localCurrency || "SGD";
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                      <span style={{ fontWeight: 600 }}>Home:</span>
-                      {isHomeCurrencyLocked ? (
-                        <span
-                          onClick={() => setIsHomeCurrencyLocked(false)}
-                          style={{
-                            fontSize: "0.82rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "2px"
-                          }}
-                          title="Click to unlock Home currency editing"
-                        >
-                          🔒 {trip.homeCurrency}
-                        </span>
-                      ) : (
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
-                          <span 
-                            onClick={() => setIsHomeCurrencyLocked(true)}
-                            style={{ cursor: "pointer", fontSize: "0.82rem" }}
-                            title="Click to lock Home currency editing"
-                          >
-                            🔓
-                          </span>
-                          <SearchableCurrencySelect
-                            value={trip.homeCurrency}
-                            onChange={(val) => {
-                              updateHomeCurrency(val);
-                              setIsHomeCurrencyLocked(true);
-                            }}
-                            rates={rates}
-                            customCurrencies={customCurrencies}
-                            onAddCustomCurrency={addCustomCurrency}
-                            style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                      <span style={{ fontWeight: 600 }}>Local:</span>
-                      {isEditingLocalCurrency ? (
-                        <input
-                          type="text"
-                          value={localCurrencyInput}
-                          onChange={(e) => setLocalCurrencyInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveLocalCurrency();
-                            } else if (e.key === "Escape") {
-                              setIsEditingLocalCurrency(false);
-                            }
-                          }}
-                          onBlur={handleSaveLocalCurrency}
-                          autoFocus
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "6px",
-                            border: "1.5px solid var(--color-purple)",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            outline: "none",
-                            color: "#374151",
-                            width: "55px",
-                            textAlign: "center"
-                          }}
-                        />
-                      ) : (
-                        <span
-                          onClick={() => {
-                            setLocalCurrencyInput(activeLocal);
-                            setIsEditingLocalCurrency(true);
-                          }}
-                          style={{
-                            fontSize: "0.82rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            borderBottom: "1px dashed var(--color-purple)",
-                            padding: "1px 2px"
-                          }}
-                          title="Tap to change local currency"
-                        >
-                          {activeLocal}
-                        </span>
-                      )}
-                    </div>
+              {/* Home Currency settings badge */}
+              <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                <span style={{ fontWeight: 600 }}>Home:</span>
+                {isHomeCurrencyLocked ? (
+                  <span
+                    onClick={() => setIsHomeCurrencyLocked(false)}
+                    style={{
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      borderBottom: "1px dashed var(--color-purple)",
+                      padding: "1px 2px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "2px"
+                    }}
+                    title="Click to unlock Home currency editing"
+                  >
+                    🔒 {trip.homeCurrency}
+                  </span>
+                ) : (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                    <span 
+                      onClick={() => setIsHomeCurrencyLocked(true)}
+                      style={{ cursor: "pointer", fontSize: "0.82rem" }}
+                      title="Click to lock Home currency editing"
+                    >
+                      🔓
+                    </span>
+                    <SearchableCurrencySelect
+                      value={trip.homeCurrency}
+                      onChange={(val) => {
+                        updateHomeCurrency(val);
+                        setIsHomeCurrencyLocked(true);
+                      }}
+                      rates={rates}
+                      customCurrencies={customCurrencies}
+                      onAddCustomCurrency={addCustomCurrency}
+                      style={{ fontSize: "0.82rem", fontWeight: 700 }}
+                    />
                   </div>
-                );
-              })()}
+                )}
+              </div>
             </div>
           </div>
 
@@ -3142,7 +3876,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         <section style={{ padding: "0 24px" }}>
           {(() => {
             const hasFutureExpenses = expenses.some((e) => new Date(e.timestamp) > now);
-            const baseExpenses = showFuture ? expenses : visibleExpenses;
+            const baseExpenses = (showFuture || searchQuery) ? expenses : visibleExpenses;
             const filteredExpenses = searchQuery
               ? baseExpenses.filter((e) => parseSearchQuery(searchQuery, e, trip.homeCurrency, convertCurrency, rates))
               : baseExpenses;
@@ -3188,6 +3922,24 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setLogView("plan")}
+                        style={{
+                          fontSize: "0.82rem",
+                          fontWeight: logView === "plan" ? 700 : 500,
+                          color: logView === "plan" ? "var(--color-purple)" : "#6B7280",
+                          backgroundColor: logView === "plan" ? "white" : "transparent",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "5px 14px",
+                          cursor: "pointer",
+                          boxShadow: logView === "plan" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                          transition: "all 0.15s"
+                        }}
+                      >
+                        Plan
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setLogView("history")}
                         style={{
                           fontSize: "0.82rem",
@@ -3204,77 +3956,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       >
                         History
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setLogView("insights")}
-                        style={{
-                          fontSize: "0.82rem",
-                          fontWeight: logView === "insights" ? 700 : 500,
-                          color: logView === "insights" ? "var(--color-purple)" : "#6B7280",
-                          backgroundColor: logView === "insights" ? "white" : "transparent",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "5px 14px",
-                          cursor: "pointer",
-                          boxShadow: logView === "insights" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                          transition: "all 0.15s"
-                        }}
-                      >
-                        Insights
-                      </button>
                     </div>
 
                     {/* Standalone Floating Search Button */}
-                    {logView !== "insights" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        {hasFutureExpenses && !showSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setShowFuture(!showFuture)}
-                            style={{
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                              color: showFuture ? "#0369A1" : "#4B5563",
-                              backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
-                              border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
-                              borderRadius: "12px",
-                              padding: "4px 8px",
-                              cursor: "pointer",
-                              transition: "all 0.2s"
-                            }}
-                          >
-                            {showFuture ? "Hide Future" : "Future"}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSearch(!showSearch);
-                            if (showSearch) {
-                              setSearchQuery("");
-                            }
-                          }}
-                          style={{
-                            fontSize: "0.85rem",
-                            color: showSearch ? "white" : "var(--color-purple)",
-                            backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                            border: "none",
-                            borderRadius: "50%",
-                            width: "32px",
-                            height: "32px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
-                            transition: "all 0.15s",
-                            outline: "none"
-                          }}
-                          title="Search expenses"
-                        >
-                          🔍
-                        </button>
-                      </div>
+                    {(logView === "recent" || logView === "history") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSearch(!showSearch);
+                          if (showSearch) {
+                            setSearchQuery("");
+                          }
+                        }}
+                        style={{
+                          fontSize: "0.85rem",
+                          color: showSearch ? "white" : "var(--color-purple)",
+                          backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
+                          transition: "all 0.15s",
+                          outline: "none"
+                        }}
+                        title="Search expenses"
+                      >
+                        🔍
+                      </button>
                     )}
                   </div>
 
@@ -3307,7 +4020,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 </div>
 
                 {/* Slide-down Search Box */}
-                {showSearch && logView !== "insights" && (
+                {showSearch && (logView === "recent" || logView === "history") && (
                   <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -3376,32 +4089,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         </button>
                       )}
                     </div>
-
-                    {/* Compact Future Toggle alongside search input */}
-                    {hasFutureExpenses && (
-                      <button
-                        type="button"
-                        onClick={() => setShowFuture(!showFuture)}
-                        style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          color: showFuture ? "#0369A1" : "#4B5563",
-                          backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
-                          border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
-                          borderRadius: "12px",
-                          padding: "8px 10px",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          flexShrink: 0
-                        }}
-                      >
-                        {showFuture ? "Hide Future" : "Future"}
-                      </button>
-                    )}
                   </div>
                 )}
 
-                {logView !== "insights" && displayedExpenses.length === 0 ? (
+                {logView !== "insights" && logView !== "plan" && displayedExpenses.length === 0 ? (
                   <div style={{
                     textAlign: "center",
                     padding: "40px 0",
@@ -3425,6 +4116,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       if (logView === "insights") {
                         return renderInsights();
                       }
+                      if (logView === "plan") {
+                        return renderPlanner();
+                      }
 
                       const sortedExpenses = [...displayedExpenses].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -3433,6 +4127,46 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         let lastLabel = null;
                         return (
                           <div>
+                            {!recentExpenses.some(e => getDayLabel(e.timestamp) === "Today") && hasFutureExpenses && (
+                              <div style={{
+                                fontSize: "0.8rem",
+                                fontWeight: 800,
+                                color: "#9CA3AF",
+                                backgroundColor: "rgba(133, 58, 81, 0.06)",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                marginTop: "16px",
+                                marginBottom: "8px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.5px"
+                              }}>
+                                <span>Today</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowFuture(!showFuture)}
+                                  style={{
+                                    fontSize: "0.65rem",
+                                    fontWeight: 800,
+                                    color: showFuture ? "#0369A1" : "#4B5563",
+                                    backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
+                                    border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
+                                    borderRadius: "6px",
+                                    padding: "2px 6px",
+                                    cursor: "pointer",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.3px",
+                                    marginLeft: "4px",
+                                    transition: "all 0.2s"
+                                  }}
+                                >
+                                  {showFuture ? "Hide Future" : "Show Future"}
+                                </button>
+                              </div>
+                            )}
+
                             {recentExpenses.length === 0 ? (
                               <div style={{ textAlign: "center", padding: "30px 0", color: "#9CA3AF" }}>
                                 <p style={{ fontSize: "0.9rem" }}>No recent expenses.</p>
@@ -3472,6 +4206,31 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                           letterSpacing: "0.5px"
                                         }}>
                                           <span>{label}</span>
+                                          {label === "Today" && hasFutureExpenses && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowFuture(!showFuture);
+                                              }}
+                                              style={{
+                                                fontSize: "0.65rem",
+                                                fontWeight: 800,
+                                                color: showFuture ? "#0369A1" : "#4B5563",
+                                                backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
+                                                border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
+                                                borderRadius: "6px",
+                                                padding: "2px 6px",
+                                                cursor: "pointer",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.3px",
+                                                marginLeft: "4px",
+                                                transition: "all 0.2s"
+                                              }}
+                                            >
+                                              {showFuture ? "Hide Future" : "Show Future"}
+                                            </button>
+                                          )}
                                           <span 
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -4400,6 +5159,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onClose={() => setActiveModal(null)}
         />
       )}
+
+      {activeModal === "settings" && (
+        <SettingsModal
+          trip={trip}
+          rates={rates}
+          customCurrencies={customCurrencies}
+          onAddCustomCurrency={addCustomCurrency}
+          isHomeCurrencyLocked={isHomeCurrencyLocked}
+          setIsHomeCurrencyLocked={setIsHomeCurrencyLocked}
+          updateHomeCurrency={updateHomeCurrency}
+          showFuture={showFuture}
+          setShowFuture={setShowFuture}
+          expenses={expenses}
+          convertCurrency={convertCurrency}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
       <style>{`
         @keyframes goldGlowPulse {
           0% {
@@ -4947,8 +5723,14 @@ function ManualEntryModal({
     return draft ? !!draft.worthIt : false;
   });
   const [currency, setCurrency] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.currency || trip.localCurrency;
-    return trip.localCurrency || "USD";
+    if (expenseToEdit) return expenseToEdit.currency || trip.homeCurrency;
+    const lastUsed = localStorage.getItem("tracker_last_used_currency");
+    if (lastUsed) return lastUsed;
+    const lastUsedNonHome = localStorage.getItem("tracker_last_used_non_home_currency");
+    if (lastUsedNonHome && lastUsedNonHome !== trip.homeCurrency) {
+      return lastUsedNonHome;
+    }
+    return "USD";
   });
   const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) {
@@ -5014,7 +5796,7 @@ function ManualEntryModal({
       const isDoubleTap = now - lastTapRef.current < 300;
       lastTapRef.current = now;
 
-      const isSameDayClick = lastClickedDayRef.current === dayStr;
+      const isSameDayClick = lastClickedDayRef.current === dayStr || expenseDate === dayStr;
       lastClickedDayRef.current = dayStr;
 
       if (isDoubleTap || isSameDayClick) {
@@ -5198,7 +5980,8 @@ function ManualEntryModal({
     if (expenseToEdit && expenseToEdit.currency !== trip.homeCurrency) {
       return expenseToEdit.currency;
     }
-    return trip.localCurrency || "USD";
+    const lastUsedNonHome = localStorage.getItem("tracker_last_used_non_home_currency");
+    return (lastUsedNonHome && lastUsedNonHome !== trip.homeCurrency) ? lastUsedNonHome : "USD";
   });
 
   // Reset last clicked day when calendar opens
@@ -5234,7 +6017,7 @@ function ManualEntryModal({
       setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
-      setCurrency(expenseToEdit.currency || trip.localCurrency);
+      setCurrency(expenseToEdit.currency || trip.homeCurrency);
       setEstablishment(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
       setPhotoUrl(expenseToEdit.photoUrl || "");
 
@@ -5251,7 +6034,7 @@ function ManualEntryModal({
       const targetSpread = (isGroup && editEntireGroup) || (!isGroup && expenseToEdit.tags?.some(t => t.startsWith("spread-group-")));
       setSpreadExpense(targetSpread);
     }
-  }, [expenseToEdit, trip.localCurrency, isGroup, editEntireGroup, origAmount]);
+  }, [expenseToEdit, trip.homeCurrency, isGroup, editEntireGroup, origAmount]);
 
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
@@ -5686,104 +6469,7 @@ function ManualEntryModal({
               </div>
             )}
 
-            {/* Hashtags Dropdown */}
-            {(() => {
-              const filteredHashtags = hashtagFilter
-                ? (tripHashtags.all || []).filter(tag => tag.toLowerCase().startsWith(hashtagFilter.toLowerCase()))
-                : (tripHashtags.top5 || []);
-              
-              if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
 
-              return (
-                <div style={{ position: "relative", width: "100%" }}>
-                  <div
-                    ref={hashtagsDropdownRef}
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: 0,
-                      right: 0,
-                      backgroundColor: "white",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: "12px",
-                      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-                      zIndex: 200,
-                      maxHeight: "150px",
-                      overflowY: "auto",
-                      padding: "6px",
-                      marginTop: "4px"
-                    }}
-                  >
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "4px" }}>
-                      {filteredHashtags.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => {
-                            if (titleInputRef.current) {
-                              const el = titleInputRef.current;
-                              const val = el.value;
-                              const selStart = el.selectionStart;
-                              
-                              const textBeforeCursor = val.substring(0, selStart);
-                              const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
-                              
-                              if (hashtagMatch) {
-                                const matchIndex = hashtagMatch.index;
-                                const beforeMatch = textBeforeCursor.substring(0, matchIndex);
-                                const afterCursor = val.substring(selStart);
-                                const newVal = beforeMatch + `#${tag}` + afterCursor;
-                                setTitle(newVal);
-                                
-                                setTimeout(() => {
-                                  el.focus();
-                                  const newCursorPos = beforeMatch.length + tag.length + 1;
-                                  el.setSelectionRange(newCursorPos, newCursorPos);
-                                }, 50);
-                              } else {
-                                if (!val.includes(`#${tag}`)) {
-                                  const trimmed = val.trim();
-                                  let newVal = trimmed;
-                                  if (trimmed.length === 0) newVal = `#${tag}`;
-                                  else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) newVal = trimmed + `#${tag}`;
-                                  else newVal = trimmed + ` #${tag}`;
-                                  setTitle(newVal);
-                                }
-                              }
-                            } else {
-                              setTitle(prev => {
-                                const trimmed = prev || "";
-                                if (trimmed.endsWith("#")) return trimmed.slice(0, -1) + `#${tag}`;
-                                if (!trimmed.includes(`#${tag}`)) {
-                                  if (trimmed.length === 0) return `#${tag}`;
-                                  if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) return trimmed + `#${tag}`;
-                                  return trimmed + ` #${tag}`;
-                                }
-                                return prev;
-                              });
-                            }
-                            setShowHashtagsDropdown(false);
-                            setHashtagFilter("");
-                          }}
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            backgroundColor: "#F3F4F6",
-                            border: "none",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            color: "var(--color-purple)",
-                            cursor: "pointer"
-                          }}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
 
           {/* Amount input block below Title */}
@@ -5813,7 +6499,7 @@ function ManualEntryModal({
                   opacity: 0.8 !important;
                 }
               `}</style>
-              {/* Left Side: Currency Selector & Reset Button */}
+              {/* Left Side: Currency Selector & Reset Button & Spread Breakdown */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
                 {currency !== trip.homeCurrency && (
                   <button
@@ -5843,6 +6529,9 @@ function ManualEntryModal({
                   onChange={(val) => {
                     setCurrency(val);
                     localStorage.setItem("tracker_last_used_currency", val);
+                    if (val !== trip.homeCurrency) {
+                      localStorage.setItem("tracker_last_used_non_home_currency", val);
+                    }
                   }}
                   rates={rates}
                   customCurrencies={customCurrencies}
@@ -5874,6 +6563,30 @@ function ManualEntryModal({
                     </button>
                   )}
                 />
+                
+                {spreadExpense && (() => {
+                  const start = new Date(spreadStart);
+                  const end = new Date(spreadEnd);
+                  if (isNaN(start) || isNaN(end) || end < start) return null;
+                  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                  const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
+                  const daily = spreadMode === "repeat" ? val : (val / days);
+                  const total = spreadMode === "repeat" ? (val * days) : val;
+                  return (
+                    <span style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      color: "#C2410C",
+                      backgroundColor: "rgba(232, 107, 50, 0.08)",
+                      padding: "2px 6px",
+                      borderRadius: "6px",
+                      marginLeft: "4px",
+                      whiteSpace: "nowrap"
+                    }}>
+                      {spreadMode === "repeat" ? "Repeat" : "Split"}: {formatMoney(daily, currency)}/d ({formatMoney(total, currency)} tot)
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Right Side: Input Box */}
@@ -5898,7 +6611,9 @@ function ManualEntryModal({
                     if (currency === trip.homeCurrency) return "0.00";
                     const rateVal = convertCurrency(1, trip.homeCurrency, currency, rates);
                     if (rateVal > 0) {
-                      const formattedRate = rateVal < 1 ? rateVal.toFixed(4) : rateVal.toFixed(2);
+                      const formattedRate = rateVal < 1 
+                        ? rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                        : rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       return `1 ${trip.homeCurrency} ≈ ${formattedRate} ${currency}`;
                     }
                     return "0.00";
@@ -5918,39 +6633,7 @@ function ManualEntryModal({
                 />
               </div>
             </div>
-            {spreadExpense && (() => {
-              const start = new Date(spreadStart);
-              const end = new Date(spreadEnd);
-              if (isNaN(start) || isNaN(end) || end < start) return null;
-              const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-              const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
-              const daily = spreadMode === "repeat" ? val : (val / days);
-              const total = spreadMode === "repeat" ? (val * days) : val;
-              return (
-                <div style={{
-                  backgroundColor: "rgba(232, 107, 50, 0.06)",
-                  border: "1px solid rgba(232, 107, 50, 0.15)",
-                  borderRadius: "12px",
-                  padding: "10px 14px",
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  color: "#C2410C",
-                  marginTop: "6px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "2px"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>🔁 Series Mode: {days} days</span>
-                    <span>{formatMoney(total, currency)} Total</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#9A3412", fontWeight: 600 }}>
-                    <span>{spreadMode === "repeat" ? "Repeats daily" : "Spread evenly"}</span>
-                    <span>{formatMoney(daily, currency)} / day</span>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Horizontal series mode breakdown is displayed inline inside the amount box */}
             
             {/* Rates time and refresh inside manual entry modal */}
             {(() => {
@@ -6227,7 +6910,8 @@ function ManualEntryModal({
                   justifyContent: "center",
                   backgroundColor: "white",
                   borderRadius: "14px",
-                  padding: "10px 12px",
+                  height: "40px",
+                  boxSizing: "border-box",
                   border: "1.5px solid rgba(133, 58, 81, 0.12)",
                   cursor: "pointer",
                   fontSize: "0.82rem",
@@ -6266,7 +6950,8 @@ function ManualEntryModal({
                   justifyContent: "center",
                   backgroundColor: worthIt ? "#FFFBEB" : "white",
                   borderRadius: "14px",
-                  padding: "10px 12px",
+                  height: "40px",
+                  boxSizing: "border-box",
                   border: worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)",
                   cursor: "pointer",
                   fontSize: "0.82rem",
@@ -6414,15 +7099,157 @@ function ManualEntryModal({
           )}
 
           {/* Notes Input at the bottom */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <label style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#4B5563",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>Notes</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", position: "relative" }}>
+            {/* iPhone-style Autocomplete horizontal suggestions bar */}
+            {(() => {
+              const filteredHashtags = hashtagFilter
+                ? (tripHashtags.all || []).filter(tag => tag.toLowerCase().startsWith(hashtagFilter.toLowerCase()))
+                : (tripHashtags.top5 || []);
+              
+              if (!showHashtagsDropdown || filteredHashtags.length === 0) return null;
+
+              return (
+                <div
+                  ref={hashtagsDropdownRef}
+                  style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "white",
+                    border: "1.5px solid rgba(232, 107, 50, 0.2)",
+                    borderRadius: "14px",
+                    boxShadow: "0 -4px 15px rgba(0, 0, 0, 0.08)",
+                    zIndex: 200,
+                    padding: "6px 10px",
+                    marginBottom: "6px",
+                    display: "flex",
+                    overflowX: "auto",
+                    gap: "8px",
+                    WebkitOverflowScrolling: "touch",
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none"
+                  }}
+                >
+                  <style>{`
+                    div::-webkit-scrollbar {
+                      display: none;
+                    }
+                  `}</style>
+                  {filteredHashtags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        if (notesInputRef.current) {
+                          const el = notesInputRef.current;
+                          const val = el.value;
+                          const selStart = el.selectionStart;
+                          
+                          const textBeforeCursor = val.substring(0, selStart);
+                          const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                          
+                          if (hashtagMatch) {
+                            const matchIndex = hashtagMatch.index;
+                            const beforeMatch = textBeforeCursor.substring(0, matchIndex);
+                            const afterCursor = val.substring(selStart);
+                            const newVal = beforeMatch + `#${tag} ` + afterCursor;
+                            setExtraNotes(newVal);
+                            
+                            setTimeout(() => {
+                              el.focus();
+                              const newCursorPos = beforeMatch.length + tag.length + 2;
+                              el.setSelectionRange(newCursorPos, newCursorPos);
+                            }, 50);
+                          } else {
+                            if (!val.includes(`#${tag}`)) {
+                              const trimmed = val.trim();
+                              let newVal = trimmed;
+                              if (trimmed.length === 0) newVal = `#${tag} `;
+                              else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) newVal = trimmed + `#${tag} `;
+                              else newVal = trimmed + ` #${tag} `;
+                              setExtraNotes(newVal);
+                            }
+                            
+                            setTimeout(() => {
+                              el.focus();
+                              const len = el.value.length;
+                              el.setSelectionRange(len, len);
+                            }, 50);
+                          }
+                        }
+                        setShowHashtagsDropdown(false);
+                        setHashtagFilter("");
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "20px",
+                        backgroundColor: "rgba(232, 107, 50, 0.08)",
+                        border: "1.5px solid rgba(232, 107, 50, 0.15)",
+                        fontSize: "0.78rem",
+                        fontWeight: 750,
+                        color: "var(--color-orange)",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        transition: "all 0.15s",
+                        outline: "none"
+                      }}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <label style={{
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#4B5563",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px"
+            }}>Notes</label>
+            
+            <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+              <textarea
+                ref={notesInputRef}
+                value={extraNotes}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setExtraNotes(val);
+                  
+                  const selStart = e.target.selectionStart;
+                  const textBeforeCursor = val.substring(0, selStart);
+                  const hashtagMatch = textBeforeCursor.match(/#(\w*)$/);
+                  if (hashtagMatch) {
+                    setShowHashtagsDropdown(true);
+                    setHashtagFilter(hashtagMatch[1]);
+                  } else {
+                    setShowHashtagsDropdown(false);
+                    setHashtagFilter("");
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    if (document.activeElement !== notesInputRef.current) {
+                      setShowHashtagsDropdown(false);
+                    }
+                  }, 200);
+                }}
+                placeholder="Add details, or use # to further categorize your spending"
+                rows={2}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                  backgroundColor: "#F9F6ED",
+                  fontSize: "14px",
+                  outline: "none",
+                  resize: "none",
+                  fontFamily: "inherit"
+                }}
+              />
               <button
                 type="button"
                 onClick={() => {
@@ -6444,15 +7271,16 @@ function ManualEntryModal({
                   }, 50);
                 }}
                 style={{
-                  background: "none",
-                  border: "none",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                  borderRadius: "12px",
                   color: "var(--color-purple)",
                   cursor: "pointer",
-                  padding: "4px",
+                  width: "40px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1.05rem",
+                  fontSize: "1.25rem",
                   fontWeight: "bold",
                   outline: "none"
                 }}
@@ -6461,24 +7289,55 @@ function ManualEntryModal({
                 #
               </button>
             </div>
-            
-            <textarea
-              ref={notesInputRef}
-              value={extraNotes}
-              onChange={(e) => setExtraNotes(e.target.value)}
-              placeholder="Add details, or use # to further categorize your spending"
-              rows={2}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1px solid #E5E7EB",
-                fontSize: "15px",
-                outline: "none",
-                resize: "none",
-                fontFamily: "inherit"
-              }}
-            />
+
+            {/* Quick-tap frequently used tags */}
+            {tripHashtags.top5 && tripHashtags.top5.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                <span style={{ fontSize: "0.7rem", color: "#6B7280", alignSelf: "center", marginRight: "2px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.3px" }}>Frequent:</span>
+                {tripHashtags.top5.map(tag => {
+                  const isAlreadyInNotes = extraNotes.includes(`#${tag}`);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setExtraNotes(prev => {
+                          const trimmed = prev || "";
+                          if (trimmed.includes(`#${tag}`)) return prev;
+                          let newVal = trimmed;
+                          if (trimmed.length === 0) newVal = `#${tag} `;
+                          else if (trimmed.endsWith(" ") || trimmed.endsWith("\n")) newVal = trimmed + `#${tag} `;
+                          else newVal = trimmed + ` #${tag} `;
+                          return newVal;
+                        });
+                        setTimeout(() => {
+                          if (notesInputRef.current) {
+                            notesInputRef.current.focus();
+                            const len = notesInputRef.current.value.length;
+                            notesInputRef.current.setSelectionRange(len, len);
+                          }
+                        }, 50);
+                      }}
+                      disabled={isAlreadyInNotes}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "8px",
+                        backgroundColor: isAlreadyInNotes ? "rgba(133, 58, 81, 0.03)" : "rgba(133, 58, 81, 0.08)",
+                        border: "none",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        color: isAlreadyInNotes ? "#9CA3AF" : "var(--color-purple)",
+                        cursor: isAlreadyInNotes ? "default" : "pointer",
+                        transition: "all 0.2s",
+                        outline: "none"
+                      }}
+                    >
+                      #{tag}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 6. Save / Delete Buttons */}
@@ -7219,6 +8078,243 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
         >
           Close
         </button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsModal({ 
+  trip, 
+  rates, 
+  customCurrencies, 
+  onAddCustomCurrency, 
+  isHomeCurrencyLocked, 
+  setIsHomeCurrencyLocked, 
+  updateHomeCurrency,
+  showFuture,
+  setShowFuture,
+  expenses,
+  convertCurrency,
+  onClose 
+}) {
+  const exportToCSV = () => {
+    if (!expenses || expenses.length === 0) {
+      alert("No expenses to export.");
+      return;
+    }
+    const headers = ["Date", "Description", "Amount", "Currency", "Category", "Location", "Home Currency Amount", "Home Currency", "Worth It"];
+    const rows = expenses.map(e => {
+      const dateStr = new Date(e.timestamp).toLocaleDateString();
+      const noteClean = (e.note || "").replace(/"/g, '""');
+      const homeAmt = convertCurrency(e.amount, e.currency, trip.homeCurrency, rates);
+      return [
+        `"${dateStr}"`,
+        `"${noteClean}"`,
+        e.amount,
+        `"${e.currency}"`,
+        `"${e.category}"`,
+        `"${(e.location || "").replace(/"/g, '""')}"`,
+        homeAmt.toFixed(2),
+        `"${trip.homeCurrency}"`,
+        e.worthIt ? "Yes" : "No"
+      ];
+    });
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${trip.name.replace(/\s+/g, "_")}_expenses.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToJSON = () => {
+    if (!expenses || expenses.length === 0) {
+      alert("No expenses to export.");
+      return;
+    }
+    const dataStr = JSON.stringify(expenses, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${trip.name.replace(/\s+/g, "_")}_expenses.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0, right: 0, bottom: 0, left: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.4)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: "20px"
+    }}>
+      <div style={{
+        backgroundColor: "#F9F6ED",
+        borderRadius: "24px",
+        border: "1.5px solid rgba(133, 58, 81, 0.15)",
+        boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
+        width: "100%",
+        maxWidth: "400px",
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "18px",
+        position: "relative",
+        animation: "fadeInScale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--color-purple)", margin: 0 }}>
+            ⚙️ Settings
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none", border: "none", fontSize: "1.1rem", cursor: "pointer",
+              color: "#9CA3AF", padding: "4px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.5px" }}>Home Currency</label>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "white",
+            padding: "10px 14px",
+            borderRadius: "14px",
+            border: "1.5px solid rgba(133, 58, 81, 0.12)"
+          }}>
+            <span style={{ fontSize: "0.82rem", color: "#4B5563", fontWeight: 600 }}>Base Currency:</span>
+            {isHomeCurrencyLocked ? (
+              <span
+                onClick={() => setIsHomeCurrencyLocked(false)}
+                style={{
+                  fontSize: "0.82rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  color: "var(--color-purple)",
+                  borderBottom: "1px dashed var(--color-purple)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "3px"
+                }}
+              >
+                🔒 {trip.homeCurrency}
+              </span>
+            ) : (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <span onClick={() => setIsHomeCurrencyLocked(true)} style={{ cursor: "pointer" }}>🔓</span>
+                <SearchableCurrencySelect
+                  value={trip.homeCurrency}
+                  onChange={(val) => {
+                    updateHomeCurrency(val);
+                    setIsHomeCurrencyLocked(true);
+                  }}
+                  rates={rates}
+                  customCurrencies={customCurrencies}
+                  onAddCustomCurrency={onAddCustomCurrency}
+                  style={{ fontSize: "0.82rem", fontWeight: 800 }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.5px" }}>Preferences</label>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "white",
+            padding: "10px 14px",
+            borderRadius: "14px",
+            border: "1.5px solid rgba(133, 58, 81, 0.12)"
+          }}>
+            <span style={{ fontSize: "0.82rem", color: "#4B5563", fontWeight: 600 }}>Show Future Expenses:</span>
+            <button
+              onClick={() => setShowFuture(!showFuture)}
+              style={{
+                border: "none",
+                borderRadius: "20px",
+                width: "42px",
+                height: "24px",
+                backgroundColor: showFuture ? "var(--color-orange)" : "#D1D5DB",
+                position: "relative",
+                cursor: "pointer",
+                transition: "background-color 0.2s"
+              }}
+            >
+              <div style={{
+                position: "absolute",
+                top: "2px",
+                left: showFuture ? "20px" : "2px",
+                width: "20px",
+                height: "20px",
+                borderRadius: "50%",
+                backgroundColor: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                transition: "left 0.2s"
+              }} />
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.5px" }}>Export Data</label>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={exportToCSV}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: "12px",
+                border: "none",
+                backgroundColor: "var(--color-purple)",
+                color: "white",
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 4px rgba(133, 58, 81, 0.1)"
+              }}
+            >
+              📊 Export CSV
+            </button>
+            <button
+              onClick={exportToJSON}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: "12px",
+                border: "none",
+                backgroundColor: "rgba(133, 58, 81, 0.08)",
+                color: "var(--color-purple)",
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                cursor: "pointer",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
+              }}
+            >
+              ⚙️ Export JSON
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
