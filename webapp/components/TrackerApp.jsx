@@ -341,12 +341,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [planMonth, setPlanMonth] = useState(new Date().getMonth());
   const [planYear, setPlanYear] = useState(new Date().getFullYear());
   const [plannerViewMode, setPlannerViewMode] = useState("monthly"); // "monthly" or "weekly"
-  const [planWeekStart, setPlanWeekStart] = useState(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // start at Monday
-    return new Date(today.setDate(diff));
-  });
+  const [planWeekStart, setPlanWeekStart] = useState(() => new Date());
   const [planDragStart, setPlanDragStart] = useState(null);
   const [planDragEnd, setPlanDragEnd] = useState(null);
   const [isPlanDragging, setIsPlanDragging] = useState(false);
@@ -360,6 +355,24 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
+  const getResolvedDayLocation = (dateStr, expensesForDay) => {
+    if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
+      return trip.itinerary[dateStr];
+    }
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (dateStr === todayStr && trip.currentLocation) {
+      return trip.currentLocation;
+    }
+    const dayExps = expensesForDay || expenses.filter(e => {
+      try {
+        return new Date(e.timestamp).toLocaleDateString('en-CA') === dateStr;
+      } catch (err) {
+        return false;
+      }
+    });
+    const expLoc = dayExps.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc);
+    return expLoc || "";
+  };
   const [isHomeCurrencyLocked, setIsHomeCurrencyLocked] = useState(true);
   const calendarContainerRef = useRef(null);
 
@@ -2617,14 +2630,35 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           return false;
         }
       });
-      if (dayExpenses.length === 0) return null;
+      const resolvedDest = getResolvedDayLocation(dateStr, dayExpenses);
+      const hasPlannedDest = !!resolvedDest;
+      const hasFlight = dayExpenses.some(e => 
+        e.category === "Transport" && 
+        (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)
+      );
+      const hasActivity = dayExpenses.some(e => 
+        (e.category === "Entertainment" || e.category === "Everything Else") && 
+        (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/)
+      );
+
+      if (dayExpenses.length === 0 && !hasPlannedDest) return null;
       
-      const emojis = Array.from(new Set(dayExpenses.map(e => CATEGORY_EMOJIS[e.category] || "📦"))).slice(0, 3);
       return (
-        <div style={{ display: "flex", gap: "2px", justifyContent: "center", marginTop: "2px" }}>
-          {emojis.map((emoji, idx) => (
-            <span key={idx} style={{ fontSize: "0.65rem" }}>{emoji}</span>
-          ))}
+        <div style={{ 
+          display: "flex", 
+          gap: "2px", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          marginTop: "2px",
+          height: "12px",
+          overflow: "hidden"
+        }}>
+          {hasPlannedDest && <span title={`Location: ${resolvedDest}`} style={{ fontSize: "0.62rem", lineHeight: 1 }}>📍</span>}
+          {hasFlight && <span title="Flight booked" style={{ fontSize: "0.62rem", lineHeight: 1 }}>✈️</span>}
+          {hasActivity && <span title="Activity booked" style={{ fontSize: "0.62rem", lineHeight: 1 }}>🎟️</span>}
+          {!hasFlight && !hasActivity && dayExpenses.length > 0 && (
+            <span style={{ fontSize: "0.45rem", color: "var(--color-purple)", opacity: 0.6, lineHeight: 1 }}>●</span>
+          )}
         </div>
       );
     };
@@ -2633,7 +2667,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       if (!selectedPlanDate) return null;
       const d = new Date(selectedPlanDate + "T00:00:00");
       const formatted = d.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-      const plannedDest = trip.itinerary?.[selectedPlanDate] || "";
+      const resolvedDest = getResolvedDayLocation(selectedPlanDate);
       const dayExpenses = expenses.filter(e => {
         try {
           return new Date(e.timestamp).toLocaleDateString('en-CA') === selectedPlanDate;
@@ -2667,6 +2701,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           updateItineraryLocation(selectedPlanDate, itineraryInput);
+                          setEditingItineraryDate(null);
+                        } else if (e.key === "Escape") {
                           setEditingItineraryDate(null);
                         }
                       }}
@@ -2703,17 +2739,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <span 
                     onClick={() => {
                       setEditingItineraryDate(selectedPlanDate);
-                      setItineraryInput(plannedDest);
+                      setItineraryInput(resolvedDest || "");
                     }}
                     style={{ 
                       fontSize: "0.78rem", 
                       fontWeight: 750, 
-                      color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
+                      color: resolvedDest ? "var(--color-orange)" : "#9CA3AF",
                       borderBottom: "1px dashed",
                       cursor: "pointer"
                     }}
                   >
-                    {plannedDest || "📍 Set destination"}
+                    {resolvedDest || "📍 Set destination"}
                   </span>
                 )}
               </div>
@@ -2865,7 +2901,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             >
               {getPlannerDaysGrid(planYear, planMonth).map((item, idx) => {
                 const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
-                const plannedDest = trip.itinerary?.[item.dateStr] || "";
                 
                 const isInDragRange = dragRange && item.dateStr >= dragRange.start && item.dateStr <= dragRange.end;
                 const isSelected = selectedPlanDate === item.dateStr;
@@ -2909,24 +2944,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       color: color,
                       fontWeight: fontWeight,
                       transition: "all 0.15s",
-                      userSelect: "none"
+                      userSelect: "none",
+                      overflow: "hidden",
+                      minWidth: 0,
+                      minHeight: 0
                     }}
                   >
                     <span style={{ fontSize: "0.78rem" }}>{item.day}</span>
-                    {plannedDest && (
-                      <span style={{
-                        fontSize: "0.6rem",
-                        fontWeight: 800,
-                        color: "var(--color-orange)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        maxWidth: "90%",
-                        textAlign: "center"
-                      }}>
-                        {plannedDest}
-                      </span>
-                    )}
                     {renderCellIndicators(item.dateStr)}
                   </div>
                 );
@@ -3052,128 +3076,204 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 onClick={() => changePlanWeek(-1)}
                 style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
               >
-                ◀ Previous Week
+                ◀ Prev 7 Days
               </button>
               <span style={{ fontWeight: 800, color: "var(--color-purple)", fontSize: "0.85rem" }}>
-                Week of {new Date(planWeekStart).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}
+                Timeline: {new Date(planWeekStart).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })} – {(() => {
+                  const end = new Date(planWeekStart);
+                  end.setDate(end.getDate() + 6);
+                  return end.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+                })()}
               </span>
               <button 
                 type="button" 
                 onClick={() => changePlanWeek(1)}
                 style={{ border: "none", background: "none", fontSize: "0.82rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
               >
-                Next Week ▶
+                Next 7 Days ▶
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {getWeeklyDays().map((dayObj) => {
-                const label = dayObj.date.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' });
-                const plannedDest = trip.itinerary?.[dayObj.dateStr] || "";
-                const dayExpenses = expenses.filter(e => {
-                  try {
-                    return new Date(e.timestamp).toLocaleDateString('en-CA') === dayObj.dateStr;
-                  } catch (err) {
-                    return false;
+            <div style={{
+              backgroundColor: "white",
+              borderRadius: "20px",
+              padding: "16px 20px",
+              border: "1.5px solid rgba(133, 58, 81, 0.08)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.01)",
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {getWeeklyDays().map((dayObj, index) => {
+                  const todayStr = new Date().toLocaleDateString('en-CA');
+                  const isToday = dayObj.dateStr === todayStr;
+                  
+                  let dayLabel = "";
+                  if (isToday) {
+                    dayLabel = "Today";
+                  } else {
+                    const tom = new Date();
+                    tom.setDate(tom.getDate() + 1);
+                    if (dayObj.dateStr === tom.toLocaleDateString('en-CA')) {
+                      dayLabel = "Tomorrow";
+                    } else {
+                      dayLabel = dayObj.date.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' });
+                    }
                   }
-                });
 
-                return (
-                  <div key={dayObj.dateStr} style={{
-                    backgroundColor: "white",
-                    borderRadius: "16px",
-                    padding: "12px 14px",
-                    border: "1.5px solid rgba(133, 58, 81, 0.06)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontWeight: 800, fontSize: "0.85rem", color: "var(--color-purple)" }}>{label}</span>
-                      
-                      {editingItineraryDate === dayObj.dateStr ? (
-                        <div style={{ display: "inline-flex", gap: "4px" }}>
-                          <input
-                            type="text"
-                            value={itineraryInput}
-                            onChange={(e) => setItineraryInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                updateItineraryLocation(dayObj.dateStr, itineraryInput);
-                                setEditingItineraryDate(null);
-                              }
-                            }}
-                            autoFocus
-                            style={{
-                              padding: "2px 6px",
-                              fontSize: "0.78rem",
-                              borderRadius: "6px",
-                              border: "1.5px solid var(--color-orange)",
-                              outline: "none",
-                              width: "120px"
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateItineraryLocation(dayObj.dateStr, itineraryInput);
-                              setEditingItineraryDate(null);
-                            }}
-                            style={{
-                              backgroundColor: "var(--color-orange)",
-                              border: "none",
-                              color: "white",
-                              padding: "2px 6px",
-                              borderRadius: "6px",
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                              cursor: "pointer"
-                            }}
-                          >
-                            Save
-                          </button>
-                        </div>
-                      ) : (
-                        <span 
-                          onClick={() => {
-                            setEditingItineraryDate(dayObj.dateStr);
-                            setItineraryInput(plannedDest);
-                          }}
-                          style={{ 
-                            fontSize: "0.78rem", 
-                            fontWeight: 750, 
-                            color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
-                            borderBottom: "1px dashed",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {plannedDest || "📍 Set destination"}
+                  const plannedDest = getResolvedDayLocation(dayObj.dateStr);
+                  const dayExpenses = expenses.filter(e => {
+                    try {
+                      return new Date(e.timestamp).toLocaleDateString('en-CA') === dayObj.dateStr;
+                    } catch (err) {
+                      return false;
+                    }
+                  });
+
+                  const bookings = dayExpenses.filter(e => 
+                    (e.category === "Transport" && (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)) ||
+                    ((e.category === "Entertainment" || e.category === "Everything Else") && (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/))
+                  );
+
+                  return (
+                    <div 
+                      key={dayObj.dateStr} 
+                      style={{
+                        display: "flex",
+                        padding: "12px 0",
+                        borderBottom: index === 6 ? "none" : "1.5px solid rgba(133, 58, 81, 0.05)",
+                        position: "relative",
+                        gap: "12px"
+                      }}
+                    >
+                      <div style={{
+                        width: "80px",
+                        flexShrink: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "flex-start",
+                        paddingTop: "2px"
+                      }}>
+                        <span style={{ 
+                          fontWeight: isToday ? 900 : 750, 
+                          fontSize: "0.8rem", 
+                          color: isToday ? "var(--color-orange)" : "var(--color-purple)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3px"
+                        }}>
+                          {dayLabel}
                         </span>
-                      )}
-                    </div>
-
-                    {dayExpenses.length > 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F3F4F6", paddingTop: "6px" }}>
-                        {dayExpenses.map(exp => (
-                          <div key={exp.id} style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            fontSize: "0.78rem"
-                          }}>
-                            <span style={{ color: "#4B5563" }}>
-                              {CATEGORY_EMOJIS[exp.category] || "📦"} {exp.note || exp.category}
-                            </span>
-                            <span style={{ fontWeight: 750, color: "var(--color-purple)" }}>
-                              {formatMoney(exp.amount, exp.currency)}
-                            </span>
-                          </div>
-                        ))}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                      <div style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center" }}>
+                          {editingItineraryDate === dayObj.dateStr ? (
+                            <div style={{ display: "inline-flex", gap: "4px", width: "100%" }}>
+                              <input
+                                type="text"
+                                value={itineraryInput}
+                                onChange={(e) => setItineraryInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                                    setEditingItineraryDate(null);
+                                  } else if (e.key === "Escape") {
+                                    setEditingItineraryDate(null);
+                                  }
+                                }}
+                                autoFocus
+                                style={{
+                                  padding: "2px 6px",
+                                  fontSize: "0.78rem",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid var(--color-orange)",
+                                  outline: "none",
+                                  flex: 1,
+                                  minWidth: 0
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                                  setEditingItineraryDate(null);
+                                }}
+                                style={{
+                                  backgroundColor: "var(--color-orange)",
+                                  border: "none",
+                                  color: "white",
+                                  padding: "2px 8px",
+                                  borderRadius: "6px",
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          ) : (
+                            <span 
+                              onClick={() => {
+                                setEditingItineraryDate(dayObj.dateStr);
+                                setItineraryInput(plannedDest || "");
+                              }}
+                              style={{ 
+                                fontSize: "0.82rem", 
+                                fontWeight: 750, 
+                                color: plannedDest ? "var(--color-orange)" : "#9CA3AF",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px"
+                              }}
+                            >
+                              📍 {plannedDest || <span style={{ textDecoration: "underline", decorationStyle: "dashed", opacity: 0.7 }}>Set location</span>}
+                            </span>
+                          )}
+                        </div>
+
+                        {bookings.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {bookings.map(exp => {
+                              const isFlight = exp.category === "Transport" && (exp.note || "").toLowerCase().match(/flight|plane|flying|flight/);
+                              return (
+                                <div 
+                                  key={exp.id} 
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    fontSize: "0.75rem",
+                                    backgroundColor: isFlight ? "rgba(3, 105, 161, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                                    border: isFlight ? "1px solid rgba(3, 105, 161, 0.18)" : "1px solid rgba(245, 158, 11, 0.18)",
+                                    borderRadius: "6px",
+                                    padding: "4px 8px",
+                                    color: isFlight ? "#0369A1" : "#B45309",
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    {isFlight ? "✈️" : "🎟️"} {exp.note || exp.category}
+                                  </span>
+                                  <span style={{ fontWeight: 800 }}>
+                                    {formatMoney(exp.amount, exp.currency)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -3237,126 +3337,102 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             alignItems: "center",
             marginBottom: "10px"
           }}>
-            {/* Back & Settings Buttons */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <button
-                type="button"
-                onClick={() => window.location.href = '/tracker/trips'}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.15rem",
-                  cursor: "pointer",
-                  color: "var(--color-purple)",
-                  padding: "4px 8px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(133, 58, 81, 0.05)",
-                  flexShrink: 0
-                }}
-                title="Back to My Trips"
-              >
-                ←
-              </button>
+            {/* Back Button */}
+            <button
+              type="button"
+              onClick={() => window.location.href = '/tracker/trips'}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "1.15rem",
+                cursor: "pointer",
+                color: "var(--color-purple)",
+                padding: "4px 8px",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(133, 58, 81, 0.05)",
+                flexShrink: 0
+              }}
+              title="Back to My Trips"
+            >
+              ←
+            </button>
+
+            {/* Actions and Settings on the right */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {/* Settings Button */}
               <button
                 type="button"
                 onClick={() => setActiveModal("settings")}
                 style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.15rem",
-                  cursor: "pointer",
+                  fontSize: "0.82rem",
                   color: "var(--color-purple)",
-                  padding: "4px 8px",
-                  borderRadius: "8px",
+                  backgroundColor: "rgba(133, 58, 81, 0.08)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "22px",
+                  height: "22px",
+                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(133, 58, 81, 0.05)",
-                  flexShrink: 0
+                  outline: "none"
                 }}
                 title="Settings"
               >
                 ⚙️
               </button>
-            </div>
+              {/* Undo Button */}
+              {undoStack.length > 0 && (
+                <button
+                  onClick={handleUndo}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--color-purple)",
+                    cursor: "pointer",
+                    padding: "2px",
+                    display: "flex",
+                    alignItems: "center",
+                    outline: "none"
+                  }}
+                  title="Undo"
+                >
+                  <UndoIcon size={16} />
+                </button>
+              )}
+              {/* Redo Button */}
+              {redoStack.length > 0 && (
+                <button
+                  onClick={handleRedo}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--color-purple)",
+                    cursor: "pointer",
+                    padding: "2px",
+                    display: "flex",
+                    alignItems: "center",
+                    outline: "none"
+                  }}
+                  title="Redo"
+                >
+                  <RedoIcon size={16} />
+                </button>
+              )}
 
-            {/* Actions on the right */}
-            {supabase && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {/* Undo Button */}
-                {undoStack.length > 0 && (
-                  <button
-                    onClick={handleUndo}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--color-purple)",
-                      cursor: "pointer",
-                      padding: "2px",
-                      display: "flex",
-                      alignItems: "center",
-                      outline: "none"
-                    }}
-                    title="Undo"
-                  >
-                    <UndoIcon size={16} />
-                  </button>
-                )}
-                {/* Redo Button */}
-                {redoStack.length > 0 && (
-                  <button
-                    onClick={handleRedo}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--color-purple)",
-                      cursor: "pointer",
-                      padding: "2px",
-                      display: "flex",
-                      alignItems: "center",
-                      outline: "none"
-                    }}
-                    title="Redo"
-                  >
-                    <RedoIcon size={16} />
-                  </button>
-                )}
-
-                {/* Cloud Save & Sync (for Demo Mode) or Share & Sync for non-demo */}
-                {isDemo ? (
-                  <button
-                    onClick={handleSaveSyncClick}
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "white",
-                      backgroundColor: "var(--color-orange)",
-                      border: "none",
-                      borderRadius: "50%",
-                      width: "22px",
-                      height: "22px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      outline: "none",
-                      boxShadow: "0 2px 4px rgba(232, 107, 50, 0.15)"
-                    }}
-                    title="Save & Sync"
-                  >
-                    ☁️
-                  </button>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    {/* Share & Collaborate */}
+              {/* Cloud Save & Sync (for Demo Mode) or Share & Sync for non-demo */}
+              {supabase && (
+                <>
+                  {isDemo ? (
                     <button
-                      onClick={() => setActiveModal("collaborators")}
+                      onClick={handleSaveSyncClick}
                       style={{
                         fontSize: "0.78rem",
-                        color: "var(--color-purple)",
-                        backgroundColor: "rgba(133, 58, 81, 0.08)",
+                        color: "white",
+                        backgroundColor: "var(--color-orange)",
                         border: "none",
                         borderRadius: "50%",
                         width: "22px",
@@ -3365,62 +3441,87 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        outline: "none"
+                        outline: "none",
+                        boxShadow: "0 2px 4px rgba(232, 107, 50, 0.15)"
                       }}
-                      title="Share & Collaborate"
+                      title="Save & Sync"
                     >
-                      👥
+                      ☁️
                     </button>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {/* Share & Collaborate */}
+                      <button
+                        onClick={() => setActiveModal("collaborators")}
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--color-purple)",
+                          backgroundColor: "rgba(133, 58, 81, 0.08)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "22px",
+                          height: "22px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          outline: "none"
+                        }}
+                        title="Share & Collaborate"
+                      >
+                        👥
+                      </button>
 
-                    {/* Sync Status Badge */}
-                    {(() => {
-                      let statusText = "Synced";
-                      let statusEmoji = "●";
-                      let badgeColor = "#10B981";
-                      let badgeBg = "#ECFDF5";
-                      let glow = "0 0 4px rgba(16, 185, 129, 0.25)";
-                      
-                      if (!isOnline) {
-                        statusText = "Offline";
-                        statusEmoji = "✈️";
-                        badgeColor = "#D97706";
-                        badgeBg = "#FEF3C7";
-                        glow = "0 0 4px rgba(217, 119, 6, 0.25)";
-                      } else if (isSyncing || syncQueue.length > 0) {
-                        statusText = "Syncing...";
-                        statusEmoji = "🔄";
-                        badgeColor = "#2563EB";
-                        badgeBg = "#EFF6FF";
-                        glow = "0 0 4px rgba(37, 99, 235, 0.25)";
-                      }
-                      
-                      return (
-                        <span 
-                          title={statusText}
-                          style={{
-                            fontSize: "0.8rem",
-                            color: badgeColor,
-                            backgroundColor: badgeBg,
-                            width: "22px",
-                            height: "22px",
-                            borderRadius: "50%",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: glow,
-                            transition: "all 0.3s ease",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {statusEmoji === "🟢" || statusEmoji === "●" ? "●" : statusEmoji}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
+                      {/* Sync Status Badge */}
+                      {(() => {
+                        let statusText = "Synced";
+                        let statusEmoji = "●";
+                        let badgeColor = "#10B981";
+                        let badgeBg = "#ECFDF5";
+                        let glow = "0 0 4px rgba(16, 185, 129, 0.25)";
+                        
+                        if (!isOnline) {
+                          statusText = "Offline";
+                          statusEmoji = "✈️";
+                          badgeColor = "#D97706";
+                          badgeBg = "#FEF3C7";
+                          glow = "0 0 4px rgba(217, 119, 6, 0.25)";
+                        } else if (isSyncing || syncQueue.length > 0) {
+                          statusText = "Syncing...";
+                          statusEmoji = "🔄";
+                          badgeColor = "#2563EB";
+                          badgeBg = "#EFF6FF";
+                          glow = "0 0 4px rgba(37, 99, 235, 0.25)";
+                        }
+                        
+                        return (
+                          <span 
+                            title={statusText}
+                            style={{
+                              fontSize: "0.8rem",
+                              color: badgeColor,
+                              backgroundColor: badgeBg,
+                              width: "22px",
+                              height: "22px",
+                              borderRadius: "50%",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              boxShadow: glow,
+                              transition: "all 0.3s ease",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {statusEmoji === "🟢" || statusEmoji === "●" ? "●" : statusEmoji}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </>
+              )}
           </div>
+        </div>
 
           {/* Row 2: Editable Trip Title */}
           <div style={{
@@ -4127,45 +4228,105 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         let lastLabel = null;
                         return (
                           <div>
-                            {!recentExpenses.some(e => getDayLabel(e.timestamp) === "Today") && hasFutureExpenses && (
-                              <div style={{
-                                fontSize: "0.8rem",
-                                fontWeight: 800,
-                                color: "#9CA3AF",
-                                backgroundColor: "rgba(133, 58, 81, 0.06)",
-                                padding: "6px 12px",
-                                borderRadius: "8px",
-                                marginTop: "16px",
-                                marginBottom: "8px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.5px"
-                              }}>
-                                <span>Today</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowFuture(!showFuture)}
-                                  style={{
-                                    fontSize: "0.65rem",
-                                    fontWeight: 800,
-                                    color: showFuture ? "#0369A1" : "#4B5563",
-                                    backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
-                                    border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
-                                    borderRadius: "6px",
-                                    padding: "2px 6px",
-                                    cursor: "pointer",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.3px",
-                                    marginLeft: "4px",
-                                    transition: "all 0.2s"
-                                  }}
-                                >
-                                  {showFuture ? "Hide Future" : "Show Future"}
-                                </button>
-                              </div>
-                            )}
+                            {!recentExpenses.some(e => getDayLabel(e.timestamp) === "Today") && hasFutureExpenses && (() => {
+                              const todayStr = new Date().toLocaleDateString('en-CA');
+                              const dayLocation = getResolvedDayLocation(todayStr);
+                              return (
+                                <div style={{
+                                  fontSize: "0.8rem",
+                                  fontWeight: 800,
+                                  color: "var(--color-purple)",
+                                  backgroundColor: "rgba(133, 58, 81, 0.06)",
+                                  padding: "6px 12px",
+                                  borderRadius: "8px",
+                                  marginTop: "16px",
+                                  marginBottom: "8px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.5px"
+                                }}>
+                                  <span>Today</span>
+                                  <span 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingItineraryDate(todayStr);
+                                      setItineraryInput(dayLocation || "");
+                                    }}
+                                    style={{ 
+                                      color: dayLocation ? "var(--color-orange)" : "#9CA3AF", 
+                                      display: "inline-flex", 
+                                      alignItems: "center", 
+                                      gap: "2px",
+                                      cursor: "pointer",
+                                      textTransform: "none"
+                                    }}
+                                  >
+                                    {editingItineraryDate === todayStr ? (
+                                      <input
+                                        type="text"
+                                        value={itineraryInput}
+                                        onChange={(e) => setItineraryInput(e.target.value)}
+                                        onBlur={() => {
+                                          updateItineraryLocation(todayStr, itineraryInput);
+                                          setEditingItineraryDate(null);
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            updateItineraryLocation(todayStr, itineraryInput);
+                                            setEditingItineraryDate(null);
+                                          } else if (e.key === "Escape") {
+                                            setEditingItineraryDate(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                        style={{
+                                          fontSize: "0.8rem",
+                                          fontWeight: 800,
+                                          color: "var(--color-orange)",
+                                          border: "none",
+                                          borderBottom: "1px solid var(--color-orange)",
+                                          outline: "none",
+                                          width: "85px",
+                                          background: "transparent",
+                                          padding: 0
+                                        }}
+                                      />
+                                    ) : (
+                                      <span title="Click to edit destination">
+                                        📍 {dayLocation || "Add destination"}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowFuture(!showFuture);
+                                    }}
+                                    style={{
+                                      fontSize: "0.65rem",
+                                      fontWeight: 800,
+                                      color: showFuture ? "white" : "var(--color-orange)",
+                                      backgroundColor: showFuture ? "var(--orange-color, var(--color-orange))" : "rgba(232, 107, 50, 0.08)",
+                                      border: "1px solid rgba(232, 107, 50, 0.2)",
+                                      borderRadius: "12px",
+                                      padding: "3px 8px",
+                                      cursor: "pointer",
+                                      textTransform: "uppercase",
+                                      letterSpacing: "0.5px",
+                                      marginLeft: "8px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      transition: "all 0.2s"
+                                    }}
+                                  >
+                                    {showFuture ? "Hide Future" : "Future"}
+                                  </button>
+                                </div>
+                              );
+                            })()}
 
                             {recentExpenses.length === 0 ? (
                               <div style={{ textAlign: "center", padding: "30px 0", color: "#9CA3AF" }}>
@@ -4178,14 +4339,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   const showHeader = label !== lastLabel;
                                   lastLabel = label;
                                   const sameDayExpenses = sortedExpenses.filter(e => getDayLabel(e.timestamp) === label);
-                                  const d = new Date(exp.timestamp);
-                                  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                  const itLoc = trip.itinerary?.[dateKey];
-                                  const dayLocation = itLoc !== undefined ? itLoc : (
-                                    label === "Today" 
-                                      ? (trip.currentLocation || "") 
-                                      : (sameDayExpenses.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc) || "")
-                                  );
+                                  const dateKey = (() => {
+                                    const d = new Date(exp.timestamp);
+                                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                  })();
+                                  const dayLocation = getResolvedDayLocation(dateKey, sameDayExpenses);
 
                                   return (
                                     <div key={exp.id}>
@@ -4206,31 +4364,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                           letterSpacing: "0.5px"
                                         }}>
                                           <span>{label}</span>
-                                          {label === "Today" && hasFutureExpenses && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setShowFuture(!showFuture);
-                                              }}
-                                              style={{
-                                                fontSize: "0.65rem",
-                                                fontWeight: 800,
-                                                color: showFuture ? "#0369A1" : "#4B5563",
-                                                backgroundColor: showFuture ? "#E0F2FE" : "#F3F4F6",
-                                                border: showFuture ? "1px solid rgba(3, 105, 161, 0.15)" : "1px solid #E5E7EB",
-                                                borderRadius: "6px",
-                                                padding: "2px 6px",
-                                                cursor: "pointer",
-                                                textTransform: "uppercase",
-                                                letterSpacing: "0.3px",
-                                                marginLeft: "4px",
-                                                transition: "all 0.2s"
-                                              }}
-                                            >
-                                              {showFuture ? "Hide Future" : "Show Future"}
-                                            </button>
-                                          )}
                                           <span 
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -4274,16 +4407,43 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   width: "85px",
                                                   background: "transparent",
                                                   padding: 0
-                                                }}
-                                              />
-                                            ) : (
-                                              <span title="Click to edit destination">
-                                                📍 {dayLocation || "Add destination"}
-                                              </span>
-                                            )}
-                                          </span>
-                                        </div>
-                                      )}
+                                        }}
+                                      />
+                                    ) : (
+                                      <span title="Click to edit destination">
+                                        📍 {dayLocation || "Add destination"}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {label === "Today" && hasFutureExpenses && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowFuture(!showFuture);
+                                      }}
+                                      style={{
+                                        fontSize: "0.65rem",
+                                        fontWeight: 800,
+                                        color: showFuture ? "white" : "var(--color-orange)",
+                                        backgroundColor: showFuture ? "var(--color-orange)" : "rgba(232, 107, 50, 0.08)",
+                                        border: "1px solid rgba(232, 107, 50, 0.2)",
+                                        borderRadius: "12px",
+                                        padding: "3px 8px",
+                                        cursor: "pointer",
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.5px",
+                                        marginLeft: "8px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        transition: "all 0.2s"
+                                      }}
+                                    >
+                                      {showFuture ? "Hide Future" : "Future"}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                                       <ExpenseCard
                                         expense={exp}
                                         onEdit={(e) => {
@@ -6573,18 +6733,33 @@ function ManualEntryModal({
                   const daily = spreadMode === "repeat" ? val : (val / days);
                   const total = spreadMode === "repeat" ? (val * days) : val;
                   return (
-                    <span style={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#C2410C",
-                      backgroundColor: "rgba(232, 107, 50, 0.08)",
-                      padding: "2px 6px",
-                      borderRadius: "6px",
-                      marginLeft: "4px",
-                      whiteSpace: "nowrap"
-                    }}>
-                      {spreadMode === "repeat" ? "Repeat" : "Split"}: {formatMoney(daily, currency)}/d ({formatMoney(total, currency)} tot)
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSpreadMode(spreadMode === "repeat" ? "divide" : "repeat")}
+                      style={{
+                        fontSize: "0.72rem",
+                        fontWeight: 800,
+                        color: "#C2410C",
+                        backgroundColor: "rgba(232, 107, 50, 0.08)",
+                        border: "1px solid rgba(232, 107, 50, 0.18)",
+                        padding: "4px 8px",
+                        borderRadius: "8px",
+                        marginLeft: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        outline: "none",
+                        whiteSpace: "nowrap"
+                      }}
+                      title="Click to toggle Repeat vs Divide mode"
+                    >
+                      <span>🔁 {days}d</span>
+                      <span>{spreadMode === "repeat" ? "Repeat" : "Divide"}</span>
+                      <span style={{ opacity: 0.8, fontSize: "0.65rem", fontWeight: 600 }}>
+                        {`(${formatMoney(daily, currency)}/d • Tot: ${formatMoney(total, currency)})`}
+                      </span>
+                    </button>
                   );
                 })()}
               </div>
