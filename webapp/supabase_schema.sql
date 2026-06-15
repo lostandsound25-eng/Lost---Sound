@@ -94,6 +94,10 @@ ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS current_location TEXT DEFAULT 
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '{}'::jsonb;
 
+-- Migration helper: Ensure photo columns exist on trip_entries table
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS photo_urls TEXT[] DEFAULT '{}'::TEXT[] NOT NULL;
+
 -- Enable Realtime replication for collaborative updating safely
 DO $$
 BEGIN

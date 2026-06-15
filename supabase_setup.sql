@@ -124,3 +124,7 @@ CREATE POLICY "Anyone can manage expenses"
 ON public.expenses FOR ALL 
 USING (true)
 WITH CHECK (true);
+
+-- Migration helper: Ensure photo columns exist on expenses table
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS photo_urls TEXT[] DEFAULT '{}'::TEXT[] NOT NULL;

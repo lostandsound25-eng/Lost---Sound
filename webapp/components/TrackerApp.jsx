@@ -317,6 +317,26 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
   });
 };
 
+const getPlannerDaysList = (startDateStr, offsetDays) => {
+  const minDate = new Date(startDateStr + "T00:00:00");
+  const maxDate = new Date(minDate);
+  maxDate.setDate(maxDate.getDate() + offsetDays);
+
+  minDate.setHours(0,0,0,0);
+  maxDate.setHours(23,59,59,999);
+
+  const days = [];
+  const curr = new Date(minDate);
+  while (curr <= maxDate) {
+    days.push({
+      date: new Date(curr),
+      dateStr: curr.toLocaleDateString('en-CA')
+    });
+    curr.setDate(curr.getDate() + 1);
+  }
+  return days;
+};
+
 export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [expenses, setExpenses] = useState([]);
   const [trip, setTrip] = useState({
@@ -360,8 +380,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [plannerClipboard, setPlannerClipboard] = useState(null); // { location: "...", notes: "..." }
   const [batchLocationInput, setBatchLocationInput] = useState("");
   const [batchNotesInput, setBatchNotesInput] = useState("");
-  const [pastOffset, setPastOffset] = useState(3);
-  const [futureOffset, setFutureOffset] = useState(10);
+  const [plannerStartDate, setPlannerStartDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [pastOffset, setPastOffset] = useState(0);
+  const [futureOffset, setFutureOffset] = useState(6); // Default to 1 week total (Start date + 6 future days)
+  const [hoveredCell, setHoveredCell] = useState(null); // { dateStr, field }
+  const [dragStartCell, setDragStartCell] = useState(null); // { dateStr, field, value }
+  const [dragCurrentDateStr, setDragCurrentDateStr] = useState(null);
 
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
@@ -423,7 +447,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location_locale: data.locationLocale,
             tags: data.tags,
             trip_id: tripId,
-            photo_url: data.photoUrl || null
+            photo_url: data.photoUrl || null,
+            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : [])
           });
           return { type: 'insert', data };
         }
@@ -444,7 +469,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location_locale: data.locationLocale,
             tags: data.tags,
             trip_id: tripId,
-            photo_url: data.photoUrl || null
+            photo_url: data.photoUrl || null,
+            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : [])
           });
           return { type: 'insert', data };
         } else {
@@ -469,7 +495,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           location_locale: target.locationLocale,
           tags: target.tags,
           created_at: target.timestamp,
-          photo_url: target.photoUrl || null
+          photo_url: target.photoUrl || null,
+          photo_urls: target.photoUrls || (target.photoUrl ? [target.photoUrl] : [])
         });
         return { type: 'update', oldData: reverseTarget, newData: target };
       }
@@ -497,7 +524,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location_locale: e.locationLocale,
               tags: e.tags,
               trip_id: tripId,
-              photo_url: e.photoUrl || null
+              photo_url: e.photoUrl || null,
+              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
             });
           });
           return { type: 'insert_bulk', data };
@@ -520,7 +548,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location_locale: e.locationLocale,
               tags: e.tags,
               trip_id: tripId,
-              photo_url: e.photoUrl || null
+              photo_url: e.photoUrl || null,
+              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
             });
           });
           return { type: 'insert_bulk', data };
@@ -558,7 +587,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location_locale: e.locationLocale,
             tags: e.tags,
             trip_id: tripId,
-            photo_url: e.photoUrl || null
+            photo_url: e.photoUrl || null,
+            photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
           });
         });
         return { type: 'update_bulk', oldData: isUndo ? newData : oldData, newData: isUndo ? oldData : newData };
@@ -1140,7 +1170,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location: newRow.location || "",
               locationLocale: newRow.location_locale || "",
               tags: newRow.tags || [],
-              photoUrl: newRow.photo_url || ""
+              photoUrl: newRow.photo_url || "",
+              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
             };
             setExpenses((prev) => {
               if (prev.some(e => e.id === mapped.id)) return prev;
@@ -1158,7 +1189,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location: newRow.location || "",
               locationLocale: newRow.location_locale || "",
               tags: newRow.tags || [],
-              photoUrl: newRow.photo_url || ""
+              photoUrl: newRow.photo_url || "",
+              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
             };
             setExpenses((prev) => prev.map(e => e.id === mapped.id ? mapped : e));
           } else if (eventType === "DELETE") {
@@ -1242,7 +1274,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           location: e.location,
           tags: e.tags,
           created_at: e.timestamp,
-          photo_url: e.photoUrl || null
+          photo_url: e.photoUrl || null,
+          photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
         }));
         const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
         if (expErr) throw expErr;
@@ -1285,6 +1318,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       subscription.unsubscribe();
     };
   }, [isDemo, trip, expenses]);
+
+  // Excel-style drag-to-fill mouseup handler
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (dragStartCell && dragCurrentDateStr) {
+        const daysList = getPlannerDaysList(plannerStartDate, futureOffset);
+        const idx1 = daysList.findIndex(d => d.dateStr === dragStartCell.dateStr);
+        const idx2 = daysList.findIndex(d => d.dateStr === dragCurrentDateStr);
+        if (idx1 !== -1 && idx2 !== -1) {
+          const startIdx = Math.min(idx1, idx2);
+          const endIdx = Math.max(idx1, idx2);
+          const updates = {};
+          for (let i = startIdx; i <= endIdx; i++) {
+            const dStr = daysList[i].dateStr;
+            if (dragStartCell.field === "location") {
+              updates[dStr] = { location: dragStartCell.value };
+            } else {
+              updates[dStr] = { notes: dragStartCell.value };
+            }
+          }
+          updateItineraryLocationsBatch(updates);
+        }
+      }
+      setDragStartCell(null);
+      setDragCurrentDateStr(null);
+    };
+
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [dragStartCell, dragCurrentDateStr, plannerStartDate, futureOffset]);
 
   const fetchLatestRates = async (force = false) => {
     const lastUpdated = localStorage.getItem("tracker_rates_last_updated");
@@ -1374,7 +1439,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         location: e.location || "",
         locationLocale: e.location_locale || "",
         tags: e.tags || [],
-        photoUrl: e.photo_url || ""
+        photoUrl: e.photo_url || "",
+        photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
       }));
       setExpenses(mappedExpenses);
 
@@ -1682,7 +1748,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
-            photoUrl: expense.photoUrl || ""
+            photoUrl: expense.photoUrl || "",
+            photoUrls: expense.photoUrls || []
           };
 
           newExpenses.push(singleExpense);
@@ -1700,7 +1767,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location_locale: singleExpense.locationLocale,
               tags: singleExpense.tags,
               trip_id: tripId,
-              photo_url: singleExpense.photoUrl || null
+              photo_url: singleExpense.photoUrl || null,
+              photo_urls: singleExpense.photoUrls || []
             });
           }
         }
@@ -1776,7 +1844,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
-            photoUrl: expense.photoUrl || ""
+            photoUrl: expense.photoUrl || "",
+            photoUrls: expense.photoUrls || []
           };
 
           newExpenses.push(singleExpense);
@@ -1794,7 +1863,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location_locale: singleExpense.locationLocale,
               tags: singleExpense.tags,
               trip_id: tripId,
-              photo_url: singleExpense.photoUrl || null
+              photo_url: singleExpense.photoUrl || null,
+              photo_urls: singleExpense.photoUrls || []
             });
           }
         }
@@ -1824,7 +1894,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           location: finalLocation,
           locationLocale: finalLocale,
           timestamp: ts,
-          photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "")
+          photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || ""),
+          photoUrls: expense.photoUrls !== undefined ? expense.photoUrls : (editingExpense?.photoUrls || [])
         };
 
         const oldExp = expenses.find(e => e.id === expense.id);
@@ -1846,7 +1917,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: updatedExpense.tags,
             created_at: expense.timestamp || editingExpense?.timestamp,
             updated_at: new Date().toISOString(),
-            photo_url: updatedExpense.photoUrl || null
+            photo_url: updatedExpense.photoUrl || null,
+            photo_urls: updatedExpense.photoUrls || []
           });
         }
       }
@@ -1909,7 +1981,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
-            photoUrl: expense.photoUrl || ""
+            photoUrl: expense.photoUrl || "",
+            photoUrls: expense.photoUrls || []
           };
 
           newExpenses.push(singleExpense);
@@ -1927,7 +2000,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               location_locale: singleExpense.locationLocale,
               tags: singleExpense.tags,
               trip_id: tripId,
-              photo_url: singleExpense.photoUrl || null
+              photo_url: singleExpense.photoUrl || null,
+              photo_urls: singleExpense.photoUrls || []
             });
           }
         }
@@ -1947,7 +2021,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           location: finalLocation,
           locationLocale: finalLocale,
           id: newId,
-          timestamp: tsForInsert
+          timestamp: tsForInsert,
+          photoUrl: expense.photoUrl || "",
+          photoUrls: expense.photoUrls || []
         };
         pushToUndo({ type: 'insert', data: newExpense });
         setExpenses((prev) => [newExpense, ...prev]);
@@ -1965,7 +2041,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             location_locale: newExpense.locationLocale,
             tags: newExpense.tags,
             trip_id: tripId,
-            photo_url: newExpense.photoUrl || null
+            photo_url: newExpense.photoUrl || null,
+            photo_urls: newExpense.photoUrls || []
           });
         }
       }
@@ -2560,39 +2637,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const todayStr = today.toLocaleDateString('en-CA');
 
     const getPlannerDays = () => {
-      let minDate = new Date(today);
-      minDate.setDate(minDate.getDate() - pastOffset);
+      const start = new Date(plannerStartDate + "T00:00:00");
+      start.setDate(start.getDate() - pastOffset);
 
-      expenses.forEach(e => {
-        const d = new Date(e.timestamp);
-        if (d < minDate) {
-          minDate = new Date(d);
-        }
-      });
-
-      let maxDate = new Date(today);
-      maxDate.setDate(maxDate.getDate() + futureOffset);
-
-      expenses.forEach(e => {
-        const d = new Date(e.timestamp);
-        if (d > maxDate) {
-          maxDate = new Date(d);
-        }
-      });
-
-      Object.keys(trip.itinerary || {}).forEach(k => {
-        const d = new Date(k + "T00:00:00");
-        if (d > maxDate) {
-          maxDate = new Date(d);
-        }
-      });
-
-      minDate.setHours(0,0,0,0);
-      maxDate.setHours(23,59,59,999);
+      const end = new Date(plannerStartDate + "T00:00:00");
+      end.setDate(end.getDate() + futureOffset);
 
       const days = [];
-      const curr = new Date(minDate);
-      while (curr <= maxDate) {
+      const curr = new Date(start);
+      while (curr <= end) {
         days.push({
           date: new Date(curr),
           dateStr: curr.toLocaleDateString('en-CA')
@@ -2620,29 +2673,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       } else {
         setSelectedPlannerDates(plannerDays.map(d => d.dateStr));
       }
-    };
-
-    const handleCopyDay = (dateStr) => {
-      const location = getResolvedDayLocation(dateStr);
-      const notes = getResolvedDayNotes(dateStr);
-      setPlannerClipboard({ location, notes });
-    };
-
-    const handlePasteDay = async (dateStr) => {
-      if (!plannerClipboard) return;
-      await updateItineraryLocationsBatch({
-        [dateStr]: plannerClipboard
-      });
-    };
-
-    const handlePasteToSelected = async () => {
-      if (!plannerClipboard || selectedPlannerDates.length === 0) return;
-      const updates = {};
-      selectedPlannerDates.forEach(dateStr => {
-        updates[dateStr] = plannerClipboard;
-      });
-      await updateItineraryLocationsBatch(updates);
-      setSelectedPlannerDates([]);
     };
 
     const getNextDateStr = (dateStr) => {
@@ -2682,42 +2712,110 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         gap: "12px",
         animation: "fadeInUp 0.2s ease-out"
       }}>
-        {/* Header summary & Load Earlier button */}
+        {/* Top bar controls */}
         <div style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "4px"
+          flexDirection: "column",
+          gap: "8px",
+          backgroundColor: "rgba(133, 58, 81, 0.03)",
+          border: "1px solid rgba(133, 58, 81, 0.08)",
+          borderRadius: "16px",
+          padding: "10px 12px"
         }}>
-          <button
-            type="button"
-            onClick={() => setPastOffset(prev => prev + 7)}
-            style={{
-              fontSize: "0.75rem",
-              fontWeight: 750,
-              color: "var(--color-purple)",
-              backgroundColor: "rgba(133, 58, 81, 0.05)",
-              border: "1px solid rgba(133, 58, 81, 0.15)",
-              borderRadius: "10px",
-              padding: "5px 12px",
-              cursor: "pointer",
-              outline: "none"
-            }}
-          >
-            🗓️ Load Earlier Days
-          </button>
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "8px"
+          }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setPastOffset(prev => prev + 7)}
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 750,
+                  color: "var(--color-purple)",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  border: "1px solid rgba(133, 58, 81, 0.15)",
+                  borderRadius: "10px",
+                  padding: "5px 12px",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                🗓️ Load Earlier
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPlannerStartDate(new Date().toLocaleDateString('en-CA'));
+                  setPastOffset(0);
+                  setFutureOffset(6);
+                }}
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 750,
+                  color: "var(--color-purple)",
+                  backgroundColor: "rgba(133, 58, 81, 0.05)",
+                  border: "1px solid rgba(133, 58, 81, 0.15)",
+                  borderRadius: "10px",
+                  padding: "5px 12px",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                Reset to Today
+              </button>
+            </div>
 
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <input 
-              type="checkbox"
-              id="planner-select-all"
-              checked={plannerDays.length > 0 && selectedPlannerDates.length === plannerDays.length}
-              onChange={toggleSelectAll}
-              style={{ cursor: "pointer" }}
-            />
-            <label htmlFor="planner-select-all" style={{ fontSize: "0.74rem", fontWeight: 750, color: "#4B5563", cursor: "pointer" }}>
-              Select All
-            </label>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 750, color: "#4B5563" }}>Jump to Date:</label>
+              <input 
+                type="date"
+                value={plannerStartDate}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setPlannerStartDate(e.target.value);
+                    setPastOffset(0);
+                    setFutureOffset(6);
+                  }
+                }}
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 750,
+                  color: "#374151",
+                  border: "1px solid rgba(133, 58, 81, 0.15)",
+                  borderRadius: "10px",
+                  padding: "4px 8px",
+                  outline: "none",
+                  cursor: "pointer",
+                  backgroundColor: "white"
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            paddingTop: "6px",
+            borderTop: "1px dashed rgba(133, 58, 81, 0.08)"
+          }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <input 
+                type="checkbox"
+                id="planner-select-all"
+                checked={plannerDays.length > 0 && selectedPlannerDates.length === plannerDays.length}
+                onChange={toggleSelectAll}
+                style={{ cursor: "pointer", width: "14px", height: "14px" }}
+              />
+              <label htmlFor="planner-select-all" style={{ fontSize: "0.74rem", fontWeight: 750, color: "#4B5563", cursor: "pointer" }}>
+                Select All
+              </label>
+            </div>
           </div>
         </div>
 
@@ -2742,6 +2840,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               (e.category === "Transport" && (e.note || "").toLowerCase().match(/flight|plane|flying|booking|train|ferry|bus|ticket/)) ||
               ((e.category === "Entertainment" || e.category === "Everything Else") && (e.note || "").toLowerCase().match(/booking|tour|ticket|activity|booking|pass|show|concert|museum|event/))
             );
+
+            // Drag range highlight calculations
+            const isLocationDraggedOver = (() => {
+              if (!dragStartCell || dragStartCell.field !== "location") return false;
+              if (!dragCurrentDateStr) return false;
+              const idxStart = plannerDays.findIndex(d => d.dateStr === dragStartCell.dateStr);
+              const idxCurr = plannerDays.findIndex(d => d.dateStr === dragCurrentDateStr);
+              const idxSelf = plannerDays.findIndex(d => d.dateStr === dayObj.dateStr);
+              if (idxStart === -1 || idxCurr === -1 || idxSelf === -1) return false;
+              return idxSelf >= Math.min(idxStart, idxCurr) && idxSelf <= Math.max(idxStart, idxCurr);
+            })();
+
+            const isNotesDraggedOver = (() => {
+              if (!dragStartCell || dragStartCell.field !== "notes") return false;
+              if (!dragCurrentDateStr) return false;
+              const idxStart = plannerDays.findIndex(d => d.dateStr === dragStartCell.dateStr);
+              const idxCurr = plannerDays.findIndex(d => d.dateStr === dragCurrentDateStr);
+              const idxSelf = plannerDays.findIndex(d => d.dateStr === dayObj.dateStr);
+              if (idxStart === -1 || idxCurr === -1 || idxSelf === -1) return false;
+              return idxSelf >= Math.min(idxStart, idxCurr) && idxSelf <= Math.max(idxStart, idxCurr);
+            })();
 
             return (
               <div 
@@ -2824,66 +2943,79 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         }}
                       />
                     ) : (
-                      <span 
-                        onClick={() => {
-                          setEditingItineraryCell({ date: dayObj.dateStr, field: "location" });
-                          setItineraryInput(plannedDest);
+                      <div 
+                        onMouseEnter={() => {
+                          setHoveredCell({ dateStr: dayObj.dateStr, field: "location" });
+                          if (dragStartCell && dragStartCell.field === "location") {
+                            setDragCurrentDateStr(dayObj.dateStr);
+                          }
                         }}
+                        onMouseLeave={() => setHoveredCell(null)}
                         style={{
                           flex: 1,
-                          fontSize: "0.82rem",
-                          fontWeight: 750,
-                          color: plannedDest ? "#111827" : "#9CA3AF",
-                          borderBottom: "1px dashed rgba(0,0,0,0.15)",
-                          cursor: "pointer",
-                          padding: "2px 0",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap"
+                          position: "relative",
+                          display: "flex",
+                          alignItems: "center",
+                          minWidth: 0,
+                          outline: isLocationDraggedOver ? "2px dashed var(--color-orange)" : "none",
+                          outlineOffset: "2px",
+                          borderRadius: "4px",
+                          transition: "outline 0.1s"
                         }}
                       >
-                        {plannedDest || "Set destination..."}
-                      </span>
+                        <span 
+                          onClick={() => {
+                            setEditingItineraryCell({ date: dayObj.dateStr, field: "location" });
+                            setItineraryInput(plannedDest);
+                          }}
+                          style={{
+                            flex: 1,
+                            fontSize: "0.82rem",
+                            fontWeight: 750,
+                            color: plannedDest ? "#111827" : "#9CA3AF",
+                            borderBottom: "1px dashed rgba(0,0,0,0.15)",
+                            cursor: "pointer",
+                            padding: "2px 0",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          {plannedDest || "Set destination..."}
+                        </span>
+
+                        {/* Excel-style drag handle */}
+                        {!editingItineraryCell && hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "location" && (
+                          <div
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDragStartCell({
+                                dateStr: dayObj.dateStr,
+                                field: "location",
+                                value: plannedDest
+                              });
+                              setDragCurrentDateStr(dayObj.dateStr);
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: "-3px",
+                              bottom: "-3px",
+                              width: "8px",
+                              height: "8px",
+                              backgroundColor: "var(--color-orange)",
+                              border: "1px solid white",
+                              cursor: "crosshair",
+                              zIndex: 10
+                            }}
+                            title="Drag to fill other days"
+                          />
+                        )}
+                      </div>
                     )}
 
                     {/* Day Actions */}
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyDay(dayObj.dateStr)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          fontSize: "0.78rem",
-                          padding: "4px",
-                          borderRadius: "4px",
-                          display: "flex",
-                          alignItems: "center"
-                        }}
-                        title="Copy day plan"
-                      >
-                        📋
-                      </button>
-                      {plannerClipboard && (
-                        <button
-                          type="button"
-                          onClick={() => handlePasteDay(dayObj.dateStr)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            fontSize: "0.78rem",
-                            padding: "4px",
-                            borderRadius: "4px",
-                            display: "flex",
-                            alignItems: "center"
-                          }}
-                          title="Paste plan to this day"
-                        >
-                          📥
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={() => handleFillDown(dayObj.dateStr)}
@@ -2936,26 +3068,75 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         }}
                       />
                     ) : (
-                      <span 
-                        onClick={() => {
-                          setEditingItineraryCell({ date: dayObj.dateStr, field: "notes" });
-                          setItineraryInput(plannedNotes);
+                      <div 
+                        onMouseEnter={() => {
+                          setHoveredCell({ dateStr: dayObj.dateStr, field: "notes" });
+                          if (dragStartCell && dragStartCell.field === "notes") {
+                            setDragCurrentDateStr(dayObj.dateStr);
+                          }
                         }}
+                        onMouseLeave={() => setHoveredCell(null)}
                         style={{
                           flex: 1,
-                          fontSize: "0.8rem",
-                          fontWeight: 500,
-                          color: plannedNotes ? "#4B5563" : "#9CA3AF",
-                          borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                          cursor: "pointer",
-                          padding: "2px 0",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap"
+                          position: "relative",
+                          display: "flex",
+                          alignItems: "center",
+                          minWidth: 0,
+                          outline: isNotesDraggedOver ? "2px dashed var(--color-orange)" : "none",
+                          outlineOffset: "2px",
+                          borderRadius: "4px",
+                          transition: "outline 0.1s"
                         }}
                       >
-                        {plannedNotes || "Add plans/todo notes..."}
-                      </span>
+                        <span 
+                          onClick={() => {
+                            setEditingItineraryCell({ date: dayObj.dateStr, field: "notes" });
+                            setItineraryInput(plannedNotes);
+                          }}
+                          style={{
+                            flex: 1,
+                            fontSize: "0.8rem",
+                            fontWeight: 500,
+                            color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                            borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                            cursor: "pointer",
+                            padding: "2px 0",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          {plannedNotes || "Add plans/todo notes..."}
+                        </span>
+
+                        {/* Excel-style drag handle */}
+                        {!editingItineraryCell && hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "notes" && (
+                          <div
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDragStartCell({
+                                dateStr: dayObj.dateStr,
+                                field: "notes",
+                                value: plannedNotes
+                              });
+                              setDragCurrentDateStr(dayObj.dateStr);
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: "-3px",
+                              bottom: "-3px",
+                              width: "8px",
+                              height: "8px",
+                              backgroundColor: "var(--color-orange)",
+                              border: "1px solid white",
+                              cursor: "crosshair",
+                              zIndex: 10
+                            }}
+                            title="Drag to fill other days"
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -3112,24 +3293,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
             {/* Action Buttons */}
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              {plannerClipboard && (
-                <button
-                  type="button"
-                  onClick={handlePasteToSelected}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(232, 107, 50, 0.3)",
-                    backgroundColor: "transparent",
-                    color: "var(--color-orange)",
-                    fontSize: "0.74rem",
-                    fontWeight: 700,
-                    cursor: "pointer"
-                  }}
-                >
-                  Paste Copied
-                </button>
-              )}
               <button
                 type="button"
                 onClick={handleApplyBatchChanges}
@@ -5257,6 +5420,7 @@ function ExpenseCard({
   const [offsetX, setOffsetX] = useState(0);
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [listPhotoIndex, setListPhotoIndex] = useState(0);
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
 
@@ -5485,89 +5649,193 @@ function ExpenseCard({
                 {expense.amount.toFixed(2)} {expense.currency}
               </div>
             )}
-            {expense.photoUrl && (
-              <div 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowLightbox(true);
-                }}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  border: "1.5px solid #E5E7EB",
-                  marginTop: "6px",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
-                  backgroundColor: "#f3f4f6"
-                }}
-                title="Click to view receipt"
-              >
-                <img 
-                  src={expense.photoUrl} 
-                  alt="Receipt thumbnail" 
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                />
-              </div>
-            )}
+            {(() => {
+              const displayPhotoUrls = expense.photoUrls || (expense.photoUrl ? [expense.photoUrl] : []);
+              if (displayPhotoUrls.length === 0) return null;
+              return (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setListPhotoIndex(0);
+                    setShowLightbox(true);
+                  }}
+                  style={{
+                    position: "relative",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    border: "1.5px solid #E5E7EB",
+                    marginTop: "6px",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
+                    backgroundColor: "#f3f4f6"
+                  }}
+                  title="Click to view receipt"
+                >
+                  <img 
+                    src={displayPhotoUrls[0]} 
+                    alt="Receipt thumbnail" 
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                  />
+                  {displayPhotoUrls.length > 1 && (
+                    <div style={{
+                      position: "absolute",
+                      bottom: "1px",
+                      right: "1px",
+                      backgroundColor: "rgba(133, 58, 81, 0.95)",
+                      color: "white",
+                      fontSize: "0.58rem",
+                      fontWeight: 800,
+                      padding: "1px 3px",
+                      borderRadius: "4px",
+                      lineHeight: 1
+                    }}>
+                      +{displayPhotoUrls.length - 1}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
 
-      {showLightbox && (
-        <div 
-          onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.85)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backdropFilter: "blur(5px)",
-            padding: "20px"
-          }}
-        >
-          <img 
-            src={expense.photoUrl} 
-            alt="Full receipt" 
-            style={{
-              maxWidth: "100%",
-              maxHeight: "80vh",
-              objectFit: "contain",
-              borderRadius: "12px",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
-            }} 
-          />
-          <button 
+      {showLightbox && (() => {
+        const displayPhotoUrls = expense.photoUrls || (expense.photoUrl ? [expense.photoUrl] : []);
+        if (displayPhotoUrls.length === 0 || !displayPhotoUrls[listPhotoIndex]) return null;
+        return (
+          <div 
             onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
             style={{
-              position: "absolute",
-              top: "20px",
-              right: "20px",
-              background: "rgba(255,255,255,0.2)",
-              border: "none",
-              color: "white",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              fontSize: "1.2rem",
-              fontWeight: 700,
-              cursor: "pointer",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.85)",
+              zIndex: 9999,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center"
+              justifyContent: "center",
+              backdropFilter: "blur(5px)",
+              padding: "20px"
             }}
           >
-            ✕
-          </button>
-        </div>
-      )}
+            <img 
+              src={displayPhotoUrls[listPhotoIndex]} 
+              alt="Full receipt" 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                objectFit: "contain",
+                borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+              }} 
+            />
+
+            {/* Left Navigation Arrow */}
+            {displayPhotoUrls.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setListPhotoIndex(prev => (prev - 1 + displayPhotoUrls.length) % displayPhotoUrls.length);
+                }}
+                style={{
+                  position: "absolute",
+                  left: "20px",
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "50px",
+                  height: "50px",
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  outline: "none"
+                }}
+              >
+                ‹
+              </button>
+            )}
+
+            {/* Right Navigation Arrow */}
+            {displayPhotoUrls.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setListPhotoIndex(prev => (prev + 1) % displayPhotoUrls.length);
+                }}
+                style={{
+                  position: "absolute",
+                  right: "20px",
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "50px",
+                  height: "50px",
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  outline: "none"
+                }}
+              >
+                ›
+              </button>
+            )}
+
+            {/* Image Indicator counter */}
+            {displayPhotoUrls.length > 1 && (
+              <div style={{
+                position: "absolute",
+                bottom: "20px",
+                color: "white",
+                fontSize: "0.9rem",
+                fontWeight: 700,
+                backgroundColor: "rgba(0,0,0,0.5)",
+                padding: "4px 12px",
+                borderRadius: "20px"
+              }}>
+                {listPhotoIndex + 1} / {displayPhotoUrls.length}
+              </div>
+            )}
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                background: "rgba(255,255,255,0.2)",
+                border: "none",
+                color: "white",
+                borderRadius: "50%",
+                width: "40px",
+                height: "40px",
+                fontSize: "20px",
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -5633,6 +5901,7 @@ function ManualEntryModal({
 
   // Modal Lightbox state
   const [showModalLightbox, setShowModalLightbox] = useState(false);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -5742,10 +6011,11 @@ function ManualEntryModal({
     const draft = getDraft();
     return draft ? draft.extraNotes || "" : "";
   });
-  const [photoUrl, setPhotoUrl] = useState(() => {
-    if (expenseToEdit) return expenseToEdit.photoUrl || "";
+  const [photoUrls, setPhotoUrls] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []);
     const draft = getDraft();
-    return draft ? draft.photoUrl || "" : "";
+    if (draft) return draft.photoUrls || (draft.photoUrl ? [draft.photoUrl] : []);
+    return [];
   });
   const [category, setCategory] = useState(() => {
     if (expenseToEdit) return expenseToEdit.category || "Everything Else";
@@ -5857,6 +6127,7 @@ function ManualEntryModal({
           setSpreadEnd(dayStr);
           setSpreadExpense(true);
           setSpreadMode("divide");
+          setIsDateExpanded(false);
         } else if (dayStr < spreadStart) {
           setSpreadStart(dayStr);
           setExpenseDate(dayStr);
@@ -5983,23 +6254,6 @@ function ManualEntryModal({
   });
 
   const handleSetSpreadMode = (newMode) => {
-    if (newMode === spreadMode) return;
-
-    const start = new Date(spreadStart + "T00:00:00");
-    const end = new Date(spreadEnd + "T00:00:00");
-    const days = (isNaN(start) || isNaN(end) || end < start) ? 1 : Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-
-    const cleanAmt = amount.replace(/,/g, '');
-    const evaluated = evaluateMathExpression(cleanAmt);
-    const rawAmtVal = parseFloat(evaluated) || 0;
-
-    if (newMode === "divide") {
-      const total = rawAmtVal * days;
-      setAmount(formatInputWithCommas(total.toFixed(2)));
-    } else {
-      const daily = rawAmtVal / days;
-      setAmount(formatInputWithCommas(daily.toFixed(2)));
-    }
     setSpreadMode(newMode);
   };
 
@@ -6075,7 +6329,7 @@ function ManualEntryModal({
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.homeCurrency);
       setEstablishment(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
-      setPhotoUrl(expenseToEdit.photoUrl || "");
+      setPhotoUrls(expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []));
 
       let initialDateStr = new Date().toLocaleDateString('en-CA');
       if (expenseToEdit.timestamp) {
@@ -6095,10 +6349,10 @@ function ManualEntryModal({
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
     if (!expenseToEdit) {
-      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrl };
+      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrls };
       localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
     }
-  }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrl, expenseToEdit]);
+  }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrls, expenseToEdit]);
 
   const handleCloseWithX = () => {
     localStorage.removeItem("tracker_expense_draft");
@@ -6137,36 +6391,41 @@ function ManualEntryModal({
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 1200;
-        let width = img.width;
-        let height = img.height;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1200;
+          let width = img.width;
+          let height = img.height;
 
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
 
-        canvas.width = width;
-        canvas.height = height;
+          canvas.width = width;
+          canvas.height = height;
 
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
 
-        // Compress as JPEG with 0.85 quality
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
-        setPhotoUrl(compressedBase64);
+          // Compress as JPEG with 0.85 quality
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+          setPhotoUrls(prev => [...prev, compressedBase64]);
+        };
+        img.src = event.target.result;
       };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input value so same files can be chosen again
+    e.target.value = "";
   };
 
   return (
@@ -6348,7 +6607,8 @@ function ManualEntryModal({
               note: cleanFullNote || category,
               worthIt,
               location: establishment, // Pass parsed location
-              photoUrl: photoUrl,
+              photoUrl: photoUrls && photoUrls.length > 0 ? photoUrls[0] : "",
+              photoUrls: photoUrls || [],
               tags: finalTags,
               id: expenseToEdit?.id,
               editEntireGroup,
@@ -6465,6 +6725,7 @@ function ManualEntryModal({
                 type="file"
                 ref={fileInputRef}
                 accept="image/*"
+                multiple
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
@@ -6531,13 +6792,39 @@ function ManualEntryModal({
           {/* Amount input block below Title */}
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <label style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#4B5563",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>Amount</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <label style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: "#4B5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>Amount</label>
+                {(() => {
+                  if (currency === trip.homeCurrency) return null;
+                  const rawAmtVal = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
+                  if (rawAmtVal <= 0) return null;
+                  
+                  const days = (!spreadStart || !spreadEnd) ? 1 : (() => {
+                    const start = new Date(spreadStart + "T00:00:00");
+                    const end = new Date(spreadEnd + "T00:00:00");
+                    return (isNaN(start) || isNaN(end) || end < start) ? 1 : Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                  })();
+                  const isSeriesActive = spreadExpense && days > 1;
+                  const totalValForConversion = isSeriesActive
+                    ? (spreadMode === "repeat" ? (rawAmtVal * days) : rawAmtVal)
+                    : rawAmtVal;
+
+                  const convertedHome = convertCurrency(totalValForConversion, currency, trip.homeCurrency, rates);
+                  if (convertedHome <= 0) return null;
+                  return (
+                    <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#6B7280" }}>
+                      ≈ {CURRENCY_SYMBOLS[trip.homeCurrency] || trip.homeCurrency}{formatInputWithCommas(convertedHome.toFixed(2))}
+                      {isSeriesActive && " total"}
+                    </span>
+                  );
+                })()}
+              </div>
               {(() => {
                 if (currency === trip.homeCurrency) return null;
                 const lastRates = localStorage.getItem("tracker_rates_last_updated");
@@ -6605,8 +6892,8 @@ function ManualEntryModal({
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "10px",
-                    padding: "14px",
+                    gap: "6px",
+                    padding: "10px 12px",
                     backgroundColor: "rgba(232, 107, 50, 0.04)",
                     borderRadius: "16px",
                     border: "1.5px solid rgba(232, 107, 50, 0.25)",
@@ -6619,23 +6906,23 @@ function ManualEntryModal({
                       justifyContent: "space-between",
                       alignItems: "center",
                       borderBottom: "1px solid rgba(232, 107, 50, 0.1)",
-                      paddingBottom: "8px",
-                      marginBottom: "2px"
+                      paddingBottom: "4px",
+                      marginBottom: "0px"
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{
-                          fontSize: "0.78rem",
+                          fontSize: "0.74rem",
                           fontWeight: 800,
                           color: "#C2410C",
                           backgroundColor: "rgba(232, 107, 50, 0.12)",
-                          padding: "3px 8px",
+                          padding: "2px 6px",
                           borderRadius: "20px",
                           letterSpacing: "0.3px",
                           textTransform: "uppercase"
                         }}>
                           🔁 Series Mode
                         </span>
-                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9A3412" }}>
+                        <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#9A3412" }}>
                           {days} Days
                         </span>
                       </div>
@@ -6654,7 +6941,7 @@ function ManualEntryModal({
                             background: "none",
                             border: "none",
                             color: "#6B7280",
-                            fontSize: "0.85rem",
+                            fontSize: "0.82rem",
                             cursor: currency === trip.homeCurrency ? "default" : "pointer",
                             padding: "2px",
                             outline: "none",
@@ -6679,11 +6966,12 @@ function ManualEntryModal({
                           rates={rates}
                           customCurrencies={customCurrencies}
                           onAddCustomCurrency={onAddCustomCurrency}
-                          style={{ fontSize: "0.8rem", fontWeight: 700 }}
+                          style={{ fontSize: "0.76rem", fontWeight: 700 }}
                           recentCurrencies={(() => {
                             const unique = Array.from(new Set(expenses.map(e => e.currency)));
                             return unique.slice(0, 5);
                           })()}
+                          align="right"
                           customTrigger={({ onClick, value }) => (
                             <button
                               type="button"
@@ -6692,7 +6980,7 @@ function ManualEntryModal({
                                 background: "none",
                                 border: "none",
                                 color: "var(--color-purple)",
-                                fontSize: "0.9rem",
+                                fontSize: "0.85rem",
                                 fontWeight: 800,
                                 cursor: "pointer",
                                 padding: "2px",
@@ -6702,7 +6990,7 @@ function ManualEntryModal({
                                 outline: "none"
                               }}
                             >
-                              {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.55rem", opacity: 0.7 }}>▼</span>
+                              {CURRENCY_SYMBOLS[value] || value} <span style={{ fontSize: "0.5rem", opacity: 0.7 }}>▼</span>
                             </button>
                           )}
                         />
@@ -6724,8 +7012,8 @@ function ManualEntryModal({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "8px 12px",
-                        borderRadius: "12px",
+                        padding: "6px 10px",
+                        borderRadius: "10px",
                         backgroundColor: spreadMode === "divide" ? "#FFFFFF" : "transparent",
                         border: spreadMode === "divide" 
                           ? "1.5px solid rgba(232, 107, 50, 0.3)" 
@@ -6736,7 +7024,7 @@ function ManualEntryModal({
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <span style={{ 
-                          fontSize: "0.72rem", 
+                          fontSize: "0.68rem", 
                           fontWeight: 800, 
                           color: spreadMode === "divide" ? "#C2410C" : "#9CA3AF",
                           textTransform: "uppercase",
@@ -6744,14 +7032,14 @@ function ManualEntryModal({
                         }}>
                           Total Cost {spreadMode === "divide" && "●"}
                         </span>
-                        <span style={{ fontSize: "0.68rem", color: spreadMode === "divide" ? "#EA580C" : "#9CA3AF" }}>
+                        <span style={{ fontSize: "0.62rem", color: spreadMode === "divide" ? "#EA580C" : "#9CA3AF" }}>
                           {spreadMode === "divide" ? "Editable (Split cost)" : "Calculated"}
                         </span>
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span style={{
-                          fontSize: "1rem",
+                          fontSize: "0.95rem",
                           fontWeight: 800,
                           color: spreadMode === "divide" ? "#111827" : "#D97706",
                           opacity: spreadMode === "divide" ? 1 : 0.7
@@ -6782,7 +7070,7 @@ function ManualEntryModal({
                           style={{
                             border: "none",
                             background: "transparent",
-                            fontSize: "1.2rem",
+                            fontSize: "1.1rem",
                             fontWeight: 800,
                             outline: "none",
                             color: spreadMode === "divide" ? "#111827" : "#D97706",
@@ -6810,8 +7098,8 @@ function ManualEntryModal({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "8px 12px",
-                        borderRadius: "12px",
+                        padding: "6px 10px",
+                        borderRadius: "10px",
                         backgroundColor: spreadMode === "repeat" ? "#FFFFFF" : "transparent",
                         border: spreadMode === "repeat" 
                           ? "1.5px solid rgba(232, 107, 50, 0.3)" 
@@ -6822,7 +7110,7 @@ function ManualEntryModal({
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <span style={{ 
-                          fontSize: "0.72rem", 
+                          fontSize: "0.68rem", 
                           fontWeight: 800, 
                           color: spreadMode === "repeat" ? "#C2410C" : "#9CA3AF",
                           textTransform: "uppercase",
@@ -6830,14 +7118,14 @@ function ManualEntryModal({
                         }}>
                           Daily Cost {spreadMode === "repeat" && "●"}
                         </span>
-                        <span style={{ fontSize: "0.68rem", color: spreadMode === "repeat" ? "#EA580C" : "#9CA3AF" }}>
+                        <span style={{ fontSize: "0.62rem", color: spreadMode === "repeat" ? "#EA580C" : "#9CA3AF" }}>
                           {spreadMode === "repeat" ? "Editable (Repeated cost)" : "Calculated"}
                         </span>
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <span style={{
-                          fontSize: "1rem",
+                          fontSize: "0.95rem",
                           fontWeight: 800,
                           color: spreadMode === "repeat" ? "#111827" : "#D97706",
                           opacity: spreadMode === "repeat" ? 1 : 0.7
@@ -6868,7 +7156,7 @@ function ManualEntryModal({
                           style={{
                             border: "none",
                             background: "transparent",
-                            fontSize: "1.2rem",
+                            fontSize: "1.1rem",
                             fontWeight: 800,
                             outline: "none",
                             color: spreadMode === "repeat" ? "#111827" : "#D97706",
@@ -7021,50 +7309,56 @@ function ManualEntryModal({
             {/* Horizontal series mode breakdown is displayed inline inside the amount box */}
 
             {/* Compressed photo preview */}
-            {photoUrl && (
-              <div style={{
-                position: "relative",
-                width: "80px",
-                height: "80px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                border: "1px solid #E5E7EB",
-                marginTop: "4px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-              }}>
-                <img 
-                  src={photoUrl} 
-                  alt="Receipt" 
-                  onClick={() => setShowModalLightbox(true)}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPhotoUrl("");
-                  }}
-                  style={{
-                    position: "absolute",
-                    top: "4px",
-                    right: "4px",
-                    backgroundColor: "rgba(0,0,0,0.6)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: "20px",
-                    height: "20px",
-                    fontSize: "10px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >✕</button>
+            {photoUrls && photoUrls.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
+                {photoUrls.map((url, index) => (
+                  <div key={index} style={{
+                    position: "relative",
+                    width: "80px",
+                    height: "80px",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    border: "1px solid #E5E7EB",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+                  }}>
+                    <img 
+                      src={url} 
+                      alt={`Receipt ${index + 1}`} 
+                      onClick={() => {
+                        setLightboxPhotoIndex(index);
+                        setShowModalLightbox(true);
+                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoUrls(prev => prev.filter((_, idx) => idx !== index));
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: "4px",
+                        right: "4px",
+                        backgroundColor: "rgba(0,0,0,0.6)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "20px",
+                        height: "20px",
+                        fontSize: "10px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}
+                    >✕</button>
+                  </div>
+                ))}
               </div>
             )}
 
-            {showModalLightbox && (
+            {showModalLightbox && photoUrls && photoUrls[lightboxPhotoIndex] && (
               <div 
                 onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
                 style={{
@@ -7083,8 +7377,9 @@ function ManualEntryModal({
                 }}
               >
                 <img 
-                  src={photoUrl} 
+                  src={photoUrls[lightboxPhotoIndex]} 
                   alt="Full receipt" 
+                  onClick={(e) => e.stopPropagation()}
                   style={{
                     maxWidth: "100%",
                     maxHeight: "80vh",
@@ -7093,6 +7388,83 @@ function ManualEntryModal({
                     boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
                   }} 
                 />
+
+                {/* Left Navigation Arrow */}
+                {photoUrls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxPhotoIndex(prev => (prev - 1 + photoUrls.length) % photoUrls.length);
+                    }}
+                    style={{
+                      position: "absolute",
+                      left: "20px",
+                      background: "rgba(255,255,255,0.2)",
+                      border: "none",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "50px",
+                      height: "50px",
+                      fontSize: "2rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      outline: "none"
+                    }}
+                  >
+                    ‹
+                  </button>
+                )}
+
+                {/* Right Navigation Arrow */}
+                {photoUrls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxPhotoIndex(prev => (prev + 1) % photoUrls.length);
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: "20px",
+                      background: "rgba(255,255,255,0.2)",
+                      border: "none",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: "50px",
+                      height: "50px",
+                      fontSize: "2rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      outline: "none"
+                    }}
+                  >
+                    ›
+                  </button>
+                )}
+
+                {/* Image Indicator counter */}
+                {photoUrls.length > 1 && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: "20px",
+                    color: "white",
+                    fontSize: "0.9rem",
+                    fontWeight: 700,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    padding: "4px 12px",
+                    borderRadius: "20px"
+                  }}>
+                    {lightboxPhotoIndex + 1} / {photoUrls.length}
+                  </div>
+                )}
+
                 <button 
                   onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
                   style={{
@@ -7107,6 +7479,7 @@ function ManualEntryModal({
                     height: "40px",
                     fontSize: "20px",
                     cursor: "pointer",
+                    fontWeight: 700,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center"
@@ -7238,29 +7611,88 @@ function ManualEntryModal({
                 textTransform: "uppercase",
                 letterSpacing: "0.5px"
               }}>When?</label>
-              <button
-                type="button"
-                onClick={() => setIsDateExpanded(!isDateExpanded)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "white",
-                  borderRadius: "14px",
-                  height: "40px",
-                  boxSizing: "border-box",
-                  border: "1.5px solid rgba(133, 58, 81, 0.12)",
-                  cursor: "pointer",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  color: "var(--color-purple)",
-                  outline: "none",
-                  width: "100%",
-                  textAlign: "center"
-                }}
-              >
-                📅 {getDateLabel()}
-              </button>
+              {spreadExpense ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSpreadEnd(null);
+                      setSpreadExpense(false);
+                      setIsDateExpanded(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      backgroundColor: "white",
+                      borderRadius: "10px",
+                      height: "22px",
+                      boxSizing: "border-box",
+                      border: "1.2px solid rgba(133, 58, 81, 0.12)",
+                      cursor: "pointer",
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      color: "var(--color-purple)",
+                      padding: "0 8px",
+                      outline: "none",
+                      width: "100%"
+                    }}
+                  >
+                    🛫 Start: {formatDateLabel(spreadStart)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSpreadEnd(null);
+                      setSpreadExpense(false);
+                      setIsDateExpanded(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-start",
+                      backgroundColor: "white",
+                      borderRadius: "10px",
+                      height: "22px",
+                      boxSizing: "border-box",
+                      border: "1.2px solid rgba(133, 58, 81, 0.12)",
+                      cursor: "pointer",
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      color: "var(--color-purple)",
+                      padding: "0 8px",
+                      outline: "none",
+                      width: "100%"
+                    }}
+                  >
+                    🛬 End: {formatDateLabel(spreadEnd)}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsDateExpanded(!isDateExpanded)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "white",
+                    borderRadius: "14px",
+                    height: "40px",
+                    boxSizing: "border-box",
+                    border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                    cursor: "pointer",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "var(--color-purple)",
+                    outline: "none",
+                    width: "100%",
+                    textAlign: "center"
+                  }}
+                >
+                  📅 {getDateLabel()}
+                </button>
+              )}
             </div>
 
             {/* Worth It Column */}
@@ -7310,15 +7742,16 @@ function ManualEntryModal({
             <div
               ref={calendarContainerRef}
               style={{
-              padding: "16px 12px",
-              backgroundColor: "#F9F6ED",
-              borderRadius: "20px",
-              border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              animation: "fadeInUp 0.2s ease-out"
-            }}>
+                padding: "10px 10px",
+                backgroundColor: "#F9F6ED",
+                borderRadius: "16px",
+                border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                animation: "fadeInUp 0.2s ease-out"
+              }}
+            >
               {/* Dynamic Range Card & Mode Selector (rendered ABOVE the calendar) */}
               {(() => {
                 const start = new Date(spreadStart + "T00:00:00");
@@ -7328,8 +7761,8 @@ function ManualEntryModal({
                 if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
                   const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
                   const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
-                  const daily = spreadMode === "repeat" ? val : (val / days);
-                  const total = spreadMode === "repeat" ? (val * days) : val;
+                  const splitDaily = val / days;
+                  const repeatDaily = val;
 
                   const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
                   const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
@@ -7338,23 +7771,23 @@ function ManualEntryModal({
                     <div style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "8px",
-                      padding: "12px",
+                      gap: "4px",
+                      padding: "8px",
                       backgroundColor: "rgba(232, 107, 50, 0.05)",
-                      borderRadius: "16px",
+                      borderRadius: "12px",
                       border: "1.5px solid rgba(232, 107, 50, 0.15)",
-                      marginBottom: "6px"
+                      marginBottom: "4px"
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#9A3412" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#9A3412" }}>
                           🗓️ {formattedStart} – {formattedEnd}
                         </span>
                         <span style={{
-                          fontSize: "0.75rem",
+                          fontSize: "0.72rem",
                           fontWeight: 750,
                           backgroundColor: "rgba(232, 107, 50, 0.12)",
                           color: "#C2410C",
-                          padding: "2px 8px",
+                          padding: "1px 6px",
                           borderRadius: "20px"
                         }}>
                           {days} Days
@@ -7367,40 +7800,40 @@ function ManualEntryModal({
                           onClick={() => handleSetSpreadMode("divide")}
                           style={{
                             flex: 1,
-                            padding: "8px 10px",
-                            borderRadius: "10px",
-                            border: "1.5px solid",
-                            fontSize: "0.76rem",
+                            padding: "4px 6px",
+                            borderRadius: "8px",
+                            border: "1.2px solid",
+                            fontSize: "0.72rem",
                             fontWeight: 750,
                             cursor: "pointer",
                             backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
                             borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
                             color: spreadMode === "divide" ? "white" : "#4B5563",
-                            transition: "all 0.2s",
+                            transition: "all 0.15s",
                             outline: "none"
                           }}
                         >
-                          ⚖️ Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{daily.toFixed(2)}/d)
+                          ⚖️ Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{splitDaily.toFixed(2)}/d)
                         </button>
                         <button
                           type="button"
                           onClick={() => handleSetSpreadMode("repeat")}
                           style={{
                             flex: 1,
-                            padding: "8px 10px",
-                            borderRadius: "10px",
-                            border: "1.5px solid",
-                            fontSize: "0.76rem",
+                            padding: "4px 6px",
+                            borderRadius: "8px",
+                            border: "1.2px solid",
+                            fontSize: "0.72rem",
                             fontWeight: 750,
                             cursor: "pointer",
                             backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
                             borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
                             color: spreadMode === "repeat" ? "white" : "#4B5563",
-                            transition: "all 0.2s",
+                            transition: "all 0.15s",
                             outline: "none"
                           }}
                         >
-                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{daily.toFixed(2)}/d)
+                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{repeatDaily.toFixed(2)}/d)
                         </button>
                       </div>
                     </div>
@@ -7411,20 +7844,20 @@ function ManualEntryModal({
                   const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
                   return (
                     <div style={{
-                      padding: "10px 12px",
+                      padding: "8px 10px",
                       backgroundColor: "rgba(133, 58, 81, 0.04)",
-                      borderRadius: "12px",
+                      borderRadius: "10px",
                       border: "1px solid rgba(133, 58, 81, 0.08)",
-                      fontSize: "0.82rem",
+                      fontSize: "0.78rem",
                       fontWeight: 750,
                       color: "var(--color-purple)",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: "6px"
+                      marginBottom: "4px"
                     }}>
                       <span>📅 Logging on {formattedDate}</span>
-                      <span style={{ fontSize: "0.72rem", color: "#6B7280" }}>Tap days for range</span>
+                      <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>Tap days for range</span>
                     </div>
                   );
                 }
