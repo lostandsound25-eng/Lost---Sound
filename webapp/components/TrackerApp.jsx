@@ -386,6 +386,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [hoveredCell, setHoveredCell] = useState(null); // { dateStr, field }
   const [dragStartCell, setDragStartCell] = useState(null); // { dateStr, field, value }
   const [dragCurrentDateStr, setDragCurrentDateStr] = useState(null);
+  const [expandedSpentDate, setExpandedSpentDate] = useState(null);
 
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
@@ -2729,7 +2730,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             alignItems: "center",
             gap: "8px"
           }}>
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => setPastOffset(prev => prev + 7)}
@@ -2768,6 +2769,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               >
                 Reset to Today
               </button>
+
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", marginLeft: "4px" }}>
+                <input 
+                  type="checkbox"
+                  id="planner-select-all"
+                  checked={plannerDays.length > 0 && selectedPlannerDates.length === plannerDays.length}
+                  onChange={toggleSelectAll}
+                  style={{ cursor: "pointer", width: "14px", height: "14px" }}
+                />
+                <label htmlFor="planner-select-all" style={{ fontSize: "0.72rem", fontWeight: 750, color: "var(--color-purple)", cursor: "pointer" }}>
+                  Select All
+                </label>
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -2794,27 +2808,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   backgroundColor: "white"
                 }}
               />
-            </div>
-          </div>
-
-          <div style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            paddingTop: "6px",
-            borderTop: "1px dashed rgba(133, 58, 81, 0.08)"
-          }}>
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-              <input 
-                type="checkbox"
-                id="planner-select-all"
-                checked={plannerDays.length > 0 && selectedPlannerDates.length === plannerDays.length}
-                onChange={toggleSelectAll}
-                style={{ cursor: "pointer", width: "14px", height: "14px" }}
-              />
-              <label htmlFor="planner-select-all" style={{ fontSize: "0.74rem", fontWeight: 750, color: "#4B5563", cursor: "pointer" }}>
-                Select All
-              </label>
             </div>
           </div>
         </div>
@@ -3163,17 +3156,131 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         </span>
                       ))}
                       {daySpent > 0 && (
-                        <span style={{
-                          fontSize: "0.7rem",
-                          fontWeight: 800,
-                          backgroundColor: "rgba(16, 185, 129, 0.08)",
-                          color: "#10B981",
-                          padding: "1px 6px",
-                          borderRadius: "8px"
-                        }}>
-                          Spent: {formatMoney(daySpent, trip.homeCurrency)}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedSpentDate(prev => prev === dayObj.dateStr ? null : dayObj.dateStr);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            margin: 0,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            outline: "none",
+                            display: "inline-flex"
+                          }}
+                        >
+                          <span style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 800,
+                            backgroundColor: "rgba(16, 185, 129, 0.08)",
+                            color: "#10B981",
+                            padding: "1px 6px",
+                            borderRadius: "8px",
+                            transition: "all 0.15s"
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(16, 185, 129, 0.16)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(16, 185, 129, 0.08)";
+                          }}
+                          >
+                            Spent: {formatMoney(daySpent, trip.homeCurrency)}
+                          </span>
+                        </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* Expanded Spent Details Card */}
+                  {expandedSpentDate === dayObj.dateStr && dayExpenses.length > 0 && (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      marginTop: "6px",
+                      padding: "8px 10px",
+                      backgroundColor: "rgba(16, 185, 129, 0.03)",
+                      border: "1.5px solid rgba(16, 185, 129, 0.15)",
+                      borderRadius: "12px",
+                      animation: "fadeInUp 0.15s ease-out"
+                    }}>
+                      <div style={{
+                        fontSize: "0.62rem",
+                        fontWeight: 850,
+                        color: "#047857",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.3px",
+                        marginBottom: "2px"
+                      }}>
+                        Day's Expenses
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {dayExpenses.map((exp) => {
+                          const categoryEmoji = (() => {
+                            switch (exp.category) {
+                              case "Stay": return "🏠";
+                              case "Transit": return "🚇";
+                              case "Food": return "🍔";
+                              default: return "📦";
+                            }
+                          })();
+                          
+                          return (
+                            <div
+                              key={exp.id}
+                              onClick={() => setEditingExpense(exp)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "4px 8px",
+                                backgroundColor: "white",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(16, 185, 129, 0.1)",
+                                cursor: "pointer",
+                                transition: "all 0.15s"
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = "rgba(16, 185, 129, 0.06)";
+                                e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.3)";
+                                e.currentTarget.style.transform = "translateY(-0.5px)";
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = "white";
+                                e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.1)";
+                                e.currentTarget.style.transform = "none";
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+                                <span style={{ fontSize: "0.78rem", flexShrink: 0 }}>{categoryEmoji}</span>
+                                <span style={{
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  color: "#1F2937",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap"
+                                }}>
+                                  {exp.title || exp.location?.split(" | ")[0] || "Untitled Expense"}
+                                </span>
+                              </div>
+                              <span style={{
+                                fontSize: "0.74rem",
+                                fontWeight: 800,
+                                color: "#047857",
+                                flexShrink: 0,
+                                marginLeft: "8px"
+                              }}>
+                                {formatMoney(exp.amount, exp.currency)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -5934,7 +6041,7 @@ function ManualEntryModal({
       if (
         calendarContainerRef.current &&
         !calendarContainerRef.current.contains(event.target) &&
-        !event.target.closest('button[style*="var(--color-purple)"]')
+        !event.target.closest('[data-calendar-toggle="true"]')
       ) {
         setIsDateExpanded(false);
       }
@@ -5984,12 +6091,12 @@ function ManualEntryModal({
   const [amount, setAmount] = useState(() => {
     if (expenseToEdit && expenseToEdit.amount !== undefined && expenseToEdit.amount !== null) {
       if (isGroup) {
-        return origAmount.toString();
+        return formatInputWithCommas(origAmount.toString());
       }
-      return expenseToEdit.amount.toString();
+      return formatInputWithCommas(expenseToEdit.amount.toString());
     }
     const draft = getDraft();
-    return draft && draft.amount !== undefined && draft.amount !== null ? draft.amount.toString() : "";
+    return draft && draft.amount !== undefined && draft.amount !== null ? formatInputWithCommas(draft.amount.toString()) : "";
   });
   const [title, setTitle] = useState(() => {
     if (expenseToEdit) {
@@ -6052,6 +6159,7 @@ function ManualEntryModal({
     return false;
   });
   const [isDateExpanded, setIsDateExpanded] = useState(false);
+  const [calendarTarget, setCalendarTarget] = useState("start"); // "start" | "end"
   const [calMonth, setCalMonth] = useState(() => {
     const initDate = expenseToEdit && expenseToEdit.timestamp ? new Date(expenseToEdit.timestamp) : new Date();
     return initDate.getMonth();
@@ -6098,47 +6206,47 @@ function ManualEntryModal({
     
     const handleDayClick = (dayStr) => {
       const now = Date.now();
-      const isDoubleTap = now - lastTapRef.current < 300;
+      const isDoubleTap = now - lastTapRef.current < 350;
       lastTapRef.current = now;
 
-      const isSameDayClick = lastClickedDayRef.current === dayStr || expenseDate === dayStr;
-      lastClickedDayRef.current = dayStr;
-
-      if (isDoubleTap || isSameDayClick) {
+      if (isDoubleTap) {
         setSpreadStart(dayStr);
         setExpenseDate(dayStr);
         setSpreadEnd(null);
         setSpreadExpense(false);
         setIsDateExpanded(false);
+        setCalendarTarget("start");
+        lastClickedDayRef.current = null;
         return;
       }
 
-      if (spreadExpense || !spreadStart || spreadEnd) {
-        if (!spreadExpense && expenseDate === dayStr) {
+      if (calendarTarget === "start") {
+        const isSameDayClick = lastClickedDayRef.current === dayStr || expenseDate === dayStr;
+        lastClickedDayRef.current = dayStr;
+        if (isSameDayClick && !spreadExpense) {
           setIsDateExpanded(false);
           return;
         }
         setSpreadStart(dayStr);
         setExpenseDate(dayStr);
-        setSpreadEnd(null);
-        setSpreadExpense(false);
+        if (spreadEnd && dayStr < spreadEnd) {
+          setSpreadExpense(true);
+        } else {
+          setSpreadEnd(null);
+          setSpreadExpense(false);
+        }
       } else {
+        // calendarTarget === "end"
         if (dayStr > spreadStart) {
           setSpreadEnd(dayStr);
           setSpreadExpense(true);
-          setSpreadMode("divide");
-          setIsDateExpanded(false);
-        } else if (dayStr < spreadStart) {
-          setSpreadStart(dayStr);
-          setExpenseDate(dayStr);
-          setSpreadEnd(null);
-          setSpreadExpense(false);
+          setSpreadMode(prev => prev || "divide");
         } else {
           setSpreadStart(dayStr);
           setExpenseDate(dayStr);
           setSpreadEnd(null);
           setSpreadExpense(false);
-          setIsDateExpanded(false);
+          setCalendarTarget("start");
         }
       }
     };
@@ -6305,10 +6413,10 @@ function ManualEntryModal({
   useEffect(() => {
     if (isGroup && editEntireGroup) {
       setSpreadExpense(true);
-      setAmount(origAmount.toString());
+      setAmount(formatInputWithCommas(origAmount.toString()));
     } else if (isGroup && !editEntireGroup) {
       setSpreadExpense(false);
-      setAmount(expenseToEdit.amount.toString());
+      setAmount(formatInputWithCommas(expenseToEdit.amount.toString()));
     }
   }, [editEntireGroup, isGroup, expenseToEdit, origAmount]);
 
@@ -6322,7 +6430,7 @@ function ManualEntryModal({
       const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
       const targetAmt = (isGroup && editEntireGroup) ? origAmount : expenseToEdit.amount;
-      setAmount(targetAmt !== undefined && targetAmt !== null ? targetAmt.toString() : "");
+      setAmount(targetAmt !== undefined && targetAmt !== null ? formatInputWithCommas(targetAmt.toString()) : "");
       setTitle(baseTitle);
       setExtraNotes(baseExtraNotes);
       setCategory(expenseToEdit.category || "Everything Else");
@@ -6852,17 +6960,18 @@ function ManualEntryModal({
                         style={{
                           background: "none",
                           border: "none",
-                          padding: 0,
+                          padding: "2px 4px",
                           cursor: "pointer",
-                          fontSize: "0.75rem",
+                          fontSize: "0.68rem",
+                          fontWeight: 700,
                           color: "var(--color-purple)",
-                          display: "flex",
+                          display: "inline-flex",
                           alignItems: "center",
                           outline: "none"
                         }}
                         title="Refresh exchange rates"
                       >
-                        🔄
+                        Sync
                       </button>
                     </div>
                   </div>
@@ -6892,8 +7001,8 @@ function ManualEntryModal({
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "6px",
-                    padding: "10px 12px",
+                    gap: "5px",
+                    padding: "6px 10px",
                     backgroundColor: "rgba(232, 107, 50, 0.04)",
                     borderRadius: "16px",
                     border: "1.5px solid rgba(232, 107, 50, 0.25)",
@@ -6911,18 +7020,18 @@ function ManualEntryModal({
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{
-                          fontSize: "0.74rem",
+                          fontSize: "0.68rem",
                           fontWeight: 800,
                           color: "#C2410C",
                           backgroundColor: "rgba(232, 107, 50, 0.12)",
-                          padding: "2px 6px",
-                          borderRadius: "20px",
+                          padding: "1px 5px",
+                          borderRadius: "4px",
                           letterSpacing: "0.3px",
                           textTransform: "uppercase"
                         }}>
-                          🔁 Series Mode
+                          Series Mode
                         </span>
-                        <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#9A3412" }}>
+                        <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#9A3412" }}>
                           {days} Days
                         </span>
                       </div>
@@ -6940,19 +7049,18 @@ function ManualEntryModal({
                           style={{
                             background: "none",
                             border: "none",
-                            color: "#6B7280",
-                            fontSize: "0.82rem",
+                            color: "var(--color-purple)",
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
                             cursor: currency === trip.homeCurrency ? "default" : "pointer",
-                            padding: "2px",
+                            padding: "2px 4px",
                             outline: "none",
-                            display: "flex",
-                            alignItems: "center",
                             opacity: currency === trip.homeCurrency ? 0.35 : 1,
                             transition: "opacity 0.2s"
                           }}
                           title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
                         >
-                          🏠
+                          Home
                         </button>
                         <SearchableCurrencySelect
                           value={currency}
@@ -6997,175 +7105,174 @@ function ManualEntryModal({
                       </div>
                     </div>
 
-                    {/* Row 1: Total Cost (Editable in Split/Divide Mode) */}
-                    <div 
-                      onClick={() => {
-                        if (spreadMode !== "divide") {
-                          handleSetSpreadMode("divide");
-                          setTimeout(() => {
-                            totalInputRef.current?.focus();
-                            totalInputRef.current?.select();
-                          }, 50);
-                        }
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "6px 10px",
-                        borderRadius: "10px",
-                        backgroundColor: spreadMode === "divide" ? "#FFFFFF" : "transparent",
-                        border: spreadMode === "divide" 
-                          ? "1.5px solid rgba(232, 107, 50, 0.3)" 
-                          : "1px solid rgba(232, 107, 50, 0.08)",
-                        cursor: spreadMode === "divide" ? "default" : "pointer",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column" }}>
+                    {/* Dual side-by-side cost boxes */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                      {/* Column 1: Total Cost (Editable in Split/Divide Mode) */}
+                      <div 
+                        onClick={() => {
+                          if (spreadMode !== "divide") {
+                            handleSetSpreadMode("divide");
+                            setTimeout(() => {
+                              totalInputRef.current?.focus();
+                              totalInputRef.current?.select();
+                            }, 50);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "1px",
+                          padding: "4px 8px",
+                          borderRadius: "10px",
+                          backgroundColor: spreadMode === "divide" ? "#FFFFFF" : "transparent",
+                          border: spreadMode === "divide" 
+                            ? "1.5px solid rgba(232, 107, 50, 0.3)" 
+                            : "1px solid rgba(232, 107, 50, 0.08)",
+                          cursor: spreadMode === "divide" ? "default" : "pointer",
+                          transition: "all 0.2s",
+                          minWidth: 0
+                        }}
+                      >
                         <span style={{ 
-                          fontSize: "0.68rem", 
-                          fontWeight: 800, 
+                          fontSize: "0.62rem", 
+                          fontWeight: 850, 
                           color: spreadMode === "divide" ? "#C2410C" : "#9CA3AF",
                           textTransform: "uppercase",
-                          letterSpacing: "0.3px"
+                          letterSpacing: "0.3px",
+                          whiteSpace: "nowrap"
                         }}>
-                          Total Cost {spreadMode === "divide" && "●"}
+                          Total Cost {spreadMode === "divide" && "•"}
                         </span>
-                        <span style={{ fontSize: "0.62rem", color: spreadMode === "divide" ? "#EA580C" : "#9CA3AF" }}>
-                          {spreadMode === "divide" ? "Editable (Split cost)" : "Calculated"}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{
-                          fontSize: "0.95rem",
-                          fontWeight: 800,
-                          color: spreadMode === "divide" ? "#111827" : "#D97706",
-                          opacity: spreadMode === "divide" ? 1 : 0.7
-                        }}>
-                          {currencySymbol}
-                        </span>
-                        <input
-                          type="text"
-                          ref={totalInputRef}
-                          value={totalStr}
-                          readOnly={spreadMode !== "divide"}
-                          onChange={(e) => {
-                            if (spreadMode === "divide") {
-                              const val = e.target.value;
-                              if (/^[0-9+\-*/().\s,]*$/.test(val)) {
-                                const cleanVal = val.replace(/,/g, '');
-                                setAmount(formatInputWithCommas(cleanVal));
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            if (spreadMode === "divide") {
-                              const cleanAmt = amount.replace(/,/g, '');
-                              const evaluated = evaluateMathExpression(cleanAmt);
-                              setAmount(formatInputWithCommas(evaluated));
-                            }
-                          }}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            fontSize: "1.1rem",
+                        <div style={{ display: "flex", alignItems: "center", gap: "2px", marginTop: "1px" }}>
+                          <span style={{
+                            fontSize: "0.8rem",
                             fontWeight: 800,
-                            outline: "none",
                             color: spreadMode === "divide" ? "#111827" : "#D97706",
-                            textAlign: "right",
-                            width: "140px",
-                            padding: "0",
-                            cursor: spreadMode === "divide" ? "text" : "pointer"
-                          }}
-                        />
+                            opacity: spreadMode === "divide" ? 1 : 0.7
+                          }}>
+                            {currencySymbol}
+                          </span>
+                          <input
+                            type="text"
+                            ref={totalInputRef}
+                            value={totalStr}
+                            readOnly={spreadMode !== "divide"}
+                            onChange={(e) => {
+                              if (spreadMode === "divide") {
+                                const val = e.target.value;
+                                if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                                  const cleanVal = val.replace(/,/g, '');
+                                  setAmount(formatInputWithCommas(cleanVal));
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              if (spreadMode === "divide") {
+                                const cleanAmt = amount.replace(/,/g, '');
+                                const evaluated = evaluateMathExpression(cleanAmt);
+                                setAmount(formatInputWithCommas(evaluated));
+                              }
+                            }}
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              fontSize: "0.88rem",
+                              fontWeight: 800,
+                              outline: "none",
+                              color: spreadMode === "divide" ? "#111827" : "#D97706",
+                              width: "100%",
+                              padding: "0",
+                              cursor: spreadMode === "divide" ? "text" : "pointer"
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontSize: "0.56rem", color: spreadMode === "divide" ? "#EA580C" : "#9CA3AF", marginTop: "1px" }}>
+                          {spreadMode === "divide" ? "Editable (Split)" : "Calculated"}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Row 2: Daily Cost (Editable in Repeat Mode) */}
-                    <div 
-                      onClick={() => {
-                        if (spreadMode !== "repeat") {
-                          handleSetSpreadMode("repeat");
-                          setTimeout(() => {
-                            dailyInputRef.current?.focus();
-                            dailyInputRef.current?.select();
-                          }, 50);
-                        }
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "6px 10px",
-                        borderRadius: "10px",
-                        backgroundColor: spreadMode === "repeat" ? "#FFFFFF" : "transparent",
-                        border: spreadMode === "repeat" 
-                          ? "1.5px solid rgba(232, 107, 50, 0.3)" 
-                          : "1px solid rgba(232, 107, 50, 0.08)",
-                        cursor: spreadMode === "repeat" ? "default" : "pointer",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column" }}>
+                      {/* Column 2: Daily Cost (Editable in Repeat Mode) */}
+                      <div 
+                        onClick={() => {
+                          if (spreadMode !== "repeat") {
+                            handleSetSpreadMode("repeat");
+                            setTimeout(() => {
+                              dailyInputRef.current?.focus();
+                              dailyInputRef.current?.select();
+                            }, 50);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "1px",
+                          padding: "4px 8px",
+                          borderRadius: "10px",
+                          backgroundColor: spreadMode === "repeat" ? "#FFFFFF" : "transparent",
+                          border: spreadMode === "repeat" 
+                            ? "1.5px solid rgba(232, 107, 50, 0.3)" 
+                            : "1px solid rgba(232, 107, 50, 0.08)",
+                          cursor: spreadMode === "repeat" ? "default" : "pointer",
+                          transition: "all 0.2s",
+                          minWidth: 0
+                        }}
+                      >
                         <span style={{ 
-                          fontSize: "0.68rem", 
-                          fontWeight: 800, 
+                          fontSize: "0.62rem", 
+                          fontWeight: 850, 
                           color: spreadMode === "repeat" ? "#C2410C" : "#9CA3AF",
                           textTransform: "uppercase",
-                          letterSpacing: "0.3px"
+                          letterSpacing: "0.3px",
+                          whiteSpace: "nowrap"
                         }}>
-                          Daily Cost {spreadMode === "repeat" && "●"}
+                          Daily Cost {spreadMode === "repeat" && "•"}
                         </span>
-                        <span style={{ fontSize: "0.62rem", color: spreadMode === "repeat" ? "#EA580C" : "#9CA3AF" }}>
-                          {spreadMode === "repeat" ? "Editable (Repeated cost)" : "Calculated"}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{
-                          fontSize: "0.95rem",
-                          fontWeight: 800,
-                          color: spreadMode === "repeat" ? "#111827" : "#D97706",
-                          opacity: spreadMode === "repeat" ? 1 : 0.7
-                        }}>
-                          {currencySymbol}
-                        </span>
-                        <input
-                          type="text"
-                          ref={dailyInputRef}
-                          value={dailyStr}
-                          readOnly={spreadMode !== "repeat"}
-                          onChange={(e) => {
-                            if (spreadMode === "repeat") {
-                              const val = e.target.value;
-                              if (/^[0-9+\-*/().\s,]*$/.test(val)) {
-                                const cleanVal = val.replace(/,/g, '');
-                                setAmount(formatInputWithCommas(cleanVal));
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            if (spreadMode === "repeat") {
-                              const cleanAmt = amount.replace(/,/g, '');
-                              const evaluated = evaluateMathExpression(cleanAmt);
-                              setAmount(formatInputWithCommas(evaluated));
-                            }
-                          }}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            fontSize: "1.1rem",
+                        <div style={{ display: "flex", alignItems: "center", gap: "2px", marginTop: "1px" }}>
+                          <span style={{
+                            fontSize: "0.8rem",
                             fontWeight: 800,
-                            outline: "none",
                             color: spreadMode === "repeat" ? "#111827" : "#D97706",
-                            textAlign: "right",
-                            width: "140px",
-                            padding: "0",
-                            cursor: spreadMode === "repeat" ? "text" : "pointer"
-                          }}
-                        />
+                            opacity: spreadMode === "repeat" ? 1 : 0.7
+                          }}>
+                            {currencySymbol}
+                          </span>
+                          <input
+                            type="text"
+                            ref={dailyInputRef}
+                            value={dailyStr}
+                            readOnly={spreadMode !== "repeat"}
+                            onChange={(e) => {
+                              if (spreadMode === "repeat") {
+                                const val = e.target.value;
+                                if (/^[0-9+\-*/().\s,]*$/.test(val)) {
+                                  const cleanVal = val.replace(/,/g, '');
+                                  setAmount(formatInputWithCommas(cleanVal));
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              if (spreadMode === "repeat") {
+                                const cleanAmt = amount.replace(/,/g, '');
+                                const evaluated = evaluateMathExpression(cleanAmt);
+                                setAmount(formatInputWithCommas(evaluated));
+                              }
+                            }}
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              fontSize: "0.88rem",
+                              fontWeight: 800,
+                              outline: "none",
+                              color: spreadMode === "repeat" ? "#111827" : "#D97706",
+                              width: "100%",
+                              padding: "0",
+                              cursor: spreadMode === "repeat" ? "text" : "pointer"
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontSize: "0.56rem", color: spreadMode === "repeat" ? "#EA580C" : "#9CA3AF", marginTop: "1px" }}>
+                          {spreadMode === "repeat" ? "Editable (Repeated)" : "Calculated"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -7205,19 +7312,18 @@ function ManualEntryModal({
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#6B7280",
-                        fontSize: "0.85rem",
+                        color: "var(--color-purple)",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
                         cursor: currency === trip.homeCurrency ? "default" : "pointer",
-                        padding: "2px",
+                        padding: "2px 4px",
                         outline: "none",
-                        display: "flex",
-                        alignItems: "center",
                         opacity: currency === trip.homeCurrency ? 0.35 : 1,
                         transition: "opacity 0.2s"
                       }}
                       title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
                     >
-                      🏠
+                      Home
                     </button>
                     <SearchableCurrencySelect
                       value={currency}
@@ -7355,6 +7461,39 @@ function ManualEntryModal({
                     >✕</button>
                   </div>
                 ))}
+                {/* Plus button to add more photos */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    borderRadius: "12px",
+                    border: "1.5px dashed var(--color-purple)",
+                    backgroundColor: "rgba(133, 58, 81, 0.03)",
+                    color: "var(--color-purple)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: "1.4rem",
+                    fontWeight: 300,
+                    transition: "all 0.2s",
+                    outline: "none",
+                    boxSizing: "border-box"
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.08)";
+                    e.currentTarget.style.transform = "scale(1.02)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(133, 58, 81, 0.03)";
+                    e.currentTarget.style.transform = "none";
+                  }}
+                  title="Add more photos"
+                >
+                  ＋
+                </button>
               </div>
             )}
 
@@ -7600,7 +7739,8 @@ function ManualEntryModal({
           <div style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: "10px"
+            gap: "10px",
+            position: "relative"
           }}>
             {/* When? Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
@@ -7612,66 +7752,111 @@ function ManualEntryModal({
                 letterSpacing: "0.5px"
               }}>When?</label>
               {spreadExpense ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                <div style={{ display: "flex", gap: "6px", width: "100%", height: "40px" }}>
+                  {/* Start Date Button */}
                   <button
                     type="button"
+                    data-calendar-toggle="true"
                     onClick={() => {
-                      setSpreadEnd(null);
-                      setSpreadExpense(false);
+                      setCalendarTarget("start");
                       setIsDateExpanded(true);
                     }}
                     style={{
+                      flex: 1,
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      justifyContent: "flex-start",
+                      justifyContent: "center",
                       backgroundColor: "white",
-                      borderRadius: "10px",
-                      height: "22px",
-                      boxSizing: "border-box",
-                      border: "1.2px solid rgba(133, 58, 81, 0.12)",
+                      borderRadius: "14px",
+                      border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
                       cursor: "pointer",
-                      fontSize: "0.74rem",
+                      fontSize: "0.68rem",
                       fontWeight: 700,
-                      color: "var(--color-purple)",
-                      padding: "0 8px",
+                      color: calendarTarget === "start" ? "var(--color-purple)" : "#4B5563",
                       outline: "none",
-                      width: "100%"
+                      padding: "2px 4px",
+                      height: "40px",
+                      boxSizing: "border-box"
                     }}
                   >
-                    🛫 Start: {formatDateLabel(spreadStart)}
+                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase" }}>Start</span>
+                    <span style={{ fontSize: "0.76rem" }}>{formatDateLabel(spreadStart)}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSpreadEnd(null);
-                      setSpreadExpense(false);
-                      setIsDateExpanded(true);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      backgroundColor: "white",
-                      borderRadius: "10px",
-                      height: "22px",
-                      boxSizing: "border-box",
-                      border: "1.2px solid rgba(133, 58, 81, 0.12)",
-                      cursor: "pointer",
-                      fontSize: "0.74rem",
-                      fontWeight: 700,
-                      color: "var(--color-purple)",
-                      padding: "0 8px",
-                      outline: "none",
-                      width: "100%"
-                    }}
-                  >
-                    🛬 End: {formatDateLabel(spreadEnd)}
-                  </button>
+
+                  {/* End Date Button */}
+                  <div style={{
+                    flex: 1,
+                    position: "relative",
+                    display: "flex",
+                    height: "40px"
+                  }}>
+                    <button
+                      type="button"
+                      data-calendar-toggle="true"
+                      onClick={() => {
+                        setCalendarTarget("end");
+                        setIsDateExpanded(true);
+                      }}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "white",
+                        borderRadius: "14px",
+                        border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                        cursor: "pointer",
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        color: calendarTarget === "end" ? "var(--color-purple)" : "#4B5563",
+                        outline: "none",
+                        padding: "2px 4px",
+                        paddingRight: "20px",
+                        height: "40px",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase" }}>End</span>
+                      <span style={{ fontSize: "0.76rem" }}>{formatDateLabel(spreadEnd)}</span>
+                    </button>
+                    {/* Clear Range Button (X) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSpreadEnd(null);
+                        setSpreadExpense(false);
+                        setCalendarTarget("start");
+                      }}
+                      style={{
+                        position: "absolute",
+                        right: "6px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#9CA3AF",
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                        padding: "4px",
+                        outline: "none"
+                      }}
+                      title="Exit Series Mode"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setIsDateExpanded(!isDateExpanded)}
+                  data-calendar-toggle="true"
+                  onClick={() => {
+                    setCalendarTarget("start");
+                    setIsDateExpanded(!isDateExpanded);
+                  }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -7690,7 +7875,7 @@ function ManualEntryModal({
                     textAlign: "center"
                   }}
                 >
-                  📅 {getDateLabel()}
+                  {getDateLabel()}
                 </button>
               )}
             </div>
@@ -7735,138 +7920,145 @@ function ManualEntryModal({
                 {worthIt ? "🌟 Worth it." : "💸 Worth it?"}
               </button>
             </div>
+
+            {/* Collapsible Date Picker (Floating absolutely) */}
+            {isDateExpanded && (
+              <div
+                ref={calendarContainerRef}
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  marginTop: "6px",
+                  padding: "10px 10px",
+                  backgroundColor: "#F9F6ED",
+                  borderRadius: "16px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  zIndex: 2000,
+                  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.15)",
+                  animation: "fadeInUp 0.2s ease-out"
+                }}
+              >
+                {/* Dynamic Range Card & Mode Selector (rendered ABOVE the calendar) */}
+                {(() => {
+                  const start = new Date(spreadStart + "T00:00:00");
+                  const end = new Date(spreadEnd + "T00:00:00");
+                  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
+
+                  if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
+                    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
+                    const splitDaily = val / days;
+                    const repeatDaily = val;
+
+                    const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+                    const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+
+                    return (
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                        padding: "8px",
+                        backgroundColor: "rgba(232, 107, 50, 0.05)",
+                        borderRadius: "12px",
+                        border: "1.5px solid rgba(232, 107, 50, 0.15)",
+                        marginBottom: "4px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#9A3412" }}>
+                            {formattedStart} – {formattedEnd}
+                          </span>
+                          <span style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 750,
+                            backgroundColor: "rgba(232, 107, 50, 0.12)",
+                            color: "#C2410C",
+                            padding: "1px 6px",
+                            borderRadius: "20px"
+                          }}>
+                            {days} Days
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleSetSpreadMode("divide")}
+                            style={{
+                              flex: 1,
+                              padding: "4px 6px",
+                              borderRadius: "8px",
+                              border: "1.2px solid",
+                              fontSize: "0.72rem",
+                              fontWeight: 750,
+                              cursor: "pointer",
+                              backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
+                              borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
+                              color: spreadMode === "divide" ? "white" : "#4B5563",
+                              transition: "all 0.15s",
+                              outline: "none"
+                            }}
+                          >
+                            Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{splitDaily.toFixed(2)}/d)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetSpreadMode("repeat")}
+                            style={{
+                              flex: 1,
+                              padding: "4px 6px",
+                              borderRadius: "8px",
+                              border: "1.2px solid",
+                              fontSize: "0.72rem",
+                              fontWeight: 750,
+                              cursor: "pointer",
+                              backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
+                              borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
+                              color: spreadMode === "repeat" ? "white" : "#4B5563",
+                              transition: "all 0.15s",
+                              outline: "none"
+                            }}
+                          >
+                            Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{repeatDaily.toFixed(2)}/d)
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Single date selection card
+                    const d = new Date(expenseDate + "T00:00:00");
+                    const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+                    return (
+                      <div style={{
+                        padding: "8px 10px",
+                        backgroundColor: "rgba(133, 58, 81, 0.04)",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(133, 58, 81, 0.08)",
+                        fontSize: "0.78rem",
+                        fontWeight: 750,
+                        color: "var(--color-purple)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "4px"
+                      }}>
+                        <span>Logging on {formattedDate}</span>
+                        <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>Tap days for range</span>
+                      </div>
+                    );
+                  }
+                })()}
+
+                {/* Render Custom Calendar Grid */}
+                {renderCalendarGrid()}
+              </div>
+            )}
           </div>
-
-          {/* Collapsible Date Picker */}
-          {isDateExpanded && (
-            <div
-              ref={calendarContainerRef}
-              style={{
-                padding: "10px 10px",
-                backgroundColor: "#F9F6ED",
-                borderRadius: "16px",
-                border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                animation: "fadeInUp 0.2s ease-out"
-              }}
-            >
-              {/* Dynamic Range Card & Mode Selector (rendered ABOVE the calendar) */}
-              {(() => {
-                const start = new Date(spreadStart + "T00:00:00");
-                const end = new Date(spreadEnd + "T00:00:00");
-                const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
-
-                if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
-                  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                  const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
-                  const splitDaily = val / days;
-                  const repeatDaily = val;
-
-                  const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-                  const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
-
-                  return (
-                    <div style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                      padding: "8px",
-                      backgroundColor: "rgba(232, 107, 50, 0.05)",
-                      borderRadius: "12px",
-                      border: "1.5px solid rgba(232, 107, 50, 0.15)",
-                      marginBottom: "4px"
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#9A3412" }}>
-                          🗓️ {formattedStart} – {formattedEnd}
-                        </span>
-                        <span style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 750,
-                          backgroundColor: "rgba(232, 107, 50, 0.12)",
-                          color: "#C2410C",
-                          padding: "1px 6px",
-                          borderRadius: "20px"
-                        }}>
-                          {days} Days
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
-                        <button
-                          type="button"
-                          onClick={() => handleSetSpreadMode("divide")}
-                          style={{
-                            flex: 1,
-                            padding: "4px 6px",
-                            borderRadius: "8px",
-                            border: "1.2px solid",
-                            fontSize: "0.72rem",
-                            fontWeight: 750,
-                            cursor: "pointer",
-                            backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
-                            borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
-                            color: spreadMode === "divide" ? "white" : "#4B5563",
-                            transition: "all 0.15s",
-                            outline: "none"
-                          }}
-                        >
-                          ⚖️ Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{splitDaily.toFixed(2)}/d)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSetSpreadMode("repeat")}
-                          style={{
-                            flex: 1,
-                            padding: "4px 6px",
-                            borderRadius: "8px",
-                            border: "1.2px solid",
-                            fontSize: "0.72rem",
-                            fontWeight: 750,
-                            cursor: "pointer",
-                            backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
-                            borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
-                            color: spreadMode === "repeat" ? "white" : "#4B5563",
-                            transition: "all 0.15s",
-                            outline: "none"
-                          }}
-                        >
-                          🔄 Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{repeatDaily.toFixed(2)}/d)
-                        </button>
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // Single date selection card
-                  const d = new Date(expenseDate + "T00:00:00");
-                  const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
-                  return (
-                    <div style={{
-                      padding: "8px 10px",
-                      backgroundColor: "rgba(133, 58, 81, 0.04)",
-                      borderRadius: "10px",
-                      border: "1px solid rgba(133, 58, 81, 0.08)",
-                      fontSize: "0.78rem",
-                      fontWeight: 750,
-                      color: "var(--color-purple)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "4px"
-                    }}>
-                      <span>📅 Logging on {formattedDate}</span>
-                      <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>Tap days for range</span>
-                    </div>
-                  );
-                }
-              })()}
-
-              {/* Render Custom Calendar Grid */}
-              {renderCalendarGrid()}
-            </div>
-          )}
 
           {/* Notes Input at the bottom */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", position: "relative" }}>
