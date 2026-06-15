@@ -306,8 +306,8 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
       if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
     }
 
-    const note = (exp.note || "").toLowerCase();
-    const location = (exp.location || "").toLowerCase();
+    const note = (exp.title || exp.note || "").toLowerCase();
+    const location = (exp.establishment || exp.location || "").toLowerCase();
     const category = (exp.category || "").toLowerCase();
     const currency = (exp.currency || "").toLowerCase();
 
@@ -444,7 +444,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         return false;
       }
     });
-    const expLoc = dayExps.map(e => e.locationLocale || (e.location ? (e.location.split(" | ")[0] || e.location) : "")).find(loc => loc);
+    const expLoc = dayExps.map(e => {
+      const rawLoc = e.establishment || e.location || "";
+      return e.locationLocale || (rawLoc ? (rawLoc.split(" | ")[0] || rawLoc) : "");
+    }).find(loc => loc);
     return expLoc || "";
   };
 
@@ -3039,6 +3042,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   style={{
                     position: "absolute",
                     top: "100%",
+                    right: 0,
                     marginTop: "6px",
                     padding: "10px 10px",
                     backgroundColor: "#F9F6ED",
@@ -3522,9 +3526,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         {dayExpenses.map((exp) => {
                           const categoryEmoji = (() => {
                             switch (exp.category) {
-                              case "Stay": return "🏠";
-                              case "Transit": return "🚇";
-                              case "Food": return "🍔";
+                              case "Accommodation": return "🏠";
+                              case "Transportation": return "🚇";
+                              case "Food & Drink": return "🍔";
                               default: return "📦";
                             }
                           })();
@@ -3532,7 +3536,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           return (
                             <div
                               key={exp.id}
-                              onClick={() => setEditingExpense(exp)}
+                              onClick={() => {
+                                setEditingExpense(exp);
+                                setActiveModal("manual");
+                              }}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -3565,7 +3572,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap"
                                 }}>
-                                  {exp.title || exp.location?.split(" | ")[0] || "Untitled Expense"}
+                                  {exp.title || (exp.establishment || exp.location)?.split(" | ")[0] || "Untitled Expense"}
                                 </span>
                               </div>
                               <span style={{
@@ -3575,7 +3582,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                 flexShrink: 0,
                                 marginLeft: "8px"
                               }}>
-                                {formatMoney(exp.amount, exp.currency)}
+                                {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
                               </span>
                             </div>
                           );
@@ -4466,24 +4473,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setLogView("plan")}
-                        style={{
-                          fontSize: "0.82rem",
-                          fontWeight: logView === "plan" ? 700 : 500,
-                          color: logView === "plan" ? "var(--color-purple)" : "#6B7280",
-                          backgroundColor: logView === "plan" ? "white" : "transparent",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "5px 14px",
-                          cursor: "pointer",
-                          boxShadow: logView === "plan" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                          transition: "all 0.15s"
-                        }}
-                      >
-                        Plan
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setLogView("history")}
                         style={{
                           fontSize: "0.82rem",
@@ -4565,7 +4554,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     )}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto" }}>
                     {/* Compact View Toggle in History */}
                     {logView === "history" && (
                       <button
@@ -4590,6 +4579,29 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         {historyViewMode === "cards" ? "📊" : "🗂️"}
                       </button>
                     )}
+
+                    {/* Standalone Plan Button */}
+                    <button
+                      type="button"
+                      onClick={() => setLogView(logView === "plan" ? "recent" : "plan")}
+                      style={{
+                        fontSize: "0.82rem",
+                        fontWeight: logView === "plan" ? 750 : 600,
+                        color: logView === "plan" ? "white" : "var(--color-purple)",
+                        backgroundColor: logView === "plan" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                        border: logView === "plan" ? "none" : "1.5px solid rgba(133, 58, 81, 0.15)",
+                        borderRadius: "10px",
+                        padding: "6px 16px",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        boxShadow: logView === "plan" ? "0 4px 12px rgba(133, 58, 81, 0.18)" : "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      🗓️ Plan Ahead
+                    </button>
                   </div>
                 </div>
 
@@ -4949,9 +4961,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                              const now = new Date();
                              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                            })();
+                           const rawLoc = exp.establishment || exp.location || "";
                            const highLevelLoc = isToday 
                              ? (trip.currentLocation || "") 
-                             : (exp.locationLocale || (exp.location ? (exp.location.split(" | ")[0] || exp.location) : ""));
+                             : (exp.locationLocale || (rawLoc ? (rawLoc.split(" | ")[0] || rawLoc) : ""));
                            if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
                              olderGroups[dateKey].locationsList.push(highLevelLoc);
                            }
@@ -4960,7 +4973,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         // Set backward compatible single location for card rendering, giving preference to planned itinerary
                         Object.keys(olderGroups).forEach(k => {
                           const itLoc = trip.itinerary?.[k];
-                          olderGroups[k].location = itLoc !== undefined ? itLoc : (olderGroups[k].locationsList[0] || "");
+                          const plannedLoc = itLoc ? (typeof itLoc === 'string' ? itLoc : itLoc.location) : undefined;
+                          olderGroups[k].location = plannedLoc !== undefined ? plannedLoc : (olderGroups[k].locationsList[0] || "");
                         });
 
                         const olderGroupsArray = Object.values(olderGroups).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
@@ -5969,7 +5983,9 @@ function ExpenseCard({
                 const dbEst = expense.establishment || expense.location || "";
                 const expDateObj = new Date(expense.timestamp);
                 const dateKey = `${expDateObj.getFullYear()}-${String(expDateObj.getMonth() + 1).padStart(2, '0')}-${String(expDateObj.getDate()).padStart(2, '0')}`;
-                const locale = (trip?.itinerary?.[dateKey]?.location || trip?.currentLocation || "").trim();
+                const itVal = trip?.itinerary?.[dateKey];
+                const itLoc = itVal ? (typeof itVal === 'string' ? itVal : itVal.location) : undefined;
+                const locale = (itLoc || trip?.currentLocation || "").trim();
                 
                 const cleanEst = dbEst.includes(" | ") ? dbEst.split(" | ")[0].trim() : dbEst.trim();
                 const cleanLoc = locale;
@@ -6509,12 +6525,10 @@ function ManualEntryModal({
           setSpreadEnd(dayStr);
           setSpreadExpense(true);
           setSpreadMode(prev => prev || "divide");
-          setIsDateExpanded(false);
         } else if (dayStr === spreadStart) {
           setSpreadEnd(null);
           setSpreadExpense(false);
           setExpenseDate(spreadStart);
-          setIsDateExpanded(false);
         } else {
           // dayStr is before spreadStart
           setSpreadStart(dayStr);
@@ -6545,7 +6559,7 @@ function ManualEntryModal({
     };
     
     return (
-      <div style={{ padding: "4px" }}>
+      <div style={{ padding: "2px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
           <button 
             type="button" 
@@ -6566,11 +6580,11 @@ function ManualEntryModal({
           </button>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.72rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.68rem", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "3px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "4px", columnGap: "2px" }}>
           {daysGrid.map((item, idx) => {
             const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
             const isStart = spreadStart === item.dateStr;
@@ -6609,8 +6623,8 @@ function ManualEntryModal({
                   background: bg,
                   color: color,
                   fontWeight: fontWeight,
-                  fontSize: "0.82rem",
-                  height: "36px",
+                  fontSize: "0.7rem",
+                  height: "26px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -6676,6 +6690,100 @@ function ManualEntryModal({
     const lastUsedNonHome = localStorage.getItem("tracker_last_used_non_home_currency");
     return (lastUsedNonHome && lastUsedNonHome !== trip.homeCurrency) ? lastUsedNonHome : "USD";
   });
+
+  const formatDateToUS = (dateStr) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    return `${parts[1]}/${parts[2]}/${parts[0]}`;
+  };
+
+  const parseTextDate = (text) => {
+    if (!text) return null;
+    const clean = text.replace(/[^0-9/]/g, "");
+    const parts = clean.split("/");
+    if (parts.length < 2) return null;
+    
+    const month = parseInt(parts[0], 10);
+    const day = parseInt(parts[1], 10);
+    if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    
+    let year = new Date().getFullYear();
+    if (parts.length >= 3 && parts[2]) {
+      const parsedYear = parseInt(parts[2], 10);
+      if (!isNaN(parsedYear)) {
+        if (parsedYear < 100) {
+          year = 2000 + parsedYear;
+        } else {
+          year = parsedYear;
+        }
+      }
+    }
+    
+    const mStr = String(month).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    return `${year}-${mStr}-${dStr}`;
+  };
+
+  const [startInputText, setStartInputText] = useState(() => formatDateToUS(spreadStart));
+  const [endInputText, setEndInputText] = useState(() => formatDateToUS(spreadEnd));
+  const [singleInputText, setSingleInputText] = useState(() => formatDateToUS(expenseDate));
+
+  useEffect(() => {
+    setStartInputText(formatDateToUS(spreadStart));
+  }, [spreadStart]);
+
+  useEffect(() => {
+    setEndInputText(formatDateToUS(spreadEnd));
+  }, [spreadEnd]);
+
+  useEffect(() => {
+    setSingleInputText(formatDateToUS(expenseDate));
+  }, [expenseDate]);
+
+  const handleStartTextBlur = () => {
+    const parsed = parseTextDate(startInputText);
+    if (parsed) {
+      setSpreadStart(parsed);
+      setExpenseDate(parsed);
+      if (spreadEnd && parsed > spreadEnd) {
+        setSpreadEnd(null);
+        setSpreadExpense(false);
+      }
+    } else {
+      setStartInputText(formatDateToUS(spreadStart));
+    }
+  };
+
+  const handleEndTextBlur = () => {
+    const parsed = parseTextDate(endInputText);
+    if (parsed) {
+      if (parsed > spreadStart) {
+        setSpreadEnd(parsed);
+        setSpreadExpense(true);
+        setSpreadMode(prev => prev || "divide");
+      } else if (parsed === spreadStart) {
+        setSpreadEnd(null);
+        setSpreadExpense(false);
+      } else {
+        setEndInputText(formatDateToUS(spreadEnd));
+      }
+    } else {
+      setEndInputText(formatDateToUS(spreadEnd));
+    }
+  };
+
+  const handleSingleTextBlur = () => {
+    const parsed = parseTextDate(singleInputText);
+    if (parsed) {
+      setExpenseDate(parsed);
+      setSpreadStart(parsed);
+      setSpreadEnd(null);
+      setSpreadExpense(false);
+    } else {
+      setSingleInputText(formatDateToUS(expenseDate));
+    }
+  };
 
   // Sync editEntireGroup changes
   useEffect(() => {
@@ -7283,12 +7391,12 @@ function ManualEntryModal({
                   <div style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "5px",
-                    padding: "6px 10px",
+                    gap: "2px",
+                    padding: "3px 6px",
                     backgroundColor: "rgba(232, 107, 50, 0.04)",
-                    borderRadius: "16px",
+                    borderRadius: "12px",
                     border: "1.5px solid rgba(232, 107, 50, 0.25)",
-                    marginBottom: "4px",
+                    marginBottom: "2px",
                     position: "relative"
                   }}>
                     {/* Header: Title and Currency Selector */}
@@ -7404,7 +7512,7 @@ function ManualEntryModal({
                           display: "flex",
                           flexDirection: "column",
                           gap: "1px",
-                          padding: "4px 8px",
+                          padding: "3px 6px",
                           borderRadius: "10px",
                           backgroundColor: spreadMode === "divide" ? "#FFFFFF" : "transparent",
                           border: spreadMode === "divide" 
@@ -7488,7 +7596,7 @@ function ManualEntryModal({
                           display: "flex",
                           flexDirection: "column",
                           gap: "1px",
-                          padding: "4px 8px",
+                          padding: "3px 6px",
                           borderRadius: "10px",
                           backgroundColor: spreadMode === "repeat" ? "#FFFFFF" : "transparent",
                           border: spreadMode === "repeat" 
@@ -8026,139 +8134,153 @@ function ManualEntryModal({
           }}>
             {/* When? Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <label style={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                color: "#4B5563",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>When?</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <label style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  color: "#4B5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>When?</label>
+                <button
+                  type="button"
+                  data-calendar-toggle="true"
+                  onClick={() => setIsDateExpanded(!isDateExpanded)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    padding: "2px",
+                    outline: "none",
+                    display: "inline-flex",
+                    alignItems: "center"
+                  }}
+                  title="Toggle calendar picker"
+                >
+                  📅
+                </button>
+              </div>
               {spreadExpense ? (
-                <div style={{ display: "flex", gap: "6px", width: "100%", height: "40px" }}>
-                  {/* Start Date Button */}
-                  <button
-                    type="button"
-                    data-calendar-toggle="true"
-                    onClick={() => {
-                      setCalendarTarget("start");
-                      setIsDateExpanded(true);
-                    }}
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: "white",
-                      borderRadius: "14px",
-                      border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                      cursor: "pointer",
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      color: calendarTarget === "start" ? "var(--color-purple)" : "#4B5563",
-                      outline: "none",
-                      padding: "2px 4px",
-                      height: "40px",
-                      boxSizing: "border-box"
-                    }}
-                  >
-                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase" }}>Start</span>
-                    <span style={{ fontSize: "0.76rem" }}>{formatDateLabel(spreadStart)}</span>
-                  </button>
+                <div style={{ display: "flex", gap: "6px", width: "100%", height: "36px" }}>
+                  {/* Start Date Text Input */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
+                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase", fontWeight: 700 }}>Start (MM/DD)</span>
+                    <input
+                      type="text"
+                      value={startInputText}
+                      onChange={(e) => setStartInputText(e.target.value)}
+                      onBlur={handleStartTextBlur}
+                      onFocus={() => {
+                        setCalendarTarget("start");
+                        setIsDateExpanded(true);
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleStartTextBlur(); }}
+                      style={{
+                        width: "100%",
+                        backgroundColor: "white",
+                        borderRadius: "12px",
+                        border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        color: "#374151",
+                        outline: "none",
+                        padding: "6px 8px",
+                        textAlign: "center",
+                        height: "36px"
+                      }}
+                    />
+                  </div>
 
-                  {/* End Date Button */}
+                  {/* End Date Text Input */}
                   <div style={{
                     flex: 1,
                     position: "relative",
                     display: "flex",
-                    height: "40px"
+                    flexDirection: "column",
+                    gap: "2px"
                   }}>
-                    <button
-                      type="button"
-                      data-calendar-toggle="true"
-                      onClick={() => {
-                        setCalendarTarget("end");
-                        setIsDateExpanded(true);
-                      }}
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "white",
-                        borderRadius: "14px",
-                        border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                        cursor: "pointer",
-                        fontSize: "0.68rem",
-                        fontWeight: 700,
-                        color: calendarTarget === "end" ? "var(--color-purple)" : "#4B5563",
-                        outline: "none",
-                        padding: "2px 4px",
-                        paddingRight: "20px",
-                        height: "40px",
-                        boxSizing: "border-box"
-                      }}
-                    >
-                      <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase" }}>End</span>
-                      <span style={{ fontSize: "0.76rem" }}>{formatDateLabel(spreadEnd)}</span>
-                    </button>
-                    {/* Clear Range Button (X) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSpreadEnd(null);
-                        setSpreadExpense(false);
-                        setCalendarTarget("start");
-                      }}
-                      style={{
-                        position: "absolute",
-                        right: "6px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "none",
-                        border: "none",
-                        color: "#9CA3AF",
-                        fontSize: "0.85rem",
-                        cursor: "pointer",
-                        padding: "4px",
-                        outline: "none"
-                      }}
-                      title="Exit Series Mode"
-                    >
-                      ✕
-                    </button>
+                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase", fontWeight: 700 }}>End (MM/DD)</span>
+                    <div style={{ position: "relative", width: "100%", height: "36px" }}>
+                      <input
+                        type="text"
+                        value={endInputText}
+                        onChange={(e) => setEndInputText(e.target.value)}
+                        onBlur={handleEndTextBlur}
+                        onFocus={() => {
+                          setCalendarTarget("end");
+                          setIsDateExpanded(true);
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleEndTextBlur(); }}
+                        style={{
+                          width: "100%",
+                          backgroundColor: "white",
+                          borderRadius: "12px",
+                          border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          color: "#374151",
+                          outline: "none",
+                          padding: "6px 8px",
+                          paddingRight: "20px",
+                          textAlign: "center",
+                          height: "36px"
+                        }}
+                      />
+                      {/* Clear Range Button (X) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSpreadEnd(null);
+                          setSpreadExpense(false);
+                          setCalendarTarget("start");
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          color: "#9CA3AF",
+                          fontSize: "0.85rem",
+                          cursor: "pointer",
+                          padding: "4px",
+                          outline: "none"
+                        }}
+                        title="Exit Series Mode"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  data-calendar-toggle="true"
-                  onClick={() => {
+                <input
+                  type="text"
+                  value={singleInputText}
+                  onChange={(e) => setSingleInputText(e.target.value)}
+                  onBlur={handleSingleTextBlur}
+                  onFocus={() => {
                     setCalendarTarget("start");
-                    setIsDateExpanded(!isDateExpanded);
+                    setIsDateExpanded(true);
                   }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSingleTextBlur(); }}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    width: "100%",
                     backgroundColor: "white",
-                    borderRadius: "14px",
-                    height: "40px",
-                    boxSizing: "border-box",
+                    borderRadius: "12px",
                     border: "1.5px solid rgba(133, 58, 81, 0.12)",
-                    cursor: "pointer",
-                    fontSize: "0.82rem",
+                    fontSize: "0.8rem",
                     fontWeight: 700,
                     color: "var(--color-purple)",
                     outline: "none",
-                    width: "100%",
-                    textAlign: "center"
+                    padding: "6px 12px",
+                    textAlign: "center",
+                    height: "36px"
                   }}
-                >
-                  {getDateLabel()}
-                </button>
+                />
               )}
             </div>
 
@@ -8202,29 +8324,26 @@ function ManualEntryModal({
                 {worthIt ? "🌟 Worth it." : "💸 Worth it?"}
               </button>
             </div>
+          </div>
 
-            {/* Collapsible Date Picker (Floating absolutely) */}
-            {isDateExpanded && (
-              <div
-                ref={calendarContainerRef}
-                style={{
-                  position: "absolute",
-                  bottom: "100%",
-                  left: 0,
-                  right: 0,
-                  marginBottom: "6px",
-                  padding: "10px 10px",
-                  backgroundColor: "#F9F6ED",
-                  borderRadius: "16px",
-                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                  zIndex: 2000,
-                  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.15)",
-                  animation: "fadeInUp 0.2s ease-out"
-                }}
-              >
+          {/* Collapsible Date Picker (Rendered inline below the row) */}
+          {isDateExpanded && (
+            <div
+              ref={calendarContainerRef}
+              style={{
+                position: "relative",
+                marginTop: "6px",
+                padding: "8px 8px",
+                backgroundColor: "#F9F6ED",
+                borderRadius: "16px",
+                border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+                animation: "fadeInUp 0.2s ease-out"
+              }}
+            >
                 {/* Dynamic Range Card & Mode Selector (rendered ABOVE the calendar) */}
                 {(() => {
                   const start = new Date(spreadStart + "T00:00:00");
@@ -8245,38 +8364,38 @@ function ManualEntryModal({
                         display: "flex",
                         flexDirection: "column",
                         gap: "4px",
-                        padding: "8px",
+                        padding: "6px",
                         backgroundColor: "rgba(232, 107, 50, 0.05)",
                         borderRadius: "12px",
                         border: "1.5px solid rgba(232, 107, 50, 0.15)",
-                        marginBottom: "4px"
+                        marginBottom: "2px"
                       }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#9A3412" }}>
+                          <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
                             {formattedStart} – {formattedEnd}
                           </span>
                           <span style={{
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             fontWeight: 750,
                             backgroundColor: "rgba(232, 107, 50, 0.12)",
                             color: "#C2410C",
-                            padding: "1px 6px",
+                            padding: "1px 5px",
                             borderRadius: "20px"
                           }}>
                             {days} Days
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                        <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
                           <button
                             type="button"
                             onClick={() => handleSetSpreadMode("divide")}
                             style={{
                               flex: 1,
-                              padding: "4px 6px",
-                              borderRadius: "8px",
-                              border: "1.2px solid",
-                              fontSize: "0.72rem",
+                              padding: "3px 4px",
+                              borderRadius: "6px",
+                              border: "1px solid",
+                              fontSize: "0.68rem",
                               fontWeight: 750,
                               cursor: "pointer",
                               backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
@@ -8293,10 +8412,10 @@ function ManualEntryModal({
                             onClick={() => handleSetSpreadMode("repeat")}
                             style={{
                               flex: 1,
-                              padding: "4px 6px",
-                              borderRadius: "8px",
-                              border: "1.2px solid",
-                              fontSize: "0.72rem",
+                              padding: "3px 4px",
+                              borderRadius: "6px",
+                              border: "1px solid",
+                              fontSize: "0.68rem",
                               fontWeight: 750,
                               cursor: "pointer",
                               backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
@@ -8317,20 +8436,20 @@ function ManualEntryModal({
                     const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
                     return (
                       <div style={{
-                        padding: "8px 10px",
+                        padding: "6px 8px",
                         backgroundColor: "rgba(133, 58, 81, 0.04)",
                         borderRadius: "10px",
                         border: "1px solid rgba(133, 58, 81, 0.08)",
-                        fontSize: "0.78rem",
+                        fontSize: "0.74rem",
                         fontWeight: 750,
                         color: "var(--color-purple)",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "4px"
+                        marginBottom: "2px"
                       }}>
                         <span>Logging on {formattedDate}</span>
-                        <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>Tap days for range</span>
+                        <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Tap days for range</span>
                       </div>
                     );
                   }
@@ -8338,9 +8457,29 @@ function ManualEntryModal({
 
                 {/* Render Custom Calendar Grid */}
                 {renderCalendarGrid()}
+
+                {/* OK button to verify date range */}
+                <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid rgba(133, 58, 81, 0.1)", paddingTop: "6px", marginTop: "2px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDateExpanded(false)}
+                    style={{
+                      backgroundColor: "var(--color-purple)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "5px 14px",
+                      fontSize: "0.76rem",
+                      fontWeight: 750,
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    OK
+                  </button>
+                </div>
               </div>
             )}
-          </div>
 
           {/* Notes Input at the bottom */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", position: "relative" }}>
