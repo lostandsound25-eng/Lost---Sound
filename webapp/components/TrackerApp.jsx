@@ -1205,10 +1205,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: parseFloat(newRow.amount),
               currency: newRow.currency,
               category: newRow.category,
-              note: newRow.note || "",
+              title: newRow.title || newRow.note || "",
+              notes: newRow.notes || "",
               worthIt: newRow.worth_it,
-              location: newRow.location || "",
-              locationLocale: newRow.location_locale || "",
+              establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
@@ -1224,10 +1224,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: parseFloat(newRow.amount),
               currency: newRow.currency,
               category: newRow.category,
-              note: newRow.note || "",
+              title: newRow.title || newRow.note || "",
+              notes: newRow.notes || "",
               worthIt: newRow.worth_it,
-              location: newRow.location || "",
-              locationLocale: newRow.location_locale || "",
+              establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
@@ -1339,13 +1339,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           amount: e.amount,
           currency: e.currency,
           category: e.category,
-          note: e.note,
+          title: e.title || e.note || "",
+          notes: e.notes || "",
           worth_it: e.worthIt,
-          location: e.location,
+          establishment: e.establishment || e.location || "",
           tags: e.tags,
           created_at: e.timestamp,
           photo_url: e.photoUrl || null,
-          photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
+          photo_urls: e.photoUrls || []
         }));
         const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
         if (expErr) throw expErr;
@@ -1506,10 +1507,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         amount: parseFloat(e.amount),
         currency: e.currency,
         category: e.category,
-        note: e.note || "",
+        title: e.title || e.note || "",
+        notes: e.notes || "",
         worthIt: e.worth_it,
-        location: e.location || "",
-        locationLocale: e.location_locale || "",
+        establishment: e.establishment || e.location || "",
         tags: e.tags || [],
         photoUrl: e.photo_url || "",
         photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
@@ -1778,7 +1779,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
 
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
-        const finalLocation = expense.location || "";
+        const finalEst = expense.establishment || "";
 
         for (let i = 0; i < N; i++) {
           const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
@@ -1788,17 +1789,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
 
-          const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const finalLocale = expense.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
-
           const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
-          const baseNote = expense.note || expense.category;
-          const cleanBaseNote = baseNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+          const baseTitle = expense.title || expense.category;
+          const cleanBaseTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
 
-          const noteWithSuffix = startStr && endStr 
-            ? `${cleanBaseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
-            : `${cleanBaseNote} (Day ${i + 1}/${N})`;
+          const titleWithSuffix = startStr && endStr 
+            ? `${cleanBaseTitle} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+            : `${cleanBaseTitle} (Day ${i + 1}/${N})`;
 
           const entryTags = [
             ...baseTags,
@@ -1813,10 +1811,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: amt,
             currency: expense.currency,
             category: expense.category,
-            note: noteWithSuffix,
+            title: titleWithSuffix,
+            notes: expense.notes || "",
             worthIt: expense.worthIt,
-            location: finalLocation,
-            locationLocale: finalLocale,
+            establishment: finalEst,
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
@@ -1833,10 +1831,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: singleExpense.amount,
               currency: singleExpense.currency,
               category: singleExpense.category,
-              note: singleExpense.note,
+              title: singleExpense.title,
+              notes: singleExpense.notes,
               worth_it: singleExpense.worthIt,
-              location: singleExpense.location,
-              location_locale: singleExpense.locationLocale,
+              establishment: singleExpense.establishment,
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
@@ -1874,7 +1872,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const groupTag = `spread-group-${groupUuid}`;
 
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
-        const finalLocation = expense.location || "";
+        const finalEst = expense.establishment || "";
 
         for (let i = 0; i < N; i++) {
           const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
@@ -1884,17 +1882,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           d.setDate(d.getDate() + i);
           const timestamp = d.toISOString();
 
-          const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const finalLocale = expense.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
-
           const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
-          const baseNote = expense.note || expense.category;
-          const cleanBaseNote = baseNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+          const baseTitle = expense.title || expense.category;
+          const cleanBaseTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
 
-          const noteWithSuffix = startStr && endStr 
-            ? `${cleanBaseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
-            : `${cleanBaseNote} (Day ${i + 1}/${N})`;
+          const titleWithSuffix = startStr && endStr 
+            ? `${cleanBaseTitle} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+            : `${cleanBaseTitle} (Day ${i + 1}/${N})`;
 
           const entryTags = [
             ...baseTags,
@@ -1909,10 +1904,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: amt,
             currency: expense.currency,
             category: expense.category,
-            note: noteWithSuffix,
+            title: titleWithSuffix,
+            notes: expense.notes || "",
             worthIt: expense.worthIt,
-            location: finalLocation,
-            locationLocale: finalLocale,
+            establishment: finalEst,
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
@@ -1929,10 +1924,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: singleExpense.amount,
               currency: singleExpense.currency,
               category: singleExpense.category,
-              note: singleExpense.note,
+              title: singleExpense.title,
+              notes: singleExpense.notes,
               worth_it: singleExpense.worthIt,
-              location: singleExpense.location,
-              location_locale: singleExpense.locationLocale,
+              establishment: singleExpense.establishment,
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
@@ -1951,20 +1946,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
       } else {
         const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
-        const cleanNote = expense.note.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+        const baseTitle = expense.title || expense.category;
+        const cleanTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
         
-        const finalLocation = expense.location || "";
+        const finalEst = expense.establishment || "";
         const ts = expense.timestamp || editingExpense?.timestamp || new Date().toISOString();
-        const d = new Date(ts);
-        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const finalLocale = expense.locationLocale || editingExpense?.locationLocale || trip.itinerary?.[dateKey] || trip.currentLocation || "";
 
         const updatedExpense = {
           ...expense,
-          note: cleanNote,
+          title: cleanTitle,
+          notes: expense.notes || "",
           tags: baseTags,
-          location: finalLocation,
-          locationLocale: finalLocale,
+          establishment: finalEst,
           timestamp: ts,
           photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || ""),
           photoUrls: expense.photoUrls !== undefined ? expense.photoUrls : (editingExpense?.photoUrls || [])
@@ -1982,10 +1975,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: expense.amount,
             currency: expense.currency,
             category: expense.category,
-            note: updatedExpense.note,
+            title: updatedExpense.title,
+            notes: updatedExpense.notes,
             worth_it: expense.worthIt,
-            location: finalLocation,
-            location_locale: finalLocale,
+            establishment: finalEst,
             tags: updatedExpense.tags,
             created_at: expense.timestamp || editingExpense?.timestamp,
             updated_at: new Date().toISOString(),
@@ -1996,11 +1989,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }
     } else {
       // Insert
-      const finalLocation = expense.location || "";
+      const finalEst = expense.establishment || "";
       const tsForInsert = expense.timestamp || new Date().toISOString();
-      const dForInsert = new Date(tsForInsert);
-      const dateKeyForInsert = `${dForInsert.getFullYear()}-${String(dForInsert.getMonth() + 1).padStart(2, '0')}-${String(dForInsert.getDate()).padStart(2, '0')}`;
-      const finalLocale = expense.locationLocale || trip.itinerary?.[dateKeyForInsert] || trip.currentLocation || "";
 
       if (expense.spreadDays && expense.spreadDays > 1) {
         const N = expense.spreadDays;
@@ -2028,10 +2018,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
           const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
           const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
-          const baseNote = expense.note || expense.category;
-          const noteWithSuffix = startStr && endStr 
-            ? `${baseNote} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
-            : `${baseNote} (Day ${i + 1}/${N})`;
+          const baseTitle = expense.title || expense.category;
+          const titleWithSuffix = startStr && endStr 
+            ? `${baseTitle} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+            : `${baseTitle} (Day ${i + 1}/${N})`;
 
           const entryTags = [
             ...baseTags,
@@ -2046,10 +2036,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: amt,
             currency: expense.currency,
             category: expense.category,
-            note: noteWithSuffix,
+            title: titleWithSuffix,
+            notes: expense.notes || "",
             worthIt: expense.worthIt,
-            location: finalLocation,
-            locationLocale: finalLocale,
+            establishment: finalEst,
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
@@ -2066,10 +2056,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: singleExpense.amount,
               currency: singleExpense.currency,
               category: singleExpense.category,
-              note: singleExpense.note,
+              title: singleExpense.title,
+              notes: singleExpense.notes,
               worth_it: singleExpense.worthIt,
-              location: singleExpense.location,
-              location_locale: singleExpense.locationLocale,
+              establishment: singleExpense.establishment,
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
@@ -2088,10 +2078,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
       } else {
         const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+        const baseTitle = expense.title || expense.category;
+        const cleanTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+        
         const newExpense = {
           ...expense,
-          location: finalLocation,
-          locationLocale: finalLocale,
+          title: cleanTitle,
+          notes: expense.notes || "",
+          establishment: finalEst,
           id: newId,
           timestamp: tsForInsert,
           photoUrl: expense.photoUrl || "",
@@ -2107,10 +2101,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: newExpense.amount,
             currency: newExpense.currency,
             category: newExpense.category,
-            note: newExpense.note,
+            title: newExpense.title,
+            notes: newExpense.notes,
             worth_it: newExpense.worthIt,
-            location: newExpense.location,
-            location_locale: newExpense.locationLocale,
+            establishment: newExpense.establishment,
             tags: newExpense.tags,
             trip_id: tripId,
             photo_url: newExpense.photoUrl || null,
@@ -3041,10 +3035,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               {showPlannerCalendar && (
                 <div
                   ref={plannerCalendarRef}
+                  className="planner-calendar-popover"
                   style={{
                     position: "absolute",
                     top: "100%",
-                    right: 0,
                     marginTop: "6px",
                     padding: "10px 10px",
                     backgroundColor: "#F9F6ED",
@@ -4882,6 +4876,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         convertCurrency={convertCurrency}
                                         homeCurrency={trip.homeCurrency}
                                         rates={rates}
+                                        trip={trip}
                                       />
                                     </div>
                                   );
@@ -5319,6 +5314,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                       convertCurrency={convertCurrency}
                                                       homeCurrency={trip.homeCurrency}
                                                       rates={rates}
+                                                      trip={trip}
                                                     />
                                                   ))}
                                                 </div>
@@ -5536,6 +5532,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     convertCurrency={convertCurrency}
                     homeCurrency={trip.homeCurrency}
                     rates={rates}
+                    trip={trip}
                   />
                 ));
               })()}
@@ -5804,7 +5801,8 @@ function ExpenseCard({
   formatMoney,
   convertCurrency,
   homeCurrency,
-  rates
+  rates,
+  trip
 }) {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -5814,10 +5812,12 @@ function ExpenseCard({
   const [listPhotoIndex, setListPhotoIndex] = useState(0);
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
+  const worthIt = expense.worthIt;
 
-  // Parse custom note suffix for spread/repeat details if present: e.g. "Hotel Booking (Day 1/7, May 23 - May 29)"
-  const spreadMatch = expense.note ? expense.note.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
-  const rawDisplayNote = expense.note ? (spreadMatch ? spreadMatch[1].trim() : expense.note) : (expense.category || "");
+  // Parse custom note suffix for spread/repeat details if present
+  const displayTitle = expense.title || expense.note || "";
+  const spreadMatch = displayTitle ? displayTitle.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
+  const rawDisplayNote = displayTitle ? (spreadMatch ? spreadMatch[1].trim() : displayTitle) : (expense.category || "");
   const displayNote = rawDisplayNote.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
   const isRepeat = expense.tags?.includes("spread-mode-repeat");
   const spreadInfo = spreadMatch 
@@ -5829,19 +5829,16 @@ function ExpenseCard({
 
   return (
     <div 
-      className={expense.worthIt ? "worth-it-shimmer-card" : ""}
+      className={worthIt ? "worth-it-shimmer-card" : ""}
       style={{
         borderRadius: "16px",
         marginBottom: "12px",
-        boxShadow: expense.worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)",
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+        boxShadow: worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        overflow: "hidden"
       }}
     >
-      <div style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: "16px"
-      }}>
+      <div style={{ position: "relative" }}>
         <div
           onClick={() => {
             if (window.confirm("Are you sure you want to delete this expense?")) {
@@ -5852,22 +5849,20 @@ function ExpenseCard({
           }}
           style={{
             position: "absolute",
-            top: 0,
             right: 0,
+            top: 0,
             bottom: 0,
-            width: "80px",
-            backgroundColor: "#FCA5A5",
+            width: "70px",
+            backgroundColor: "#EF4444",
+            color: "white",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#B91C1C",
-            fontWeight: 700,
-            fontSize: "0.85rem",
             cursor: "pointer",
-            zIndex: 1,
-            borderTopRightRadius: "16px",
-            borderBottomRightRadius: "16px",
-            boxShadow: "inset 4px 0 10px rgba(0,0,0,0.05)"
+            fontWeight: 800,
+            fontSize: "0.85rem",
+            borderRadius: "0 16px 16px 0",
+            zIndex: 1
           }}
         >
           Delete
@@ -5880,52 +5875,45 @@ function ExpenseCard({
           }}
           onTouchMove={(e) => {
             if (!isDragging) return;
-            const diff = startX - e.touches[0].clientX;
-            if (diff > 0) {
-              setOffsetX(Math.min(isSwipedOpen ? 80 + diff : diff, 120));
-            } else if (isSwipedOpen && diff < 0) {
-              setOffsetX(Math.max(80 + diff, 0));
+            const diffX = e.touches[0].clientX - startX;
+            if (diffX < 0 && diffX > -75) {
+              setOffsetX(diffX);
+            } else if (diffX >= 0) {
+              setOffsetX(0);
+              setIsSwipedOpen(false);
             }
           }}
           onTouchEnd={() => {
             setIsDragging(false);
-            if (isSwipedOpen) {
-              if (offsetX < 40) {
-                setOffsetX(0);
-                setIsSwipedOpen(false);
-              } else {
-                setOffsetX(80);
-              }
+            if (offsetX < -40) {
+              setOffsetX(-70);
+              setIsSwipedOpen(true);
             } else {
-              if (offsetX > 45) {
-                setOffsetX(80);
-                setIsSwipedOpen(true);
-              } else {
-                setOffsetX(0);
-              }
+              setOffsetX(0);
+              setIsSwipedOpen(false);
             }
           }}
-          onClick={() => {
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 16px",
+            backgroundColor: worthIt ? "#FFFDF2" : "white",
+            border: worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.08)",
+            borderRadius: "16px",
+            position: "relative",
+            zIndex: 2,
+            transform: `translateX(${offsetX}px)`,
+            transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+            cursor: "pointer"
+          }}
+          onClick={(e) => {
             if (isSwipedOpen) {
               setOffsetX(0);
               setIsSwipedOpen(false);
             } else {
               onEdit(expense);
             }
-          }}
-          style={{
-            backgroundColor: expense.worthIt ? "#FFFDF5" : "white",
-            borderRadius: "16px",
-            border: "1.5px solid transparent",
-            padding: "15px 16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            position: "relative",
-            zIndex: 2,
-            transition: isDragging ? "none" : "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-            transform: `translateX(-${offsetX}px)`,
-            cursor: "pointer"
           }}
         >
           <div style={{
@@ -5951,7 +5939,7 @@ function ExpenseCard({
                 color: "#111827",
                 fontSize: "1rem"
               }}>{truncatedNote}</span>
-              {expense.worthIt && <StarIcon filled={true} />}
+              {worthIt && <StarIcon filled={true} />}
             </div>
             <div style={{
               display: "flex",
@@ -5978,14 +5966,14 @@ function ExpenseCard({
                 </span>
               )}
               {(() => {
-                const dbLoc = expense.location || "";
-                const locale = expense.locationLocale || "";
-                const establishment = dbLoc.includes(" | ") ? dbLoc.split(" | ")[0] : dbLoc;
+                const dbEst = expense.establishment || expense.location || "";
+                const expDateObj = new Date(expense.timestamp);
+                const dateKey = `${expDateObj.getFullYear()}-${String(expDateObj.getMonth() + 1).padStart(2, '0')}-${String(expDateObj.getDate()).padStart(2, '0')}`;
+                const locale = (trip?.itinerary?.[dateKey]?.location || trip?.currentLocation || "").trim();
                 
-                const cleanEst = establishment.trim();
-                const cleanLoc = locale.trim();
+                const cleanEst = dbEst.includes(" | ") ? dbEst.split(" | ")[0].trim() : dbEst.trim();
+                const cleanLoc = locale;
                 
-                // Only show if cleanEst is present and not matching the planned locale (case-insensitive)
                 const shouldShow = cleanEst && cleanEst.toLowerCase() !== cleanLoc.toLowerCase();
                 if (!shouldShow) return null;
                 
@@ -6002,6 +5990,19 @@ function ExpenseCard({
                 );
               })()}
             </div>
+
+            {expense.notes && (
+              <span style={{
+                fontSize: "0.78rem",
+                color: "#4B5563",
+                marginTop: "2px",
+                whiteSpace: "pre-line",
+                lineHeight: "1.3",
+                opacity: 0.85
+              }}>
+                {expense.notes}
+              </span>
+            )}
 
             {expense.tags && expense.tags.filter(t => !t.startsWith("spread-")).length > 0 && (
               <div style={{
@@ -6277,12 +6278,10 @@ function ManualEntryModal({
   const hashtagsDropdownRef = useRef(null);
   const establishmentInputRef = useRef(null);
   const calendarContainerRef = useRef(null);
-  const lastTapRef = useRef(0);
-  const lastClickedDayRef = useRef(null);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
   const [hashtagFilter, setHashtagFilter] = useState("");
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
-    return expenseToEdit && expenseToEdit.location ? true : false;
+    return expenseToEdit && (expenseToEdit.establishment || expenseToEdit.location) ? true : false;
   });
   const [isMounting, setIsMounting] = useState(true);
 
@@ -6384,6 +6383,9 @@ function ManualEntryModal({
   });
   const [title, setTitle] = useState(() => {
     if (expenseToEdit) {
+      if (expenseToEdit.title !== undefined) {
+        return expenseToEdit.title;
+      }
       const rawNote = expenseToEdit.note || "";
       const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
@@ -6394,6 +6396,9 @@ function ManualEntryModal({
   });
   const [extraNotes, setExtraNotes] = useState(() => {
     if (expenseToEdit) {
+      if (expenseToEdit.notes !== undefined) {
+        return expenseToEdit.notes;
+      }
       const rawNote = expenseToEdit.note || "";
       const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
       const parts = cleanNote.split("\n\n");
@@ -6430,11 +6435,14 @@ function ManualEntryModal({
   });
   const [establishment, setEstablishment] = useState(() => {
     if (expenseToEdit) {
+      if (expenseToEdit.establishment !== undefined) {
+        return expenseToEdit.establishment;
+      }
       const dbLoc = expenseToEdit.location || "";
       return (dbLoc.split(" | ")[0] || "");
     }
     const draft = getDraft();
-    return draft ? draft.location || "" : "";
+    return draft ? draft.establishment || draft.location || "" : "";
   });
   const [spreadExpense, setSpreadExpense] = useState(() => {
     if (expenseToEdit && expenseToEdit.tags?.some(t => t.startsWith("spread-group-"))) {
@@ -6489,78 +6497,31 @@ function ManualEntryModal({
     }
     
     const handleDayClick = (dayStr) => {
-      const now = Date.now();
-      const isDoubleTap = now - lastTapRef.current < 350;
-      lastTapRef.current = now;
-
-      if (isDoubleTap) {
+      if (calendarTarget === "start") {
         setSpreadStart(dayStr);
         setExpenseDate(dayStr);
         setSpreadEnd(null);
         setSpreadExpense(false);
-        setIsDateExpanded(false);
-        setCalendarTarget("start");
-        lastClickedDayRef.current = null;
-        return;
-      }
-
-      if (!spreadExpense) {
-        // Single day mode -> automatic range building
-        if (dayStr === spreadStart) {
-          setIsDateExpanded(false);
-          return;
-        }
+        setCalendarTarget("end");
+      } else {
+        // calendarTarget === "end"
         if (dayStr > spreadStart) {
           setSpreadEnd(dayStr);
           setSpreadExpense(true);
           setSpreadMode(prev => prev || "divide");
-          setCalendarTarget("end");
+          setIsDateExpanded(false);
+        } else if (dayStr === spreadStart) {
+          setSpreadEnd(null);
+          setSpreadExpense(false);
+          setExpenseDate(spreadStart);
+          setIsDateExpanded(false);
         } else {
+          // dayStr is before spreadStart
           setSpreadStart(dayStr);
           setExpenseDate(dayStr);
           setSpreadEnd(null);
           setSpreadExpense(false);
-          setCalendarTarget("end"); // Prime the next click to be the end date
-        }
-      } else {
-        // Range mode -> target-specific updates
-        if (calendarTarget === "start") {
-          if (dayStr < spreadEnd) {
-            setSpreadStart(dayStr);
-            setExpenseDate(dayStr);
-          } else if (dayStr === spreadEnd) {
-            setSpreadStart(dayStr);
-            setExpenseDate(dayStr);
-            setSpreadEnd(null);
-            setSpreadExpense(false);
-            setCalendarTarget("start");
-            setIsDateExpanded(false);
-          } else {
-            // Selected start date is after current end date -> reset to single day, target end next
-            setSpreadStart(dayStr);
-            setExpenseDate(dayStr);
-            setSpreadEnd(null);
-            setSpreadExpense(false);
-            setCalendarTarget("end");
-          }
-        } else {
-          // calendarTarget === "end"
-          if (dayStr > spreadStart) {
-            setSpreadEnd(dayStr);
-            setSpreadExpense(true);
-          } else if (dayStr === spreadStart) {
-            setSpreadEnd(null);
-            setSpreadExpense(false);
-            setCalendarTarget("start");
-            setIsDateExpanded(false);
-          } else {
-            // Selected end date is before current start date -> reset to single day at that day, target end next
-            setSpreadStart(dayStr);
-            setExpenseDate(dayStr);
-            setSpreadEnd(null);
-            setSpreadExpense(false);
-            setCalendarTarget("end");
-          }
+          setCalendarTarget("end");
         }
       }
     };
@@ -6716,13 +6677,6 @@ function ManualEntryModal({
     return (lastUsedNonHome && lastUsedNonHome !== trip.homeCurrency) ? lastUsedNonHome : "USD";
   });
 
-  // Reset last clicked day when calendar opens
-  useEffect(() => {
-    if (isDateExpanded) {
-      lastClickedDayRef.current = null;
-    }
-  }, [isDateExpanded]);
-
   // Sync editEntireGroup changes
   useEffect(() => {
     if (isGroup && editEntireGroup) {
@@ -6737,11 +6691,19 @@ function ManualEntryModal({
   // Sync inputs with expenseToEdit changes (e.g. from async speech parser)
   useEffect(() => {
     if (expenseToEdit) {
-      const rawNote = expenseToEdit.note || "";
-      const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
-      const parts = cleanNote.split("\n\n");
-      const baseTitle = parts[0] || "";
-      const baseExtraNotes = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
+      const baseTitle = expenseToEdit.title !== undefined ? expenseToEdit.title : (() => {
+        const rawNote = expenseToEdit.note || "";
+        const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+        const parts = cleanNote.split("\n\n");
+        return parts[0] || "";
+      })();
+      
+      const baseExtraNotes = expenseToEdit.notes !== undefined ? expenseToEdit.notes : (() => {
+        const rawNote = expenseToEdit.note || "";
+        const cleanNote = rawNote.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+        const parts = cleanNote.split("\n\n");
+        return parts.length > 1 ? parts.slice(1).join("\n\n") : "";
+      })();
 
       const targetAmt = (isGroup && editEntireGroup) ? origAmount : expenseToEdit.amount;
       setAmount(targetAmt !== undefined && targetAmt !== null ? formatInputWithCommas(targetAmt.toString()) : "");
@@ -6750,7 +6712,11 @@ function ManualEntryModal({
       setCategory(expenseToEdit.category || "Everything Else");
       setWorthIt(!!expenseToEdit.worthIt);
       setCurrency(expenseToEdit.currency || trip.homeCurrency);
-      setEstablishment(expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
+      
+      const baseEst = expenseToEdit.establishment !== undefined 
+        ? expenseToEdit.establishment 
+        : (expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
+      setEstablishment(baseEst);
       setPhotoUrls(expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []));
 
       let initialDateStr = new Date().toLocaleDateString('en-CA');
@@ -7004,10 +6970,10 @@ function ManualEntryModal({
             safeSetLocalStorage("tracker_last_used_currency", currency);
             localStorage.removeItem("tracker_expense_draft");
 
-            // Combine title and extra notes for full text
+            // Combine title and extra notes for full text to parse tags
             const fullNoteText = extraNotes.trim() ? `${title.trim()}\n\n${extraNotes.trim()}` : title.trim();
 
-            // Extract tags from the note text (do not strip them!)
+            // Extract tags from the note text
             const hashtagRegex = /#([a-zA-Z0-9_-]+)/g;
             const parsedTags = [];
             let match;
@@ -7021,14 +6987,17 @@ function ManualEntryModal({
             
             const finalTags = [...parsedTags, ...originalSpreadTags];
 
-            const cleanFullNote = fullNoteText.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
+            const cleanTitle = title.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
+            const cleanNotes = extraNotes.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
+
             onSave({
               amount: val,
               currency,
               category,
-              note: cleanFullNote || category,
+              title: cleanTitle || category,
+              notes: cleanNotes,
               worthIt,
-              location: establishment, // Pass parsed location
+              establishment: establishment.trim(),
               photoUrl: photoUrls && photoUrls.length > 0 ? photoUrls[0] : "",
               photoUrls: photoUrls || [],
               tags: finalTags,

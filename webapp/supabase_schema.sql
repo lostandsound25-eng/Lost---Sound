@@ -31,9 +31,10 @@ CREATE TABLE IF NOT EXISTS public.trip_entries (
     amount NUMERIC(12, 2) NOT NULL,
     currency TEXT NOT NULL,
     category TEXT NOT NULL,
-    note TEXT,
+    title TEXT,
+    notes TEXT,
     worth_it BOOLEAN DEFAULT false NOT NULL,
-    location TEXT,
+    establishment TEXT,
     tags TEXT[] DEFAULT '{}'::TEXT[] NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -94,9 +95,52 @@ ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS current_location TEXT DEFAULT 
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '{}'::jsonb;
 
+-- Migration helper: Rename location to establishment in trip_entries
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name='trip_entries' AND column_name='location'
+  ) THEN
+    ALTER TABLE public.trip_entries RENAME COLUMN location TO establishment;
+  END IF;
+END $$;
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS establishment TEXT;
+
+-- Migration helper: Split note into title and notes in trip_entries
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS notes TEXT;
+
+UPDATE public.trip_entries 
+SET 
+  title = split_part(note, E'\n\n', 1),
+  notes = CASE 
+    WHEN position(E'\n\n' in note) > 0 THEN substring(note from position(E'\n\n' in note) + 2)
+    ELSE ''
+  END
+WHERE title IS NULL AND note IS NOT NULL;
+
+-- Remove old note column if title was successfully populated
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name='trip_entries' AND column_name='note'
+  ) THEN
+    ALTER TABLE public.trip_entries DROP COLUMN IF EXISTS note;
+  END IF;
+END $$;
+
+-- Remove old location_locale column if it exists
+ALTER TABLE public.trip_entries DROP COLUMN IF EXISTS location_locale;
+
 -- Migration helper: Ensure photo columns exist on trip_entries table
 ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS photo_url TEXT;
 ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS photo_urls TEXT[] DEFAULT '{}'::TEXT[] NOT NULL;
+
+-- Drop obsolete tables if they exist
+DROP TABLE IF EXISTS public.expenses CASCADE;
+DROP TABLE IF EXISTS public.itineraries CASCADE;
 
 -- Enable Realtime replication for collaborative updating safely
 DO $$
