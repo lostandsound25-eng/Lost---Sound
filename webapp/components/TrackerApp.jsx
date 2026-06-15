@@ -4233,6 +4233,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         🔍
                       </button>
                     )}
+
+                    {/* Future Toggle Button floated to the right of Search */}
+                    {logView === "recent" && hasFutureExpenses && (
+                      <button
+                        type="button"
+                        onClick={() => setShowFuture(!showFuture)}
+                        style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 800,
+                          color: showFuture ? "white" : "#0284C7",
+                          backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
+                          border: showFuture ? "1px solid #0284C7" : "1px solid rgba(2, 132, 199, 0.25)",
+                          borderRadius: "14px",
+                          padding: "0 10px",
+                          height: "32px",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          outline: "none",
+                          transition: "all 0.2s ease",
+                          boxShadow: showFuture ? "0 2px 6px rgba(2,130,199,0.2)" : "none"
+                        }}
+                        title={showFuture ? "Hide future planned expenses" : "Show future planned expenses"}
+                      >
+                        {showFuture ? "Hide Future" : "Show Future"}
+                      </button>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -4442,31 +4472,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                       </span>
                                     )}
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setShowFuture(!showFuture);
-                                    }}
-                                    style={{
-                                      fontSize: "0.65rem",
-                                      fontWeight: 800,
-                                      color: showFuture ? "white" : "#0284C7",
-                                      backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
-                                      border: "1px solid rgba(2, 132, 199, 0.2)",
-                                      borderRadius: "12px",
-                                      padding: "3px 8px",
-                                      cursor: "pointer",
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.5px",
-                                      marginLeft: "8px",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      transition: "all 0.2s"
-                                    }}
-                                  >
-                                    {showFuture ? "Hide Future" : "Future"}
-                                  </button>
                                 </div>
                               );
                             })()}
@@ -4558,33 +4563,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                       </span>
                                     )}
                                   </span>
-                                  {label === "Today" && hasFutureExpenses && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowFuture(!showFuture);
-                                      }}
-                                      style={{
-                                        fontSize: "0.65rem",
-                                        fontWeight: 800,
-                                        color: showFuture ? "white" : "#0284C7",
-                                        backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
-                                        border: "1px solid rgba(2, 132, 199, 0.2)",
-                                        borderRadius: "12px",
-                                        padding: "3px 8px",
-                                        cursor: "pointer",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.5px",
-                                        marginLeft: "8px",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        transition: "all 0.2s"
-                                      }}
-                                    >
-                                      {showFuture ? "Hide Future" : "Future"}
-                                    </button>
-                                  )}
                                 </div>
                               )}
                                       <ExpenseCard
