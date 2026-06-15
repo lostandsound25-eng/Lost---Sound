@@ -230,6 +230,15 @@ const convertCurrency = (amount, fromCurrency, toCurrency, rates) => {
   return (amount * (rates[fromCurrency] || 1)) / (rates[toCurrency] || 1);
 };
 
+const safeSetLocalStorage = (key, value) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn("localStorage write failed for key:", key, e);
+  }
+};
+
 const getDaysActive = (expenses) => {
   if (expenses.length === 0) return 1;
   const minTime = Math.min(...expenses.map(e => new Date(e.timestamp).getTime()));
@@ -387,6 +396,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [dragStartCell, setDragStartCell] = useState(null); // { dateStr, field, value }
   const [dragCurrentDateStr, setDragCurrentDateStr] = useState(null);
   const [expandedSpentDate, setExpandedSpentDate] = useState(null);
+
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    }
+  }, []);
+
+  const [showPlannerCalendar, setShowPlannerCalendar] = useState(false);
+  const [plannerCalMonth, setPlannerCalMonth] = useState(() => new Date().getMonth());
+  const [plannerCalYear, setPlannerCalYear] = useState(() => new Date().getFullYear());
+  const plannerCalendarRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        plannerCalendarRef.current &&
+        !plannerCalendarRef.current.contains(event.target) &&
+        !event.target.closest('[data-planner-calendar-toggle="true"]')
+      ) {
+        setShowPlannerCalendar(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
 
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
@@ -1055,14 +1094,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   useEffect(() => {
     if (isMounted) {
       const key = isDemo ? "tracker_trip_demo" : `tracker_trip_${tripId}`;
-      localStorage.setItem(key, JSON.stringify(trip));
+      safeSetLocalStorage(key, JSON.stringify(trip));
     }
   }, [trip, isMounted, isDemo, tripId]);
 
   useEffect(() => {
     if (isMounted) {
       const key = isDemo ? "tracker_expenses_demo" : `tracker_expenses_${tripId}`;
-      localStorage.setItem(key, JSON.stringify(expenses));
+      safeSetLocalStorage(key, JSON.stringify(expenses));
     }
   }, [expenses, isMounted, isDemo, tripId]);
 
@@ -1078,7 +1117,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   useEffect(() => {
     if (!isDemo && tripId && isMounted) {
-      localStorage.setItem(`sync_queue_${tripId}`, JSON.stringify(syncQueue));
+      safeSetLocalStorage(`sync_queue_${tripId}`, JSON.stringify(syncQueue));
     }
   }, [syncQueue, tripId, isMounted, isDemo]);
 
@@ -1201,8 +1240,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       )
       .subscribe();
 
+    const tripChannel = supabase
+      .channel(`realtime:trips:${tripId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "trips",
+          filter: `id=eq.${tripId}`
+        },
+        (payload) => {
+          const { new: newRow } = payload;
+          if (newRow) {
+            setTrip((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                name: newRow.name || prev.name,
+                homeCurrency: newRow.home_currency || prev.homeCurrency || "USD",
+                localCurrency: newRow.local_currency || prev.localCurrency || "USD",
+                currentLocation: newRow.current_location !== undefined ? newRow.current_location : prev.currentLocation,
+                itinerary: newRow.itinerary || prev.itinerary || {}
+              };
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(tripChannel);
     };
   }, [tripId, isDemo]);
 
@@ -1285,14 +1354,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       localStorage.removeItem("tracker_trip_demo");
       localStorage.removeItem("tracker_expenses_demo");
 
-      localStorage.setItem(`tracker_trip_${tripData.id}`, JSON.stringify({
+      safeSetLocalStorage(`tracker_trip_${tripData.id}`, JSON.stringify({
         id: tripData.id,
         name: tripData.name,
         homeCurrency: trip.homeCurrency,
         localCurrency: trip.localCurrency,
         currentLocation: trip.currentLocation
       }));
-      localStorage.setItem(`tracker_expenses_${tripData.id}`, JSON.stringify(expenses));
+      safeSetLocalStorage(`tracker_expenses_${tripData.id}`, JSON.stringify(expenses));
 
       alert("Trip saved to cloud successfully!");
       window.location.href = `/tracker/trip/${tripData.id}`;
@@ -1347,8 +1416,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     };
 
     window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("touchend", handleGlobalMouseUp);
     return () => {
       window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("touchend", handleGlobalMouseUp);
     };
   }, [dragStartCell, dragCurrentDateStr, plannerStartDate, futureOffset]);
 
@@ -1369,8 +1440,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
         setRates((prev) => {
           const merged = { ...prev, ...updatedRates };
-          localStorage.setItem("tracker_rates", JSON.stringify(merged));
-          localStorage.setItem("tracker_rates_last_updated", now.toString());
+          safeSetLocalStorage("tracker_rates", JSON.stringify(merged));
+          safeSetLocalStorage("tracker_rates_last_updated", now.toString());
           return merged;
         });
       }
@@ -1393,7 +1464,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         body: JSON.stringify({ email: userEmail })
       });
       if (res.ok) {
-        localStorage.setItem(cacheKey, "true");
+        safeSetLocalStorage(cacheKey, "true");
         console.log("Automatically subscribed collaborator to mailer list:", userEmail);
       }
     } catch (err) {
@@ -1445,8 +1516,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }));
       setExpenses(mappedExpenses);
 
-      localStorage.setItem(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
-      localStorage.setItem(`tracker_expenses_${tripId}`, JSON.stringify(mappedExpenses));
+      safeSetLocalStorage(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
+      safeSetLocalStorage(`tracker_expenses_${tripId}`, JSON.stringify(mappedExpenses));
       
       // Auto-subscribe to mailer list on successful trip load
       const { data: { session: currentSess } } = await supabase.auth.getSession();
@@ -1610,7 +1681,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const addCustomCurrency = (curr) => {
     setCustomCurrencies((prev) => {
       const merged = [...new Set([...prev, curr])];
-      localStorage.setItem("tracker_custom_currencies", JSON.stringify(merged));
+      safeSetLocalStorage("tracker_custom_currencies", JSON.stringify(merged));
       return merged;
     });
   };
@@ -1631,7 +1702,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (resolved) {
       updateLocalCurrency(resolved);
       setManualLocalCurrency(resolved);
-      localStorage.setItem("tracker_last_used_currency", resolved);
+      safeSetLocalStorage("tracker_last_used_currency", resolved);
       if (!DEFAULT_RATES[resolved]) {
         addCustomCurrency(resolved);
       }
@@ -2632,6 +2703,165 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     );
   };
 
+  const renderPlannerCalendarGrid = () => {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const firstDay = new Date(plannerCalYear, plannerCalMonth, 1).getDay();
+    const totalDays = new Date(plannerCalYear, plannerCalMonth + 1, 0).getDate();
+    const prevMonthTotalDays = new Date(plannerCalYear, plannerCalMonth, 0).getDate();
+    const daysGrid = [];
+    
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = new Date(plannerCalYear, plannerCalMonth - 1, prevMonthTotalDays - i);
+      daysGrid.push({
+        day: prevMonthTotalDays - i,
+        isCurrentMonth: false,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    for (let i = 1; i <= totalDays; i++) {
+      const d = new Date(plannerCalYear, plannerCalMonth, i);
+      daysGrid.push({
+        day: i,
+        isCurrentMonth: true,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    const remaining = 42 - daysGrid.length;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(plannerCalYear, plannerCalMonth + 1, i);
+      daysGrid.push({
+        day: i,
+        isCurrentMonth: false,
+        dateStr: d.toLocaleDateString('en-CA')
+      });
+    }
+    
+    const handleDayClick = (dayStr) => {
+      setPlannerStartDate(dayStr);
+      setPastOffset(0);
+      setFutureOffset(6);
+      setShowPlannerCalendar(false);
+    };
+    
+    const changeMonth = (direction) => {
+      if (direction === -1) {
+        if (plannerCalMonth === 0) {
+          setPlannerCalMonth(11);
+          setPlannerCalYear(prev => prev - 1);
+        } else {
+          setPlannerCalMonth(prev => prev - 1);
+        }
+      } else {
+        if (plannerCalMonth === 11) {
+          setPlannerCalMonth(0);
+          setPlannerCalYear(prev => prev + 1);
+        } else {
+          setPlannerCalMonth(prev => prev + 1);
+        }
+      }
+    };
+    
+    return (
+      <div style={{ padding: "4px" }}>
+        {(() => {
+          const d = new Date(plannerStartDate + "T00:00:00");
+          const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+          return (
+            <div style={{
+              padding: "8px 10px",
+              backgroundColor: "rgba(133, 58, 81, 0.04)",
+              borderRadius: "10px",
+              border: "1px solid rgba(133, 58, 81, 0.08)",
+              fontSize: "0.78rem",
+              fontWeight: 750,
+              color: "var(--color-purple)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "8px"
+            }}>
+              <span>Planner starts: {formattedDate}</span>
+              <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>Select a day</span>
+            </div>
+          );
+        })()}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          <button 
+            type="button" 
+            onClick={() => changeMonth(-1)}
+            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+          >
+            ◀
+          </button>
+          <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
+            {months[plannerCalMonth]} {plannerCalYear}
+          </span>
+          <button 
+            type="button" 
+            onClick={() => changeMonth(1)}
+            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+          >
+            ▶
+          </button>
+        </div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.72rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "3px" }}>
+          {daysGrid.map((item, idx) => {
+            const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
+            const isSelected = plannerStartDate === item.dateStr;
+            
+            let bg = "transparent";
+            let color = item.isCurrentMonth ? "#374151" : "#D1D5DB";
+            let fontWeight = 600;
+            let borderRadius = "50%";
+            
+            if (isSelected) {
+              bg = "var(--color-purple)";
+              color = "white";
+              fontWeight = 800;
+            } else if (isToday) {
+              bg = "rgba(133, 58, 81, 0.08)";
+              color = "var(--color-purple)";
+              fontWeight = 800;
+            }
+            
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleDayClick(item.dateStr)}
+                style={{
+                  border: "none",
+                  background: bg,
+                  color: color,
+                  fontWeight: fontWeight,
+                  fontSize: "0.82rem",
+                  height: "36px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: borderRadius,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  outline: "none"
+                }}
+              >
+                {item.day}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderPlanner = () => {
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -2784,30 +3014,54 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", position: "relative" }}>
               <label style={{ fontSize: "0.72rem", fontWeight: 750, color: "#4B5563" }}>Jump to Date:</label>
-              <input 
-                type="date"
-                value={plannerStartDate}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setPlannerStartDate(e.target.value);
-                    setPastOffset(0);
-                    setFutureOffset(6);
-                  }
-                }}
+              <button
+                type="button"
+                data-planner-calendar-toggle="true"
+                onClick={() => setShowPlannerCalendar(!showPlannerCalendar)}
                 style={{
                   fontSize: "0.72rem",
                   fontWeight: 750,
                   color: "#374151",
                   border: "1px solid rgba(133, 58, 81, 0.15)",
                   borderRadius: "10px",
-                  padding: "4px 8px",
+                  padding: "5px 10px",
                   outline: "none",
                   cursor: "pointer",
-                  backgroundColor: "white"
+                  backgroundColor: "white",
+                  display: "inline-flex",
+                  alignItems: "center"
                 }}
-              />
+              >
+                {new Date(plannerStartDate + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+              </button>
+
+              {/* Floating Planner Calendar Dropdown */}
+              {showPlannerCalendar && (
+                <div
+                  ref={plannerCalendarRef}
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    marginTop: "6px",
+                    padding: "10px 10px",
+                    backgroundColor: "#F9F6ED",
+                    borderRadius: "16px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    zIndex: 2000,
+                    width: "280px",
+                    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.15)",
+                    animation: "fadeInUp 0.2s ease-out"
+                  }}
+                >
+                  {renderPlannerCalendarGrid()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2937,6 +3191,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       />
                     ) : (
                       <div 
+                        data-date-str={dayObj.dateStr}
+                        data-drag-cell-field="location"
                         onMouseEnter={() => {
                           setHoveredCell({ dateStr: dayObj.dateStr, field: "location" });
                           if (dragStartCell && dragStartCell.field === "location") {
@@ -2978,7 +3234,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         </span>
 
                         {/* Excel-style drag handle */}
-                        {!editingItineraryCell && hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "location" && (
+                        {!editingItineraryCell && ( (isTouchDevice && plannedDest) || (hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "location") ) && (
                           <div
                             onMouseDown={(e) => {
                               e.preventDefault();
@@ -2990,16 +3246,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                               });
                               setDragCurrentDateStr(dayObj.dateStr);
                             }}
+                            onTouchStart={(e) => {
+                              e.stopPropagation();
+                              setDragStartCell({
+                                dateStr: dayObj.dateStr,
+                                field: "location",
+                                value: plannedDest
+                              });
+                              setDragCurrentDateStr(dayObj.dateStr);
+                            }}
+                            onTouchMove={(e) => {
+                              e.stopPropagation();
+                              const touch = e.touches[0];
+                              const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                              const cell = elem?.closest('[data-drag-cell-field]');
+                              if (cell) {
+                                const dateStr = cell.getAttribute('data-date-str');
+                                const field = cell.getAttribute('data-drag-cell-field');
+                                if (dateStr && field === "location") {
+                                  setDragCurrentDateStr(dateStr);
+                                }
+                              }
+                            }}
                             style={{
                               position: "absolute",
-                              right: "-3px",
-                              bottom: "-3px",
-                              width: "8px",
-                              height: "8px",
+                              right: isTouchDevice ? "-5px" : "-3px",
+                              bottom: isTouchDevice ? "-5px" : "-3px",
+                              width: isTouchDevice ? "14px" : "8px",
+                              height: isTouchDevice ? "14px" : "8px",
                               backgroundColor: "var(--color-orange)",
                               border: "1px solid white",
                               cursor: "crosshair",
-                              zIndex: 10
+                              zIndex: 10,
+                              touchAction: "none",
+                              borderRadius: isTouchDevice ? "4px" : "0px"
                             }}
                             title="Drag to fill other days"
                           />
@@ -3062,6 +3342,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       />
                     ) : (
                       <div 
+                        data-date-str={dayObj.dateStr}
+                        data-drag-cell-field="notes"
                         onMouseEnter={() => {
                           setHoveredCell({ dateStr: dayObj.dateStr, field: "notes" });
                           if (dragStartCell && dragStartCell.field === "notes") {
@@ -3103,7 +3385,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         </span>
 
                         {/* Excel-style drag handle */}
-                        {!editingItineraryCell && hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "notes" && (
+                        {!editingItineraryCell && ( (isTouchDevice && plannedNotes) || (hoveredCell?.dateStr === dayObj.dateStr && hoveredCell?.field === "notes") ) && (
                           <div
                             onMouseDown={(e) => {
                               e.preventDefault();
@@ -3115,16 +3397,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                               });
                               setDragCurrentDateStr(dayObj.dateStr);
                             }}
+                            onTouchStart={(e) => {
+                              e.stopPropagation();
+                              setDragStartCell({
+                                dateStr: dayObj.dateStr,
+                                field: "notes",
+                                value: plannedNotes
+                              });
+                              setDragCurrentDateStr(dayObj.dateStr);
+                            }}
+                            onTouchMove={(e) => {
+                              e.stopPropagation();
+                              const touch = e.touches[0];
+                              const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                              const cell = elem?.closest('[data-drag-cell-field]');
+                              if (cell) {
+                                const dateStr = cell.getAttribute('data-date-str');
+                                const field = cell.getAttribute('data-drag-cell-field');
+                                if (dateStr && field === "notes") {
+                                  setDragCurrentDateStr(dateStr);
+                                }
+                              }
+                            }}
                             style={{
                               position: "absolute",
-                              right: "-3px",
-                              bottom: "-3px",
-                              width: "8px",
-                              height: "8px",
+                              right: isTouchDevice ? "-5px" : "-3px",
+                              bottom: isTouchDevice ? "-5px" : "-3px",
+                              width: isTouchDevice ? "14px" : "8px",
+                              height: isTouchDevice ? "14px" : "8px",
                               backgroundColor: "var(--color-orange)",
                               border: "1px solid white",
                               cursor: "crosshair",
-                              zIndex: 10
+                              zIndex: 10,
+                              touchAction: "none",
+                              borderRadius: isTouchDevice ? "4px" : "0px"
                             }}
                             title="Drag to fill other days"
                           />
@@ -6198,33 +6504,63 @@ function ManualEntryModal({
         return;
       }
 
-      if (calendarTarget === "start") {
-        const isSameDayClick = lastClickedDayRef.current === dayStr || expenseDate === dayStr;
-        lastClickedDayRef.current = dayStr;
-        if (isSameDayClick && !spreadExpense) {
+      if (!spreadExpense) {
+        // Single day mode -> automatic range building
+        if (dayStr === spreadStart) {
           setIsDateExpanded(false);
           return;
         }
-        setSpreadStart(dayStr);
-        setExpenseDate(dayStr);
-        if (spreadEnd && dayStr < spreadEnd) {
-          setSpreadExpense(true);
-        } else {
-          setSpreadEnd(null);
-          setSpreadExpense(false);
-        }
-      } else {
-        // calendarTarget === "end"
         if (dayStr > spreadStart) {
           setSpreadEnd(dayStr);
           setSpreadExpense(true);
           setSpreadMode(prev => prev || "divide");
+          setCalendarTarget("end");
         } else {
           setSpreadStart(dayStr);
           setExpenseDate(dayStr);
           setSpreadEnd(null);
           setSpreadExpense(false);
-          setCalendarTarget("start");
+          setCalendarTarget("end"); // Prime the next click to be the end date
+        }
+      } else {
+        // Range mode -> target-specific updates
+        if (calendarTarget === "start") {
+          if (dayStr < spreadEnd) {
+            setSpreadStart(dayStr);
+            setExpenseDate(dayStr);
+          } else if (dayStr === spreadEnd) {
+            setSpreadStart(dayStr);
+            setExpenseDate(dayStr);
+            setSpreadEnd(null);
+            setSpreadExpense(false);
+            setCalendarTarget("start");
+            setIsDateExpanded(false);
+          } else {
+            // Selected start date is after current end date -> reset to single day, target end next
+            setSpreadStart(dayStr);
+            setExpenseDate(dayStr);
+            setSpreadEnd(null);
+            setSpreadExpense(false);
+            setCalendarTarget("end");
+          }
+        } else {
+          // calendarTarget === "end"
+          if (dayStr > spreadStart) {
+            setSpreadEnd(dayStr);
+            setSpreadExpense(true);
+          } else if (dayStr === spreadStart) {
+            setSpreadEnd(null);
+            setSpreadExpense(false);
+            setCalendarTarget("start");
+            setIsDateExpanded(false);
+          } else {
+            // Selected end date is before current start date -> reset to single day at that day, target end next
+            setSpreadStart(dayStr);
+            setExpenseDate(dayStr);
+            setSpreadEnd(null);
+            setSpreadExpense(false);
+            setCalendarTarget("end");
+          }
         }
       }
     };
@@ -6436,7 +6772,7 @@ function ManualEntryModal({
   useEffect(() => {
     if (!expenseToEdit) {
       const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrls };
-      localStorage.setItem("tracker_expense_draft", JSON.stringify(draftObj));
+      safeSetLocalStorage("tracker_expense_draft", JSON.stringify(draftObj));
     }
   }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrls, expenseToEdit]);
 
@@ -6665,7 +7001,7 @@ function ManualEntryModal({
             }
 
             // Save last used currency and clear form draft on successful submit
-            localStorage.setItem("tracker_last_used_currency", currency);
+            safeSetLocalStorage("tracker_last_used_currency", currency);
             localStorage.removeItem("tracker_expense_draft");
 
             // Combine title and extra notes for full text
@@ -6938,18 +7274,17 @@ function ManualEntryModal({
                         style={{
                           background: "none",
                           border: "none",
-                          padding: "2px 4px",
+                          padding: 0,
                           cursor: "pointer",
-                          fontSize: "0.68rem",
-                          fontWeight: 700,
+                          fontSize: "0.75rem",
                           color: "var(--color-purple)",
-                          display: "inline-flex",
+                          display: "flex",
                           alignItems: "center",
                           outline: "none"
                         }}
                         title="Refresh exchange rates"
                       >
-                        Sync
+                        🔄
                       </button>
                     </div>
                   </div>
@@ -7021,7 +7356,7 @@ function ManualEntryModal({
                           onClick={() => {
                             if (currency !== trip.homeCurrency) {
                               setCurrency(trip.homeCurrency);
-                              localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
+                              safeSetLocalStorage("tracker_last_used_currency", trip.homeCurrency);
                             }
                           }}
                           style={{
@@ -7038,15 +7373,15 @@ function ManualEntryModal({
                           }}
                           title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
                         >
-                          Home
+                          🏠
                         </button>
                         <SearchableCurrencySelect
                           value={currency}
                           onChange={(val) => {
                             setCurrency(val);
-                            localStorage.setItem("tracker_last_used_currency", val);
+                            safeSetLocalStorage("tracker_last_used_currency", val);
                             if (val !== trip.homeCurrency) {
-                              localStorage.setItem("tracker_last_used_non_home_currency", val);
+                              safeSetLocalStorage("tracker_last_used_non_home_currency", val);
                             }
                           }}
                           rates={rates}
@@ -7284,7 +7619,7 @@ function ManualEntryModal({
                       onClick={() => {
                         if (currency !== trip.homeCurrency) {
                           setCurrency(trip.homeCurrency);
-                          localStorage.setItem("tracker_last_used_currency", trip.homeCurrency);
+                          safeSetLocalStorage("tracker_last_used_currency", trip.homeCurrency);
                         }
                       }}
                       style={{
@@ -7301,15 +7636,15 @@ function ManualEntryModal({
                       }}
                       title={currency === trip.homeCurrency ? `Home currency (${trip.homeCurrency})` : `Reset to home currency (${trip.homeCurrency})`}
                     >
-                      Home
+                      🏠
                     </button>
                     <SearchableCurrencySelect
                       value={currency}
                       onChange={(val) => {
                         setCurrency(val);
-                        localStorage.setItem("tracker_last_used_currency", val);
+                        safeSetLocalStorage("tracker_last_used_currency", val);
                         if (val !== trip.homeCurrency) {
-                          localStorage.setItem("tracker_last_used_non_home_currency", val);
+                          safeSetLocalStorage("tracker_last_used_non_home_currency", val);
                         }
                       }}
                       rates={rates}
@@ -7905,10 +8240,10 @@ function ManualEntryModal({
                 ref={calendarContainerRef}
                 style={{
                   position: "absolute",
-                  top: "100%",
+                  bottom: "100%",
                   left: 0,
                   right: 0,
-                  marginTop: "6px",
+                  marginBottom: "6px",
                   padding: "10px 10px",
                   backgroundColor: "#F9F6ED",
                   borderRadius: "16px",
