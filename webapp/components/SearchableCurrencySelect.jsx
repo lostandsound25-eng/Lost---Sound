@@ -51,17 +51,48 @@ const COUNTRY_CURRENCY_MAP = {
   "uruguay": "UYU", "uruguayan": "UYU"
 };
 
-// Currency Flag lookup map
-const CURRENCY_FLAGS = {
-  USD: "🇺🇸", EUR: "🇪🇺", THB: "🇹🇭", PHP: "🇵🇭", VND: "🇻🇳", IDR: "🇮🇩",
-  CAD: "🇨🇦", MXN: "🇲🇽", AUD: "🇦🇺", JPY: "🇯🇵", GBP: "🇬🇧", SGD: "🇸🇬",
-  MYR: "🇲🇾", NZD: "🇳🇿", CHF: "🇨🇭", CNY: "🇨🇳", HKD: "🇭🇰", TWD: "🇹🇼",
-  KRW: "🇰🇷", INR: "🇮🇳", BRL: "🇧🇷", ZAR: "🇿🇦", NOK: "🇳🇴", SEK: "🇸🇪",
-  DKK: "🇩🇰", TRY: "🇹🇷", RUB: "🇷🇺", AED: "🇦🇪", SAR: "🇸🇦", ARS: "🇦🇷",
-  CLP: "🇨🇱", COP: "🇨🇴", PEN: "🇵🇪", CRC: "🇨🇷", HRK: "🇭🇷", CZK: "🇨🇿",
-  EGP: "🇪🇬", HUF: "🇭🇺", ILS: "🇮🇱", MAD: "🇲🇦", PLN: "🇵🇱", RON: "🇷🇴",
-  LKR: "🇱🇰", UAH: "🇺🇦", UYU: "🇺🇾"
+// Helper function to turn 2-letter country code to flag emoji
+function getFlagEmoji(cc) {
+  if (!cc || cc.length !== 2) return "🌐";
+  const codePoints = cc.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0));
+  try {
+    return String.fromCodePoint(...codePoints);
+  } catch (e) {
+    return "🌐";
+  }
+}
+
+// Currency-to-Country mapping to generate flags for all currencies
+const CURRENCY_TO_COUNTRY = {
+  USD: "US", EUR: "EU", JPY: "JP", GBP: "GB", AUD: "AU", CAD: "CA", CHF: "CH", CNY: "CN", SEK: "SE", NZD: "NZ",
+  MXN: "MX", SGD: "SG", HKD: "HK", NOK: "NO", KRW: "KR", TRY: "TR", RUB: "RU", INR: "IN", BRL: "BR", ZAR: "ZA",
+  DKK: "DK", PLN: "PL", TWD: "TW", THB: "TH", IDR: "ID", HUF: "HU", AED: "AE", COP: "CO", SAR: "SA",
+  ILS: "IL", MYR: "MY", PHP: "PH", VND: "VN", ARS: "AR", CLP: "CL", EGP: "EG", RON: "RO", PEN: "PE", KZT: "KZ",
+  UAH: "UA", QAR: "QA", KWD: "KW", DZD: "DZ", MAD: "MA", ALL: "AL", AMD: "AM", ANG: "CW", AOA: "AO",
+  AWG: "AW", AZN: "AZ", BAM: "BA", BBD: "BB", BDT: "BD", BGN: "BG", BHD: "BH", BIF: "BI", BMD: "BM", BND: "BN",
+  BOB: "BO", BSD: "BS", BTN: "BT", BWP: "BW", BYN: "BY", BZD: "BZ", CDF: "CD", CLF: "CL", CNH: "CN",
+  CRC: "CR", CUC: "CU", CUP: "CU", CVE: "CV", CZK: "CZ", DJF: "DJ", DOP: "DO", ERN: "ER", ETB: "ET", FJD: "FJ",
+  FKP: "FK", GEL: "GE", GGP: "GG", GHS: "GH", GIP: "GI", GMD: "GM", GNF: "GN", GTQ: "GT", GYD: "GY", HNL: "HN",
+  HRK: "HR", HTG: "HT", IQD: "IQ", IRR: "IR", ISK: "IS", JEP: "JE", JMD: "JM", JOD: "JO", KES: "KE", KGS: "KG",
+  KHR: "KH", KMF: "KM", KPW: "KP", LBP: "LB", LKR: "LK", LRD: "LR", LSL: "LS", LYD: "LY", MDL: "MD", MGA: "MG",
+  MKD: "MK", MMK: "MM", MNT: "MN", MOP: "MO", MRU: "MR", MUR: "MU", MVR: "MV", MWK: "MW", MZN: "MZ", NAD: "NA",
+  NGN: "NG", NIO: "NI", NPR: "NP", OMR: "OM", PAB: "PA", PGK: "PG", PKR: "PK", PYG: "PY", RWF: "RW", SBD: "SB",
+  SCR: "SC", SDG: "SD", SHP: "SH", SLL: "SL", SOS: "SO", SRD: "SR", SSP: "SS", STN: "ST", SVC: "SV", SYP: "SY",
+  SZL: "SZ", TJS: "TJ", TMT: "TM", TND: "TN", TOP: "TO", TTD: "TT", TZS: "TZ", UGX: "UG", UYU: "UY", UZS: "UZ",
+  VES: "VE", VUV: "VU", WST: "WS", XAF: "CM", XAG: "AG", XAU: "AU", XCD: "DM", XDR: "US", XOF: "SN", XPD: "PD",
+  XPF: "PF", XPT: "PT", YER: "YE", ZMW: "ZM", ZWL: "ZW"
 };
+
+export function getCurrencyFlag(currencyCode) {
+  if (!currencyCode) return "🌐";
+  const code = currencyCode.toUpperCase();
+  const cc = CURRENCY_TO_COUNTRY[code];
+  if (!cc) {
+    const guess = code.substring(0, 2);
+    return getFlagEmoji(guess);
+  }
+  return getFlagEmoji(cc);
+}
 
 export default function SearchableCurrencySelect({ 
   value, 
@@ -163,7 +194,7 @@ export default function SearchableCurrencySelect({
             gap: "4px"
           }}
         >
-          {CURRENCY_FLAGS[value] || "🌐"} {value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
+          {getCurrencyFlag(value)} {value} <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>▼</span>
         </button>
       )}
 
@@ -246,7 +277,7 @@ export default function SearchableCurrencySelect({
                       if (opt !== value) e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
-                    <span>{CURRENCY_FLAGS[opt] || "🌐"}</span>
+                    <span>{getCurrencyFlag(opt)}</span>
                     <span style={{ flex: 1 }}>{opt}</span>
                     {isRecent && (
                       <span style={{ fontSize: "0.65rem", color: "var(--color-purple)", opacity: 0.8, backgroundColor: "rgba(133, 58, 81, 0.08)", padding: "1px 4px", borderRadius: "4px" }}>
