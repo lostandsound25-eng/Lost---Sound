@@ -415,10 +415,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimeoutRef = useRef(null);
 
-  // Tag consolidation state
-  const [consolidateSource, setConsolidateSource] = useState("");
-  const [consolidateTarget, setConsolidateTarget] = useState("");
-  const [consolidateCustomTarget, setConsolidateCustomTarget] = useState("");
+  // Redesigned tag consolidation state
+  const [selectedMergeTags, setSelectedMergeTags] = useState([]);
+  const [mergeTargetMode, setMergeTargetMode] = useState("");
+  const [mergeCustomTargetName, setMergeCustomTargetName] = useState("");
+  const [showMergePanel, setShowMergePanel] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
 
   // Insights date range filtering state
@@ -428,6 +429,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [insightsCalMonth, setInsightsCalMonth] = useState(new Date().getMonth());
   const [insightsCalYear, setInsightsCalYear] = useState(new Date().getFullYear());
   const [insightsCalendarTarget, setInsightsCalendarTarget] = useState("start"); // "start" | "end"
+  const [worthItShowPhotosOnly, setWorthItShowPhotosOnly] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
@@ -2245,18 +2247,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
 
-  const handleConsolidateTags = async () => {
-    if (!consolidateSource) {
-      alert("Please select a source tag to merge.");
+  const handleBatchMergeTags = async () => {
+    if (selectedMergeTags.length < 2) {
+      alert("Please select at least 2 tags to combine.");
       return;
     }
-    const finalTarget = consolidateTarget === "[custom]" ? consolidateCustomTarget.trim().toLowerCase() : consolidateTarget;
+    const finalTarget = mergeTargetMode === "[custom]" ? mergeCustomTargetName.trim().toLowerCase() : mergeTargetMode;
     if (!finalTarget) {
       alert("Please specify a target tag.");
-      return;
-    }
-    if (consolidateSource === finalTarget) {
-      alert("Source and target tags must be different.");
       return;
     }
 
@@ -2264,20 +2262,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     try {
       const expensesToUpdate = [];
       const updatedExpenses = expenses.map(exp => {
-        if (exp.tags && exp.tags.includes(consolidateSource)) {
-          let newTags = exp.tags.filter(t => t !== consolidateSource);
+        if (exp.tags && exp.tags.some(t => selectedMergeTags.includes(t))) {
+          let newTags = exp.tags.filter(t => !selectedMergeTags.includes(t));
           if (!newTags.includes(finalTarget)) {
             newTags.push(finalTarget);
           }
 
-          const sourceRegex = new RegExp(`#${consolidateSource}\\b`, 'gi');
-          const targetHashtag = `#${finalTarget}`;
-
-          const oldTitle = exp.title || "";
-          const newTitle = oldTitle.replace(sourceRegex, targetHashtag);
-
-          const oldNotes = exp.notes || "";
-          const newNotes = oldNotes.replace(sourceRegex, targetHashtag);
+          let newTitle = exp.title || "";
+          let newNotes = exp.notes || "";
+          
+          selectedMergeTags.forEach(sourceTag => {
+            if (sourceTag !== finalTarget) {
+              const sourceRegex = new RegExp(`#${sourceTag}\\b`, 'gi');
+              const targetHashtag = `#${finalTarget}`;
+              newTitle = newTitle.replace(sourceRegex, targetHashtag);
+              newNotes = newNotes.replace(sourceRegex, targetHashtag);
+            }
+          });
 
           const updated = {
             ...exp,
@@ -2292,7 +2293,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       });
 
       if (expensesToUpdate.length === 0) {
-        alert("No transactions found with the source tag.");
+        alert("No transactions found with the selected tags.");
         setIsConsolidating(false);
         return;
       }
@@ -2316,13 +2317,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
       }
 
-      showUndoRedoToast(`Merged #${consolidateSource} into #${finalTarget}`);
-      setConsolidateSource("");
-      setConsolidateTarget("");
-      setConsolidateCustomTarget("");
+      showUndoRedoToast(`Combined ${selectedMergeTags.map(t => `#${t}`).join(", ")} into #${finalTarget}`);
+      setSelectedMergeTags([]);
+      setMergeTargetMode("");
+      setMergeCustomTargetName("");
+      setShowMergePanel(false);
     } catch (e) {
-      console.error("Failed to consolidate tags:", e);
-      alert("Error merging tags. Please try again.");
+      console.error("Failed to batch merge tags:", e);
+      alert("Error combining tags. Please try again.");
     } finally {
       setIsConsolidating(false);
     }
@@ -2762,7 +2764,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       .map(([tag, spend]) => ({ tag, spend }))
       .sort((a, b) => b.spend - a.spend);
 
-    const worthItExpenses = filteredInsightsExpenses.filter((e) => e.worthIt);
+    const worthItExpenses = filteredInsightsExpenses.filter((e) => {
+      if (!e.worthIt) return false;
+      if (worthItShowPhotosOnly) {
+        const photos = e.photoUrls || (e.photoUrl ? [e.photoUrl] : []);
+        return photos.length > 0;
+      }
+      return true;
+    });
+
+    const handleQuickFilter = (type) => {
+      const today = new Date();
+      const todayStr = today.toLocaleDateString('en-CA');
+      
+      if (type === "7d") {
+        const past = new Date();
+        past.setDate(past.getDate() - 7);
+        setInsightsStartDate(past.toLocaleDateString('en-CA'));
+        setInsightsEndDate(todayStr);
+      } else if (type === "30d") {
+        const past = new Date();
+        past.setDate(past.getDate() - 30);
+        setInsightsStartDate(past.toLocaleDateString('en-CA'));
+        setInsightsEndDate(todayStr);
+      } else if (type === "month") {
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        setInsightsStartDate(startOfMonth.toLocaleDateString('en-CA'));
+        setInsightsEndDate(endOfMonth.toLocaleDateString('en-CA'));
+      } else if (type === "all") {
+        setInsightsStartDate(null);
+        setInsightsEndDate(null);
+      }
+      setShowInsightsCalendar(false);
+    };
     
     const changeInsightsMonth = (direction) => {
       if (direction === -1) {
@@ -3052,6 +3087,56 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>{showInsightsCalendar ? "▲" : "▼"}</span>
           </button>
 
+          {/* Quick presets row */}
+          <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px", scrollbarWidth: "none" }} className="no-scrollbar">
+            {[
+              { key: "7d", label: "Last 7 Days" },
+              { key: "30d", label: "Last 30 Days" },
+              { key: "month", label: "This Month" },
+              { key: "all", label: "All Time" }
+            ].map((preset) => {
+              let isActive = false;
+              const todayStr = new Date().toLocaleDateString('en-CA');
+              if (preset.key === "7d") {
+                const past = new Date();
+                past.setDate(past.getDate() - 7);
+                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
+              } else if (preset.key === "30d") {
+                const past = new Date();
+                past.setDate(past.getDate() - 30);
+                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
+              } else if (preset.key === "month") {
+                const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+                const end = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA');
+                isActive = insightsStartDate === start && insightsEndDate === end;
+              } else if (preset.key === "all") {
+                isActive = !insightsStartDate && !insightsEndDate;
+              }
+
+              return (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => handleQuickFilter(preset.key)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 10px",
+                    borderRadius: "10px",
+                    border: isActive ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.08)",
+                    backgroundColor: isActive ? "rgba(133, 58, 81, 0.05)" : "white",
+                    color: isActive ? "var(--color-purple)" : "#6B7280",
+                    fontSize: "0.72rem",
+                    fontWeight: isActive ? 800 : 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+
           {showInsightsCalendar && (
             <div
               ref={insightsCalendarRef}
@@ -3120,15 +3205,44 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
+        {/* Worth It Highlights Memories card */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
-          <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>✨ Worth It Highlights</span>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF", textTransform: "none", fontWeight: 500 }}>({worthItExpenses.length} memories)</span>
-          </h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>✨ Worth It Highlights</span>
+              <span style={{ fontSize: "0.72rem", color: "#9CA3AF", textTransform: "none", fontWeight: 500 }}>({worthItExpenses.length})</span>
+            </h4>
+            
+            {/* Photos Only Toggle */}
+            <button
+              type="button"
+              onClick={() => setWorthItShowPhotosOnly(!worthItShowPhotosOnly)}
+              style={{
+                backgroundColor: worthItShowPhotosOnly ? "rgba(245, 158, 11, 0.12)" : "rgba(0, 0, 0, 0.04)",
+                border: worthItShowPhotosOnly ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid rgba(0, 0, 0, 0.08)",
+                borderRadius: "20px",
+                padding: "2px 8px",
+                fontSize: "0.65rem",
+                fontWeight: 700,
+                color: worthItShowPhotosOnly ? "var(--color-orange)" : "#6B7280",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "all 0.15s ease"
+              }}
+            >
+              <span>📷</span>
+              <span>{worthItShowPhotosOnly ? "Photos Only" : "Show All"}</span>
+            </button>
+          </div>
 
           {worthItExpenses.length === 0 ? (
             <p style={{ fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center", padding: "12px 0", margin: 0 }}>
-              No 'Worth It' expenses found in this range. Flag expenses as 'Worth It' to build your memory board!
+              {worthItShowPhotosOnly 
+                ? "No 'Worth It' memories with photos found in this range. Toggle to Show All or add some photos!" 
+                : "No 'Worth It' expenses found in this range. Flag expenses as 'Worth It' to build your memory board!"
+              }
             </p>
           ) : (
             <div style={{
@@ -3148,6 +3262,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 const photos = exp.photoUrls || (exp.photoUrl ? [exp.photoUrl] : []);
                 const hasPhoto = photos.length > 0;
                 
+                // Inherited day location resolution & cleanup
+                const dateKey = new Date(exp.timestamp).toLocaleDateString('en-CA');
+                const resolvedLoc = getResolvedDayLocation(dateKey);
+                const displayLoc = resolvedLoc ? resolvedLoc.replace(/^\s*\|\s*/, "").split(" | ")[0].trim() : "";
+
                 return (
                   <div
                     key={exp.id}
@@ -3168,6 +3287,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       boxShadow: "0 2px 6px rgba(0,0,0,0.01)"
                     }}
                   >
+                    {/* Photo Box */}
                     {hasPhoto ? (
                       <div style={{ width: "100%", height: "100px", position: "relative", backgroundColor: "#F3F4F6" }}>
                         <img
@@ -3206,9 +3326,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       </div>
                     )}
 
+                    {/* Metadata Content */}
                     <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between", gap: "4px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        {/* Title */}
                         <span style={{
                           fontSize: "0.75rem",
                           fontWeight: 800,
@@ -3224,18 +3344,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           {exp.title || exp.note || exp.category}
                         </span>
 
-                        {/* Establishment on own line */}
-                        {exp.establishment ? (
+                        {/* Resolved Location on own line */}
+                        {displayLoc ? (
                           <span style={{
                             fontSize: "0.65rem",
-                            fontWeight: 700,
+                            fontWeight: 750,
                             color: "var(--color-purple)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                             marginTop: "2px"
-                          }} title={exp.establishment}>
-                            📍 {exp.establishment.split(" | ")[0]}
+                          }} title={displayLoc}>
+                            📍 {displayLoc}
                           </span>
                         ) : (
                           <span style={{ fontSize: "0.65rem", visibility: "hidden", marginTop: "2px" }}>📍 None</span>
@@ -3259,6 +3379,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           )}
         </div>
 
+        {/* Category Breakdown list */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
           <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
             Category Breakdown
@@ -3300,10 +3421,137 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
+        {/* Spend by Tags card (with Redesigned Merge Tag selector and Combine Panel) */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)", marginBottom: "12px" }}>
-          <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
-            Spend by Tags (#)
-          </h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+            <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0 }}>
+              Spend by Tags (#)
+            </h4>
+            
+            {/* Combine Selected Tags Trigger */}
+            {selectedMergeTags.length >= 2 && (
+              <button
+                type="button"
+                onClick={() => setShowMergePanel(!showMergePanel)}
+                style={{
+                  backgroundColor: "rgba(133, 58, 81, 0.08)",
+                  border: "1px solid rgba(133, 58, 81, 0.3)",
+                  color: "var(--color-purple)",
+                  borderRadius: "20px",
+                  padding: "4px 12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 750,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                🏷️ Combine ({selectedMergeTags.length})
+              </button>
+            )}
+          </div>
+
+          {/* Floating Merge Panel inside tag card */}
+          {showMergePanel && selectedMergeTags.length >= 2 && (
+            <div style={{
+              marginBottom: "14px",
+              padding: "14px",
+              backgroundColor: "#FFFDF2",
+              borderRadius: "16px",
+              border: "1.5px dashed rgba(245, 158, 11, 0.4)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              animation: "fadeInUp 0.15s ease-out"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#6B7280", textTransform: "uppercase" }}>
+                  Merging Selected Tags
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMergeTags([]);
+                    setShowMergePanel(false);
+                  }}
+                  style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: "0.75rem", fontWeight: 700 }}
+                >
+                  Clear Selection
+                </button>
+              </div>
+              <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "#374151" }}>
+                Tags: {selectedMergeTags.map(t => `#${t}`).join(", ")}
+              </span>
+
+              {/* Target Dropdown */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#4B5563" }}>
+                  MERGE INTO:
+                </label>
+                <select
+                  value={mergeTargetMode}
+                  onChange={(e) => setMergeTargetMode(e.target.value)}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                    backgroundColor: "white",
+                    fontSize: "0.8rem",
+                    outline: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  <option value="">-- Choose target tag --</option>
+                  {selectedMergeTags.map(t => (
+                    <option key={t} value={t}>#{t}</option>
+                  ))}
+                  <option value="[custom]">(Create a new tag...)</option>
+                </select>
+              </div>
+
+              {/* Custom Input */}
+              {mergeTargetMode === "[custom]" && (
+                <input
+                  type="text"
+                  placeholder="New tag name (no #)"
+                  value={mergeCustomTargetName}
+                  onChange={(e) => setMergeCustomTargetName(e.target.value)}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                    backgroundColor: "white",
+                    fontSize: "0.8rem",
+                    outline: "none"
+                  }}
+                />
+              )}
+
+              {/* Action Button */}
+              <button
+                type="button"
+                onClick={handleBatchMergeTags}
+                disabled={isConsolidating || !mergeTargetMode || (mergeTargetMode === "[custom]" && !mergeCustomTargetName.trim())}
+                style={{
+                  padding: "10px",
+                  backgroundColor: isConsolidating || !mergeTargetMode || (mergeTargetMode === "[custom]" && !mergeCustomTargetName.trim())
+                    ? "#9CA3AF"
+                    : "var(--color-purple)",
+                  color: "white",
+                  fontSize: "0.78rem",
+                  fontWeight: 800,
+                  border: "none",
+                  borderRadius: "10px",
+                  cursor: isConsolidating || !mergeTargetMode || (mergeTargetMode === "[custom]" && !mergeCustomTargetName.trim()) ? "not-allowed" : "pointer",
+                  marginTop: "4px"
+                }}
+              >
+                {isConsolidating ? "Merging tags..." : "Merge Selected Tags"}
+              </button>
+            </div>
+          )}
+
           {sortedTags.length === 0 ? (
             <p style={{ fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center", padding: "10px 0" }}>
               No hashtags found. Add #tag in your expense titles to track specific items (e.g. #coffee, #scooter).
@@ -3312,6 +3560,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {sortedTags.slice(0, showAllTags ? sortedTags.length : 5).map((item) => {
                 const pct = filteredExpensesTotal > 0 ? (item.spend / filteredExpensesTotal) * 100 : 0;
+                const isChecked = selectedMergeTags.includes(item.tag);
+                
+                const handleCheck = (e) => {
+                  e.stopPropagation();
+                  if (isChecked) {
+                    setSelectedMergeTags(prev => prev.filter(t => t !== item.tag));
+                  } else {
+                    setSelectedMergeTags(prev => [...prev, item.tag]);
+                  }
+                };
+
                 return (
                   <div 
                     key={item.tag} 
@@ -3322,14 +3581,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     style={{ display: "flex", flexDirection: "column", gap: "4px", cursor: "pointer" }}
                     title="Click to view transactions"
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700, color: "#4B5563" }}>
-                      <span style={{ color: "var(--color-purple)" }}>#{item.tag}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700, color: "#4B5563", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        {/* Selector checkbox */}
+                        <div 
+                          onClick={handleCheck}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "6px",
+                            border: isChecked ? "2px solid var(--color-purple)" : "2.5px solid rgba(133, 58, 81, 0.15)",
+                            backgroundColor: isChecked ? "var(--color-purple)" : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "0.65rem",
+                            fontWeight: 900,
+                            cursor: "pointer",
+                            marginRight: "10px",
+                            flexShrink: 0
+                          }}
+                        >
+                          {isChecked && "✓"}
+                        </div>
+                        <span style={{ color: "var(--color-purple)" }}>#{item.tag}</span>
+                      </div>
+                      
                       <div style={{ display: "flex", gap: "6px" }}>
                         <span>{formatMoney(item.spend, trip.homeCurrency)}</span>
                         <span style={{ color: "#9CA3AF", fontWeight: 500 }}>({pct.toFixed(0)}%)</span>
                       </div>
                     </div>
-                    <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                    
+                    <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden", marginLeft: "28px" }}>
                       <div style={{
                         height: "100%",
                         borderRadius: "4px",
@@ -3365,155 +3650,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               )}
             </div>
           )}
-        </div>
-
-        <div style={{
-          backgroundColor: "white",
-          padding: "18px 16px",
-          borderRadius: "20px",
-          border: "1.5px solid #E5E7EB",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
-          marginBottom: "12px"
-        }}>
-          <h4 style={{
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            color: "var(--color-purple)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            marginBottom: "6px"
-          }}>
-            🏷️ Merge Tags
-          </h4>
-          <p style={{
-            fontSize: "0.75rem",
-            color: "#6B7280",
-            lineHeight: "1.3",
-            marginBottom: "14px"
-          }}>
-            Consolidate spelling differences or rename a tag across all your trip transactions (e.g., merging <code style={{ backgroundColor: "#F3F4F6", padding: "1px 4px", borderRadius: "4px" }}>#activity</code> into <code style={{ backgroundColor: "#F3F4F6", padding: "1px 4px", borderRadius: "4px" }}>#activities</code>).
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Source Tag Dropdown */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
-                Source Tag (Merge From)
-              </label>
-              <select
-                value={consolidateSource}
-                onChange={(e) => {
-                  setConsolidateSource(e.target.value);
-                  if (consolidateTarget === e.target.value) {
-                    setConsolidateTarget("");
-                  }
-                }}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                  backgroundColor: "#F9F6ED",
-                  fontSize: "0.85rem",
-                  fontFamily: "inherit",
-                  outline: "none",
-                  cursor: "pointer"
-                }}
-              >
-                <option value="">-- Select a tag --</option>
-                {sortedTags.map(item => (
-                  <option key={item.tag} value={item.tag}>
-                    #{item.tag} ({tagExpenses[item.tag] ? tagExpenses[item.tag].length : 0} items)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Target Tag Dropdown */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
-                Target Tag (Merge Into)
-              </label>
-              <select
-                value={consolidateTarget}
-                onChange={(e) => setConsolidateTarget(e.target.value)}
-                disabled={!consolidateSource}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                  backgroundColor: !consolidateSource ? "#E5E7EB" : "#F9F6ED",
-                  fontSize: "0.85rem",
-                  fontFamily: "inherit",
-                  outline: "none",
-                  cursor: !consolidateSource ? "not-allowed" : "pointer"
-                }}
-              >
-                <option value="">-- Select or create new --</option>
-                {sortedTags
-                  .filter(item => item.tag !== consolidateSource)
-                  .map(item => (
-                    <option key={item.tag} value={item.tag}>
-                      #{item.tag}
-                    </option>
-                  ))
-                }
-                {consolidateSource && (
-                  <option value="[custom]">(Create a new tag...)</option>
-                )}
-              </select>
-            </div>
-
-            {/* Custom Tag Name input */}
-            {consolidateTarget === "[custom]" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px", animation: "fadeInUp 0.2s ease-out" }}>
-                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
-                  New Tag Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. activities (do not include #)"
-                  value={consolidateCustomTarget}
-                  onChange={(e) => setConsolidateCustomTarget(e.target.value)}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: "12px",
-                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                    backgroundColor: "#F9F6ED",
-                    fontSize: "0.85rem",
-                    fontFamily: "inherit",
-                    outline: "none"
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Merge Action Button */}
-            <button
-              type="button"
-              onClick={handleConsolidateTags}
-              disabled={isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())}
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: "12px",
-                backgroundColor: isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())
-                  ? "#9CA3AF"
-                  : "var(--color-purple)",
-                color: "white",
-                fontSize: "0.85rem",
-                fontWeight: 750,
-                border: "none",
-                cursor: isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())
-                  ? "not-allowed"
-                  : "pointer",
-                transition: "background-color 0.2s",
-                outline: "none",
-                marginTop: "4px"
-              }}
-            >
-              {isConsolidating ? "Merging tags..." : "Merge Tags"}
-            </button>
-          </div>
         </div>
       </div>
     );
