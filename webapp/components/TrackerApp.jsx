@@ -2379,10 +2379,26 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const now = new Date();
-  const visibleExpenses = expenses.filter((e) => new Date(e.timestamp) <= now);
+  const todayLocalStr = now.toLocaleDateString('en-CA');
+  
+  const visibleExpenses = expenses.filter((e) => {
+    try {
+      const expDateStr = new Date(e.timestamp).toLocaleDateString('en-CA');
+      if (expDateStr <= todayLocalStr) return true;
+      // Allow a 15-minute clock skew buffer for freshly created expenses
+      return new Date(e.timestamp).getTime() <= now.getTime() + 15 * 60 * 1000;
+    } catch (err) {
+      return true;
+    }
+  });
 
-  const todayStr = new Date().toLocaleDateString();
-  const todayExpenses = visibleExpenses.filter((e) => new Date(e.timestamp).toLocaleDateString() === todayStr);
+  const todayExpenses = visibleExpenses.filter((e) => {
+    try {
+      return new Date(e.timestamp).toLocaleDateString('en-CA') === todayLocalStr;
+    } catch (err) {
+      return false;
+    }
+  });
   const todayTotal = todayExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
   const allExpensesTotal = visibleExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
   const daysActive = getDaysActive(visibleExpenses);
