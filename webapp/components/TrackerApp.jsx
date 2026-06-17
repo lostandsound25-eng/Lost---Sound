@@ -1173,14 +1173,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       setIsMounted(true);
     } else if (tripId && supabase) {
       // Load from local cache first for instant loading
-      const cacheTrip = localStorage.getItem(`tracker_trip_${tripId}`);
-      const cacheExpenses = localStorage.getItem(`tracker_expenses_${tripId}`);
-      if (cacheTrip) {
-        setTrip(JSON.parse(cacheTrip));
-        if (cacheExpenses) {
-          setExpenses(JSON.parse(cacheExpenses));
+      try {
+        const cacheTrip = localStorage.getItem(`tracker_trip_${tripId}`);
+        const cacheExpenses = localStorage.getItem(`tracker_expenses_${tripId}`);
+        if (cacheTrip) {
+          setTrip(JSON.parse(cacheTrip));
+          if (cacheExpenses) {
+            try {
+              setExpenses(JSON.parse(cacheExpenses));
+            } catch (err) {
+              console.error("Failed to parse cached expenses:", err);
+            }
+          }
+          setIsMounted(true);
         }
-        setIsMounted(true);
+      } catch (err) {
+        console.error("Failed to read from local storage cache:", err);
       }
 
       loadTripFromCloud(tripId);
@@ -1627,12 +1635,24 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setIsSyncing(true);
     setSyncError(null);
     try {
-      const { data: tripData, error: tripErr } = await supabase
-        .from("trips")
-        .select("*")
-        .eq("id", tripId)
-        .single();
-      if (tripErr) throw tripErr;
+      const [tripResult, expensesResult] = await Promise.all([
+        supabase
+          .from("trips")
+          .select("*")
+          .eq("id", tripId)
+          .single(),
+        supabase
+          .from("trip_entries")
+          .select("*")
+          .eq("trip_id", tripId)
+          .order("created_at", { ascending: false })
+      ]);
+
+      if (tripResult.error) throw tripResult.error;
+      if (expensesResult.error) throw expensesResult.error;
+
+      const tripData = tripResult.data;
+      const expensesData = expensesResult.data;
 
       const newTrip = {
         id: tripData.id,
@@ -1643,13 +1663,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         itinerary: tripData.itinerary || {}
       };
       setTrip(newTrip);
-
-      const { data: expensesData, error: expErr } = await supabase
-        .from("trip_entries")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("created_at", { ascending: false });
-      if (expErr) throw expErr;
 
       const mappedExpenses = expensesData.map((e) => ({
         id: e.id,
