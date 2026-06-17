@@ -373,60 +373,6 @@ const getPlannerDaysList = (startDateStr, pastOffset, futureOffset) => {
   return days;
 };
 
-const bindLongPress = (onLongPress) => {
-  let pressTimer = null;
-  let hasMoved = false;
-  let isLongPress = false;
-
-  const start = (e) => {
-    if (e.type === 'mousedown' && e.button !== 0) return;
-    hasMoved = false;
-    isLongPress = false;
-    if (pressTimer) clearTimeout(pressTimer);
-    pressTimer = setTimeout(() => {
-      isLongPress = true;
-      onLongPress(e);
-      pressTimer = null;
-    }, 600);
-  };
-
-  const cancel = (e) => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  };
-
-  const move = () => {
-    hasMoved = true;
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  };
-
-  const clickHandler = (e, onClick) => {
-    if (isLongPress) {
-      e.preventDefault();
-      e.stopPropagation();
-      isLongPress = false;
-      return;
-    }
-    if (!hasMoved) {
-      onClick(e);
-    }
-  };
-
-  return {
-    onMouseDown: start,
-    onMouseUp: cancel,
-    onMouseMove: move,
-    onTouchStart: start,
-    onTouchEnd: cancel,
-    onTouchMove: move,
-    clickHandler
-  };
-};
 
 export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [expenses, setExpenses] = useState([]);
@@ -537,19 +483,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }, 3000);
   };
 
-  const handleLongPressDelete = (expense) => {
-    if (!expense) return;
-    const confirmDelete = window.confirm(`Are you sure you want to delete "${expense.title || expense.category}"?`);
-    if (confirmDelete) {
-      if (expense.tags?.some(t => t.startsWith("spread-group-"))) {
-        const groupTag = expense.tags.find(t => t.startsWith("spread-group-"));
-        const deleteEntire = window.confirm("This expense is part of a multi-day range. Click OK to delete the ENTIRE range, or Cancel to delete ONLY this day's entry.");
-        saveExpense({ id: expense.id, delete: true, deleteEntireGroup: deleteEntire, groupTag });
-      } else {
-        deleteExpense(expense.id);
-      }
-    }
-  };
 
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
@@ -5302,7 +5235,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         homeCurrency={trip.homeCurrency}
                                         rates={rates}
                                         trip={trip}
-                                        onLongPress={handleLongPressDelete}
                                       />
                                     </div>
                                   );
@@ -5743,7 +5675,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                       homeCurrency={trip.homeCurrency}
                                                       rates={rates}
                                                       trip={trip}
-                                                      onLongPress={handleLongPressDelete}
                                                     />
                                                   ))}
                                                 </div>
@@ -5962,7 +5893,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     homeCurrency={trip.homeCurrency}
                     rates={rates}
                     trip={trip}
-                    onLongPress={handleLongPressDelete}
                   />
                 ));
               })()}
@@ -6271,8 +6201,7 @@ function ExpenseCard({
   convertCurrency,
   homeCurrency,
   rates,
-  trip,
-  onLongPress
+  trip
 }) {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -6280,12 +6209,6 @@ function ExpenseCard({
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [listPhotoIndex, setListPhotoIndex] = useState(0);
-
-  const longPressHandlers = useMemo(() => {
-    return bindLongPress(() => {
-      if (onLongPress) onLongPress(expense);
-    });
-  }, [expense, onLongPress]);
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
   const worthIt = expense.worthIt;
@@ -6345,16 +6268,11 @@ function ExpenseCard({
         </div>
 
         <div
-          onMouseDown={longPressHandlers.onMouseDown}
-          onMouseUp={longPressHandlers.onMouseUp}
-          onMouseMove={longPressHandlers.onMouseMove}
           onTouchStart={(e) => {
             setStartX(e.touches[0].clientX);
             setIsDragging(true);
-            longPressHandlers.onTouchStart(e);
           }}
           onTouchMove={(e) => {
-            longPressHandlers.onTouchMove(e);
             if (!isDragging) return;
             const diffX = e.touches[0].clientX - startX;
             if (diffX < 0 && diffX > -75) {
@@ -6364,9 +6282,8 @@ function ExpenseCard({
               setIsSwipedOpen(false);
             }
           }}
-          onTouchEnd={(e) => {
+          onTouchEnd={() => {
             setIsDragging(false);
-            longPressHandlers.onTouchEnd(e);
             if (offsetX < -40) {
               setOffsetX(-70);
               setIsSwipedOpen(true);
@@ -6389,15 +6306,13 @@ function ExpenseCard({
             transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
             cursor: "pointer"
           }}
-          onClick={(e) => {
-            longPressHandlers.clickHandler(e, () => {
-              if (isSwipedOpen) {
-                setOffsetX(0);
-                setIsSwipedOpen(false);
-              } else {
-                onEdit(expense);
-              }
-            });
+          onClick={() => {
+            if (isSwipedOpen) {
+              setOffsetX(0);
+              setIsSwipedOpen(false);
+            } else {
+              onEdit(expense);
+            }
           }}
         >
           <div style={{
