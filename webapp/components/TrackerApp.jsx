@@ -6528,16 +6528,26 @@ function ManualEntryModal({
           setSpreadEnd(null);
         }
       } else {
-        if (calendarTarget === "start") {
+        if (spreadStart && spreadEnd) {
+          // If range is already complete, clicking starts a new selection
           setSpreadStart(dayStr);
           setExpenseDate(dayStr);
+          setSpreadEnd(null);
+          setCalendarTarget("end");
+        } else if (calendarTarget === "start") {
+          setSpreadStart(dayStr);
+          setExpenseDate(dayStr);
+          setSpreadEnd(null);
           setCalendarTarget("end");
         } else {
+          // calendarTarget === "end"
           if (dayStr >= spreadStart) {
             setSpreadEnd(dayStr);
           } else {
+            // Clicked date is before start date -> make it new start date
             setSpreadStart(dayStr);
             setExpenseDate(dayStr);
+            setSpreadEnd(null);
             setCalendarTarget("end");
           }
         }
@@ -6695,11 +6705,33 @@ function ManualEntryModal({
     return (lastUsedNonHome && lastUsedNonHome !== trip.homeCurrency) ? lastUsedNonHome : "USD";
   });
 
-  const formatDateToUS = (dateStr) => {
+  const formatDateForInput = (dateStr, otherDateStr = null) => {
     if (!dateStr) return "";
     const parts = dateStr.split("-");
     if (parts.length !== 3) return dateStr;
-    return `${parts[1]}/${parts[2]}/${parts[0]}`;
+    
+    const year = parts[0];
+    const month = parts[1];
+    const day = parts[2];
+    
+    const currentYear = new Date().getFullYear().toString();
+    
+    // Check if years are different
+    if (otherDateStr) {
+      const otherParts = otherDateStr.split("-");
+      if (otherParts.length === 3) {
+        const otherYear = otherParts[0];
+        if (year !== otherYear) {
+          return `${month}/${day}/${year}`;
+        }
+      }
+    }
+    
+    if (year !== currentYear) {
+      return `${month}/${day}/${year}`;
+    }
+    
+    return `${month}/${day}`;
   };
 
   const parseTextDate = (text) => {
@@ -6729,20 +6761,20 @@ function ManualEntryModal({
     return `${year}-${mStr}-${dStr}`;
   };
 
-  const [startInputText, setStartInputText] = useState(() => formatDateToUS(spreadStart));
-  const [endInputText, setEndInputText] = useState(() => formatDateToUS(spreadEnd));
-  const [singleInputText, setSingleInputText] = useState(() => formatDateToUS(expenseDate));
+  const [startInputText, setStartInputText] = useState(() => formatDateForInput(spreadStart, spreadEnd));
+  const [endInputText, setEndInputText] = useState(() => formatDateForInput(spreadEnd, spreadStart));
+  const [singleInputText, setSingleInputText] = useState(() => formatDateForInput(expenseDate));
 
   useEffect(() => {
-    setStartInputText(formatDateToUS(spreadStart));
-  }, [spreadStart]);
+    setStartInputText(formatDateForInput(spreadStart, spreadEnd));
+  }, [spreadStart, spreadEnd]);
 
   useEffect(() => {
-    setEndInputText(formatDateToUS(spreadEnd));
-  }, [spreadEnd]);
+    setEndInputText(formatDateForInput(spreadEnd, spreadStart));
+  }, [spreadEnd, spreadStart]);
 
   useEffect(() => {
-    setSingleInputText(formatDateToUS(expenseDate));
+    setSingleInputText(formatDateForInput(expenseDate));
   }, [expenseDate]);
 
   const handleStartTextBlur = () => {
@@ -6755,7 +6787,7 @@ function ManualEntryModal({
         setSpreadExpense(false);
       }
     } else {
-      setStartInputText(formatDateToUS(spreadStart));
+      setStartInputText(formatDateForInput(spreadStart, spreadEnd));
     }
   };
 
@@ -6770,10 +6802,10 @@ function ManualEntryModal({
         setSpreadEnd(null);
         setSpreadExpense(false);
       } else {
-        setEndInputText(formatDateToUS(spreadEnd));
+        setEndInputText(formatDateForInput(spreadEnd, spreadStart));
       }
     } else {
-      setEndInputText(formatDateToUS(spreadEnd));
+      setEndInputText(formatDateForInput(spreadEnd, spreadStart));
     }
   };
 
@@ -6785,7 +6817,7 @@ function ManualEntryModal({
       setSpreadEnd(null);
       setSpreadExpense(false);
     } else {
-      setSingleInputText(formatDateToUS(expenseDate));
+      setSingleInputText(formatDateForInput(expenseDate));
     }
   };
 
@@ -7943,100 +7975,101 @@ function ManualEntryModal({
                 </button>
               </div>
               {spreadExpense ? (
-                <div style={{ display: "flex", gap: "6px", width: "100%", height: "36px" }}>
+                <div style={{ display: "flex", gap: "4px", width: "100%", height: "40px", alignItems: "center" }}>
                   {/* Start Date Text Input */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
-                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase", fontWeight: 700 }}>Start (MM/DD)</span>
-                    <input
-                      type="text"
-                      data-date-input="true"
-                      value={startInputText}
-                      onChange={(e) => setStartInputText(e.target.value)}
-                      onBlur={handleStartTextBlur}
-                      onFocus={() => {
-                        setCalendarTarget("start");
-                        setIsDateExpanded(true);
-                      }}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleStartTextBlur(); }}
-                      style={{
-                        width: "100%",
-                        backgroundColor: "white",
-                        borderRadius: "12px",
-                        border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        color: "#374151",
-                        outline: "none",
-                        padding: "6px 8px",
-                        textAlign: "center",
-                        height: "36px"
-                      }}
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    data-date-input="true"
+                    value={startInputText}
+                    onChange={(e) => setStartInputText(e.target.value)}
+                    onBlur={handleStartTextBlur}
+                    onFocus={() => {
+                      setCalendarTarget("start");
+                      setIsDateExpanded(true);
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleStartTextBlur(); }}
+                    placeholder="Start"
+                    style={{
+                      flex: 1,
+                      backgroundColor: "white",
+                      borderRadius: "12px",
+                      border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      color: "#374151",
+                      outline: "none",
+                      padding: "6px 4px",
+                      textAlign: "center",
+                      height: "40px",
+                      minWidth: 0,
+                      boxSizing: "border-box"
+                    }}
+                  />
+
+                  <span style={{ fontSize: "0.8rem", color: "#9CA3AF", flexShrink: 0 }}>→</span>
 
                   {/* End Date Text Input */}
                   <div style={{
                     flex: 1,
                     position: "relative",
                     display: "flex",
-                    flexDirection: "column",
-                    gap: "2px"
+                    alignItems: "center",
+                    height: "40px",
+                    minWidth: 0
                   }}>
-                    <span style={{ fontSize: "0.58rem", color: "#9CA3AF", textTransform: "uppercase", fontWeight: 700 }}>End (MM/DD)</span>
-                    <div style={{ position: "relative", width: "100%", height: "36px" }}>
-                      <input
-                        type="text"
-                        data-date-input="true"
-                        value={endInputText}
-                        onChange={(e) => setEndInputText(e.target.value)}
-                        onBlur={handleEndTextBlur}
-                        onFocus={() => {
-                          setCalendarTarget("end");
-                          setIsDateExpanded(true);
-                        }}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleEndTextBlur(); }}
-                        style={{
-                          width: "100%",
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          color: "#374151",
-                          outline: "none",
-                          padding: "6px 8px",
-                          paddingRight: "20px",
-                          textAlign: "center",
-                          height: "36px"
-                        }}
-                      />
-                      {/* Clear Range Button (X) */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSpreadEnd(null);
-                          setSpreadExpense(false);
-                          setCalendarTarget("start");
-                        }}
-                        style={{
-                          position: "absolute",
-                          right: "6px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          background: "none",
-                          border: "none",
-                          color: "#9CA3AF",
-                          fontSize: "0.85rem",
-                          cursor: "pointer",
-                          padding: "4px",
-                          outline: "none"
-                        }}
-                        title="Exit Series Mode"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      data-date-input="true"
+                      value={endInputText}
+                      onChange={(e) => setEndInputText(e.target.value)}
+                      onBlur={handleEndTextBlur}
+                      onFocus={() => {
+                        setCalendarTarget("end");
+                        setIsDateExpanded(true);
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEndTextBlur(); }}
+                      placeholder="End"
+                      style={{
+                        width: "100%",
+                        backgroundColor: "white",
+                        borderRadius: "12px",
+                        border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        color: "#374151",
+                        outline: "none",
+                        padding: "6px 20px 6px 4px",
+                        textAlign: "center",
+                        height: "40px",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                    {/* Clear Range Button (X) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSpreadEnd(null);
+                        setSpreadExpense(false);
+                        setCalendarTarget("start");
+                      }}
+                      style={{
+                        position: "absolute",
+                        right: "4px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#9CA3AF",
+                        fontSize: "0.82rem",
+                        cursor: "pointer",
+                        padding: "2px",
+                        outline: "none"
+                      }}
+                      title="Exit Series Mode"
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -8051,6 +8084,7 @@ function ManualEntryModal({
                     setIsDateExpanded(true);
                   }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSingleTextBlur(); }}
+                  placeholder="Date"
                   style={{
                     width: "100%",
                     backgroundColor: "white",
@@ -8062,7 +8096,8 @@ function ManualEntryModal({
                     outline: "none",
                     padding: "6px 12px",
                     textAlign: "center",
-                    height: "36px"
+                    height: "40px",
+                    boxSizing: "border-box"
                   }}
                 />
               )}
