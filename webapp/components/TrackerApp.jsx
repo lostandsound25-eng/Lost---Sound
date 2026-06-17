@@ -2732,11 +2732,81 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
-        {/* Insights Title Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px", padding: "0 4px" }}>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", margin: 0, letterSpacing: "-0.3px" }}>
-            📊 Insights
-          </h2>
+        {/* Insights Title Header (Premium Glassmorphism) */}
+        <div style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          padding: "16px 20px",
+          borderRadius: "24px",
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.4))",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
+          boxShadow: "0 8px 32px rgba(133, 58, 81, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+          marginBottom: "4px",
+          overflow: "hidden"
+        }}>
+          {/* Subtle Ambient Glow inside the header */}
+          <div style={{
+            position: "absolute",
+            top: "-20px",
+            right: "-20px",
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0) 70%)",
+            pointerEvents: "none"
+          }} />
+          <div style={{
+            position: "absolute",
+            bottom: "-20px",
+            left: "-20px",
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(133, 58, 81, 0.1) 0%, rgba(133, 58, 81, 0) 70%)",
+            pointerEvents: "none"
+          }} />
+
+          {/* Lightbulb Icon with modern glow background */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "42px",
+            height: "42px",
+            borderRadius: "14px",
+            backgroundColor: "rgba(245, 158, 11, 0.12)",
+            border: "1px solid rgba(245, 158, 11, 0.25)",
+            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.06)",
+            fontSize: "1.35rem",
+            flexShrink: 0
+          }}>
+            💡
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <h2 style={{
+              fontSize: "1.3rem",
+              fontWeight: 900,
+              color: "var(--color-purple)",
+              margin: 0,
+              letterSpacing: "-0.4px",
+              lineHeight: "1.2"
+            }}>
+              Insights
+            </h2>
+            <span style={{
+              fontSize: "0.72rem",
+              color: "#6B7280",
+              fontWeight: 500,
+              letterSpacing: "0.1px"
+            }}>
+              Analyzing your spending and stats in real time
+            </span>
+          </div>
         </div>
 
         {/* Main Stats Grid */}
