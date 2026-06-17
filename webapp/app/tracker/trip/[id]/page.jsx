@@ -5,24 +5,31 @@ import TrackerApp from '../../../../components/TrackerApp';
 
 export default function TrackerTripPage({ params }) {
   const tripId = params.id;
-  const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+  // Start with authorized=true if we have locally-cached trip data —
+  // this renders the full app instantly on refresh instead of showing a spinner.
+  // The auth check still runs in the background and will redirect if needed.
+  const [authorized, setAuthorized] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return !!localStorage.getItem(`tracker_trip_${tripId}`);
+    } catch { return false; }
+  });
 
   useEffect(() => {
     if (!supabase || !tripId) {
-      setLoading(false);
+      setAuthorized(true); // No supabase config — allow through (demo/dev mode)
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
     const isAuthCallback = (typeof window !== 'undefined' && window.location.hash.includes('access_token')) || !!code;
 
     const checkTripAccess = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // Store the target trip ID so we can redirect back here after login
+          // Not logged in — redirect to login
           sessionStorage.setItem('pending_trip_id', tripId);
           window.location.href = '/tracker';
           return;
@@ -46,11 +53,13 @@ export default function TrackerTripPage({ params }) {
               .eq('email', session.user.email.toLowerCase().trim());
           }
           setAuthorized(true);
-          setLoading(false);
         }
       } catch (err) {
         console.error("Access check error:", err);
-        window.location.href = '/tracker';
+        // Only redirect if we have no cached data to show
+        if (!localStorage.getItem(`tracker_trip_${tripId}`)) {
+          window.location.href = '/tracker';
+        }
       }
     };
 
@@ -68,7 +77,7 @@ export default function TrackerTripPage({ params }) {
         }
       });
     } else if (isAuthCallback) {
-      // Wait for session
+      // Wait for session after OAuth redirect
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (session) {
           subscription.unsubscribe();
@@ -84,11 +93,13 @@ export default function TrackerTripPage({ params }) {
         clearTimeout(t);
       };
     } else {
+      // Normal page load — check auth in background
       checkTripAccess();
     }
   }, [tripId]);
 
-  if (loading) {
+  if (!authorized) {
+    // Only show this on first-ever visit with no local cache
     return (
       <div style={{
         minHeight: '100vh',
@@ -101,7 +112,7 @@ export default function TrackerTripPage({ params }) {
           color: 'var(--color-purple)',
           fontWeight: 700,
           fontSize: '1.1rem'
-        }}>Syncing with Cloud...</div>
+        }}>Loading...</div>
       </div>
     );
   }

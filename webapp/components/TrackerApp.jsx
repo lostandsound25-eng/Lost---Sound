@@ -375,17 +375,55 @@ const getPlannerDaysList = (startDateStr, pastOffset, futureOffset) => {
 
 
 export default function TrackerApp({ tripId = null, isDemo = false }) {
-  const [expenses, setExpenses] = useState([]);
-  const [trip, setTrip] = useState({
-    name: isDemo ? "My Local Trip" : "Loading Trip...",
-    homeCurrency: "USD",
-    localCurrency: "USD",
-    currentLocation: ""
+  // Lazy initializers: read localStorage synchronously on first render
+  // so cached data is available on frame 1 — eliminates the $0.00 flicker on refresh
+  const [expenses, setExpenses] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    const key = isDemo ? 'tracker_expenses_demo' : (tripId ? `tracker_expenses_${tripId}` : null);
+    if (!key) return [];
+    try {
+      const cached = localStorage.getItem(key);
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [trip, setTrip] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { name: isDemo ? 'My Local Trip' : 'Loading Trip...', homeCurrency: 'USD', localCurrency: 'USD', currentLocation: '' };
+    }
+    const key = isDemo ? 'tracker_trip_demo' : (tripId ? `tracker_trip_${tripId}` : null);
+    if (key) {
+      try {
+        const cached = localStorage.getItem(key);
+        if (cached) return JSON.parse(cached);
+      } catch { /* fall through */ }
+    }
+    return { name: isDemo ? 'My Local Trip' : 'Loading Trip...', homeCurrency: 'USD', localCurrency: 'USD', currentLocation: '' };
   });
   const [locationInput, setLocationInput] = useState("");
-  const [rates, setRates] = useState(DEFAULT_RATES);
-  const [customCurrencies, setCustomCurrencies] = useState([]);
-  const [isMounted, setIsMounted] = useState(false);
+  const [rates, setRates] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_RATES;
+    try {
+      const cached = localStorage.getItem('tracker_rates');
+      return cached ? JSON.parse(cached) : DEFAULT_RATES;
+    } catch { return DEFAULT_RATES; }
+  });
+  const [customCurrencies, setCustomCurrencies] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const cached = localStorage.getItem('tracker_custom_currencies');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  // isMounted: true immediately if we have cached data, otherwise wait for cloud
+  const [isMounted, setIsMounted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (isDemo) return false; // demo path sets isMounted in useEffect
+    const key = tripId ? `tracker_trip_${tripId}` : null;
+    if (!key) return false;
+    try {
+      return !!localStorage.getItem(key);
+    } catch { return false; }
+  });
   const [activeModal, setActiveModal] = useState(null); // 'manual', 'voice', 'subscribe', 'auth', 'collaborators'
   const [editingExpense, setEditingExpense] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
@@ -1036,14 +1074,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   // Load state from localStorage / cloud on mount
   useEffect(() => {
-    const savedRates = localStorage.getItem("tracker_rates");
-    if (savedRates) setRates(JSON.parse(savedRates));
-
-    const savedCustom = localStorage.getItem("tracker_custom_currencies");
-    if (savedCustom) setCustomCurrencies(JSON.parse(savedCustom));
-
+    // rates and customCurrencies are already loaded via lazy initializers (frame 1).
+    // Only load things that couldn't be done lazily (e.g. subscribed flag).
     const subscribed = localStorage.getItem("tracker_subscribed") === "true";
     setIsSubscribed(subscribed);
+
 
     if (isDemo) {
       const savedTrip = localStorage.getItem("tracker_trip_demo");
@@ -1123,24 +1158,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }
       setIsMounted(true);
     } else if (tripId && supabase) {
-      // Load from local cache first for instant loading
-      try {
-        const cacheTrip = localStorage.getItem(`tracker_trip_${tripId}`);
-        const cacheExpenses = localStorage.getItem(`tracker_expenses_${tripId}`);
-        if (cacheTrip) {
-          setTrip(JSON.parse(cacheTrip));
-          if (cacheExpenses) {
-            try {
-              setExpenses(JSON.parse(cacheExpenses));
-            } catch (err) {
-              console.error("Failed to parse cached expenses:", err);
-            }
-          }
-          setIsMounted(true);
-        }
-      } catch (err) {
-        console.error("Failed to read from local storage cache:", err);
-      }
+      // State is already pre-populated from lazy initializers (frame 1).
+      // isMounted was set to true synchronously if cache existed.
+      // Just ensure isMounted is set in case there was no cache.
+      setIsMounted(true);
 
       loadTripFromCloud(tripId);
     } else {
