@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import SearchableCurrencySelect from './SearchableCurrencySelect';
 
@@ -351,10 +351,12 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
   });
 };
 
-const getPlannerDaysList = (startDateStr, offsetDays) => {
+const getPlannerDaysList = (startDateStr, pastOffset, futureOffset) => {
   const minDate = new Date(startDateStr + "T00:00:00");
-  const maxDate = new Date(minDate);
-  maxDate.setDate(maxDate.getDate() + offsetDays);
+  minDate.setDate(minDate.getDate() - pastOffset);
+
+  const maxDate = new Date(startDateStr + "T00:00:00");
+  maxDate.setDate(maxDate.getDate() + futureOffset);
 
   minDate.setHours(0,0,0,0);
   maxDate.setHours(23,59,59,999);
@@ -369,6 +371,61 @@ const getPlannerDaysList = (startDateStr, offsetDays) => {
     curr.setDate(curr.getDate() + 1);
   }
   return days;
+};
+
+const bindLongPress = (onLongPress) => {
+  let pressTimer = null;
+  let hasMoved = false;
+  let isLongPress = false;
+
+  const start = (e) => {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    hasMoved = false;
+    isLongPress = false;
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      isLongPress = true;
+      onLongPress(e);
+      pressTimer = null;
+    }, 600);
+  };
+
+  const cancel = (e) => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const move = () => {
+    hasMoved = true;
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const clickHandler = (e, onClick) => {
+    if (isLongPress) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPress = false;
+      return;
+    }
+    if (!hasMoved) {
+      onClick(e);
+    }
+  };
+
+  return {
+    onMouseDown: start,
+    onMouseUp: cancel,
+    onMouseMove: move,
+    onTouchStart: start,
+    onTouchEnd: cancel,
+    onTouchMove: move,
+    clickHandler
+  };
 };
 
 export default function TrackerApp({ tripId = null, isDemo = false }) {
@@ -406,6 +463,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [drillDownExpenses, setDrillDownExpenses] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+
+  // Undo/Redo toast state
+  const [toastText, setToastText] = useState(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastTimeoutRef = useRef(null);
+
+  // Tag consolidation state
+  const [consolidateSource, setConsolidateSource] = useState("");
+  const [consolidateTarget, setConsolidateTarget] = useState("");
+  const [consolidateCustomTarget, setConsolidateCustomTarget] = useState("");
+  const [isConsolidating, setIsConsolidating] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
@@ -451,6 +519,37 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
+  const showUndoRedoToast = (text) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastText(text);
+    setToastVisible(true);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastVisible(false);
+    }, 3000);
+  };
+
+  const handleLongPressDelete = (expense) => {
+    if (!expense) return;
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${expense.title || expense.category}"?`);
+    if (confirmDelete) {
+      if (expense.tags?.some(t => t.startsWith("spread-group-"))) {
+        const groupTag = expense.tags.find(t => t.startsWith("spread-group-"));
+        const deleteEntire = window.confirm("This expense is part of a multi-day range. Click OK to delete the ENTIRE range, or Cancel to delete ONLY this day's entry.");
+        saveExpense({ id: expense.id, delete: true, deleteEntireGroup: deleteEntire, groupTag });
+      } else {
+        deleteExpense(expense.id);
+      }
+    }
+  };
 
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
@@ -661,6 +760,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         });
         return { type: 'update_bulk', oldData: isUndo ? newData : oldData, newData: isUndo ? oldData : newData };
       }
+
+      if (type === 'update_itinerary') {
+        const targetItinerary = isUndo ? oldItinerary : newItinerary;
+        setTrip(prev => ({ ...prev, itinerary: targetItinerary }));
+        if (!isDemo && tripId && supabase) {
+          try {
+            await supabase.from("trips").update({ itinerary: targetItinerary }).eq("id", tripId);
+          } catch (e) {
+            console.error("Failed to sync itinerary via undo/redo to cloud:", e);
+          }
+        }
+        return { type: 'update_itinerary', oldItinerary: isUndo ? newItinerary : oldItinerary, newItinerary: targetItinerary, description: action.description };
+      }
     } catch (e) {
       console.error("Error executing undo/redo:", e);
     }
@@ -674,6 +786,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const redoAction = await executeUndoRedoAction(action, true);
     if (redoAction) {
       setRedoStack(prev => [...prev, redoAction]);
+      const desc = action.description || action.type || "action";
+      showUndoRedoToast(`Undid ${desc}`);
     }
   };
 
@@ -684,6 +798,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const undoAction = await executeUndoRedoAction(action, false);
     if (undoAction) {
       setUndoStack(prev => [...prev, undoAction]);
+      const desc = action.description || action.type || "action";
+      showUndoRedoToast(`Redid ${desc}`);
     }
   };
 
@@ -1422,7 +1538,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (dragStartCell && dragCurrentDateStr) {
-        const daysList = getPlannerDaysList(plannerStartDate, futureOffset);
+        const daysList = getPlannerDaysList(plannerStartDate, pastOffset, futureOffset);
         const idx1 = daysList.findIndex(d => d.dateStr === dragStartCell.dateStr);
         const idx2 = daysList.findIndex(d => d.dateStr === dragCurrentDateStr);
         if (idx1 !== -1 && idx2 !== -1) {
@@ -1450,7 +1566,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       window.removeEventListener("mouseup", handleGlobalMouseUp);
       window.removeEventListener("touchend", handleGlobalMouseUp);
     };
-  }, [dragStartCell, dragCurrentDateStr, plannerStartDate, futureOffset]);
+  }, [dragStartCell, dragCurrentDateStr, plannerStartDate, pastOffset, futureOffset]);
 
   const fetchLatestRates = async (force = false) => {
     const lastUpdated = localStorage.getItem("tracker_rates_last_updated");
@@ -1564,6 +1680,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const updateLocation = async (loc) => {
     setTrip((prev) => ({ ...prev, currentLocation: loc }));
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    await updateItineraryLocation(todayStr, loc);
     if (!isDemo && tripId && supabase) {
       try {
         await supabase.from("trips").update({ current_location: loc }).eq("id", tripId);
@@ -1573,18 +1691,25 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   };
   const updateItineraryLocation = async (dateKey, locationText) => {
-    const existing = trip.itinerary?.[dateKey];
+    const oldItinerary = trip.itinerary || {};
+    const existing = oldItinerary[dateKey];
     const existingObj = typeof existing === "string"
       ? { location: existing, notes: "" }
       : (existing || { location: "", notes: "" });
 
     const updatedItinerary = {
-      ...(trip.itinerary || {}),
+      ...oldItinerary,
       [dateKey]: {
         ...existingObj,
         location: locationText
       }
     };
+    pushToUndo({
+      type: 'update_itinerary',
+      oldItinerary,
+      newItinerary: updatedItinerary,
+      description: "planned location"
+    });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
     if (!isDemo && tripId && supabase) {
       try {
@@ -1596,18 +1721,25 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const updateItineraryNotes = async (dateKey, notesText) => {
-    const existing = trip.itinerary?.[dateKey];
+    const oldItinerary = trip.itinerary || {};
+    const existing = oldItinerary[dateKey];
     const existingObj = typeof existing === "string"
       ? { location: existing, notes: "" }
       : (existing || { location: "", notes: "" });
 
     const updatedItinerary = {
-      ...(trip.itinerary || {}),
+      ...oldItinerary,
       [dateKey]: {
         ...existingObj,
         notes: notesText
       }
     };
+    pushToUndo({
+      type: 'update_itinerary',
+      oldItinerary,
+      newItinerary: updatedItinerary,
+      description: "planned notes"
+    });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
     if (!isDemo && tripId && supabase) {
       try {
@@ -1619,7 +1751,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const updateItineraryLocationsBatch = async (updates) => {
-    const updatedItinerary = { ...(trip.itinerary || {}) };
+    const oldItinerary = trip.itinerary || {};
+    const updatedItinerary = { ...oldItinerary };
     Object.entries(updates).forEach(([dateKey, val]) => {
       const existing = updatedItinerary[dateKey];
       const existingObj = typeof existing === "string"
@@ -1639,6 +1772,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }
     });
 
+    pushToUndo({
+      type: 'update_itinerary',
+      oldItinerary,
+      newItinerary: updatedItinerary,
+      description: "fill planned location"
+    });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
     if (!isDemo && tripId && supabase) {
       try {
@@ -1757,7 +1896,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (expense.delete) {
       if (expense.deleteEntireGroup && expense.groupTag) {
         const siblings = expenses.filter(e => e.tags && e.tags.includes(expense.groupTag));
-        pushToUndo({ type: 'delete_bulk', data: siblings });
+        pushToUndo({ type: 'delete_bulk', data: siblings, description: "delete group expenses" });
         const siblingIds = siblings.map(s => s.id);
         setExpenses((prev) => prev.filter((e) => !siblingIds.includes(e.id)));
         if (!isDemo && tripId) {
@@ -1768,7 +1907,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       } else {
         const oldExp = expenses.find(e => e.id === expense.id);
         if (oldExp) {
-          pushToUndo({ type: 'delete', data: oldExp });
+          pushToUndo({ type: 'delete', data: oldExp, description: "delete expense" });
         }
         setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
         if (!isDemo && tripId) {
@@ -1871,7 +2010,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           }
         }
 
-        pushToUndo({ type: 'update_bulk', oldData: siblings, newData: newExpenses });
+        pushToUndo({ type: 'update_bulk', oldData: siblings, newData: newExpenses, description: "update group expenses" });
         setExpenses((prev) => [...newExpenses, ...prev]);
 
         if (!isDemo && tripId && dbInserts.length > 0) {
@@ -1964,7 +2103,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           }
         }
 
-        pushToUndo({ type: 'insert_bulk', data: newExpenses });
+        pushToUndo({ type: 'insert_bulk', data: newExpenses, description: "add group expenses" });
         setExpenses((prev) => [...newExpenses, ...prev]);
 
         if (!isDemo && tripId && dbInserts.length > 0) {
@@ -1993,7 +2132,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
         const oldExp = expenses.find(e => e.id === expense.id);
         if (oldExp) {
-          pushToUndo({ type: 'update', oldData: oldExp, newData: updatedExpense });
+          pushToUndo({ type: 'update', oldData: oldExp, newData: updatedExpense, description: "update expense" });
         }
         setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...updatedExpense } : e)));
 
@@ -2096,7 +2235,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           }
         }
 
-        pushToUndo({ type: 'insert_bulk', data: newExpenses });
+        pushToUndo({ type: 'insert_bulk', data: newExpenses, description: "add group expenses" });
         setExpenses((prev) => [...newExpenses, ...prev]);
 
         if (!isDemo && tripId && dbInserts.length > 0) {
@@ -2119,7 +2258,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           photoUrl: expense.photoUrl || "",
           photoUrls: expense.photoUrls || []
         };
-        pushToUndo({ type: 'insert', data: newExpense });
+        pushToUndo({ type: 'insert', data: newExpense, description: "add expense" });
         setExpenses((prev) => [newExpense, ...prev]);
 
         if (!isDemo && tripId) {
@@ -2148,11 +2287,94 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const deleteExpense = async (id) => {
     const oldExp = expenses.find(e => e.id === id);
     if (oldExp) {
-      pushToUndo({ type: 'delete', data: oldExp });
+      pushToUndo({ type: 'delete', data: oldExp, description: "delete expense" });
     }
     setExpenses((prev) => prev.filter((e) => e.id !== id));
     if (!isDemo && tripId) {
       performCloudAction("delete", { id });
+    }
+  };
+
+  const handleConsolidateTags = async () => {
+    if (!consolidateSource) {
+      alert("Please select a source tag to merge.");
+      return;
+    }
+    const finalTarget = consolidateTarget === "[custom]" ? consolidateCustomTarget.trim().toLowerCase() : consolidateTarget;
+    if (!finalTarget) {
+      alert("Please specify a target tag.");
+      return;
+    }
+    if (consolidateSource === finalTarget) {
+      alert("Source and target tags must be different.");
+      return;
+    }
+
+    setIsConsolidating(true);
+    try {
+      const expensesToUpdate = [];
+      const updatedExpenses = expenses.map(exp => {
+        if (exp.tags && exp.tags.includes(consolidateSource)) {
+          let newTags = exp.tags.filter(t => t !== consolidateSource);
+          if (!newTags.includes(finalTarget)) {
+            newTags.push(finalTarget);
+          }
+
+          const sourceRegex = new RegExp(`#${consolidateSource}\\b`, 'gi');
+          const targetHashtag = `#${finalTarget}`;
+
+          const oldTitle = exp.title || "";
+          const newTitle = oldTitle.replace(sourceRegex, targetHashtag);
+
+          const oldNotes = exp.notes || "";
+          const newNotes = oldNotes.replace(sourceRegex, targetHashtag);
+
+          const updated = {
+            ...exp,
+            tags: newTags,
+            title: newTitle,
+            notes: newNotes
+          };
+          expensesToUpdate.push(updated);
+          return updated;
+        }
+        return exp;
+      });
+
+      if (expensesToUpdate.length === 0) {
+        alert("No transactions found with the source tag.");
+        setIsConsolidating(false);
+        return;
+      }
+
+      setExpenses(updatedExpenses);
+
+      if (!isDemo && tripId) {
+        for (const exp of expensesToUpdate) {
+          await performCloudAction("update", {
+            id: exp.id,
+            amount: exp.amount,
+            currency: exp.currency,
+            category: exp.category,
+            title: exp.title,
+            notes: exp.notes,
+            worth_it: exp.worthIt,
+            establishment: exp.establishment,
+            tags: exp.tags,
+            created_at: exp.timestamp
+          });
+        }
+      }
+
+      showUndoRedoToast(`Merged #${consolidateSource} into #${finalTarget}`);
+      setConsolidateSource("");
+      setConsolidateTarget("");
+      setConsolidateCustomTarget("");
+    } catch (e) {
+      console.error("Failed to consolidate tags:", e);
+      alert("Error merging tags. Please try again.");
+    } finally {
+      setIsConsolidating(false);
     }
   };
 
@@ -2560,6 +2782,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
+        {/* Insights Title Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px", padding: "0 4px" }}>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", margin: 0, letterSpacing: "-0.3px" }}>
+            📊 Insights
+          </h2>
+        </div>
+
         {/* Main Stats Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           {/* Card 1: Total Spend */}
@@ -2720,6 +2949,156 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               )}
             </div>
           )}
+        </div>
+
+        {/* Tag Consolidation Tool */}
+        <div style={{
+          backgroundColor: "white",
+          padding: "18px 16px",
+          borderRadius: "20px",
+          border: "1.5px solid #E5E7EB",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
+          marginBottom: "12px"
+        }}>
+          <h4 style={{
+            fontSize: "0.85rem",
+            fontWeight: 800,
+            color: "var(--color-purple)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            marginBottom: "6px"
+          }}>
+            🏷️ Merge Tags
+          </h4>
+          <p style={{
+            fontSize: "0.75rem",
+            color: "#6B7280",
+            lineHeight: "1.3",
+            marginBottom: "14px"
+          }}>
+            Consolidate spelling differences or rename a tag across all your trip transactions (e.g., merging <code style={{ backgroundColor: "#F3F4F6", padding: "1px 4px", borderRadius: "4px" }}>#activity</code> into <code style={{ backgroundColor: "#F3F4F6", padding: "1px 4px", borderRadius: "4px" }}>#activities</code>).
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {/* Source Tag Dropdown */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
+                Source Tag (Merge From)
+              </label>
+              <select
+                value={consolidateSource}
+                onChange={(e) => {
+                  setConsolidateSource(e.target.value);
+                  if (consolidateTarget === e.target.value) {
+                    setConsolidateTarget("");
+                  }
+                }}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                  backgroundColor: "#F9F6ED",
+                  fontSize: "0.85rem",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  cursor: "pointer"
+                }}
+              >
+                <option value="">-- Select a tag --</option>
+                {sortedTags.map(item => (
+                  <option key={item.tag} value={item.tag}>
+                    #{item.tag} ({tagExpenses[item.tag] ? tagExpenses[item.tag].length : 0} items)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Target Tag Dropdown */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
+                Target Tag (Merge Into)
+              </label>
+              <select
+                value={consolidateTarget}
+                onChange={(e) => setConsolidateTarget(e.target.value)}
+                disabled={!consolidateSource}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                  backgroundColor: !consolidateSource ? "#E5E7EB" : "#F9F6ED",
+                  fontSize: "0.85rem",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  cursor: !consolidateSource ? "not-allowed" : "pointer"
+                }}
+              >
+                <option value="">-- Select or create new --</option>
+                {sortedTags
+                  .filter(item => item.tag !== consolidateSource)
+                  .map(item => (
+                    <option key={item.tag} value={item.tag}>
+                      #{item.tag}
+                    </option>
+                  ))
+                }
+                {consolidateSource && (
+                  <option value="[custom]">(Create a new tag...)</option>
+                )}
+              </select>
+            </div>
+
+            {/* Custom Tag Name input */}
+            {consolidateTarget === "[custom]" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", animation: "fadeInUp 0.2s ease-out" }}>
+                <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase" }}>
+                  New Tag Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. activities (do not include #)"
+                  value={consolidateCustomTarget}
+                  onChange={(e) => setConsolidateCustomTarget(e.target.value)}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "12px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                    backgroundColor: "#F9F6ED",
+                    fontSize: "0.85rem",
+                    fontFamily: "inherit",
+                    outline: "none"
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Merge Action Button */}
+            <button
+              type="button"
+              onClick={handleConsolidateTags}
+              disabled={isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "12px",
+                backgroundColor: isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())
+                  ? "#9CA3AF"
+                  : "var(--color-purple)",
+                color: "white",
+                fontSize: "0.85rem",
+                fontWeight: 750,
+                border: "none",
+                cursor: isConsolidating || !consolidateSource || !consolidateTarget || (consolidateTarget === "[custom]" && !consolidateCustomTarget.trim())
+                  ? "not-allowed"
+                  : "pointer",
+                transition: "background-color 0.2s",
+                outline: "none",
+                marginTop: "4px"
+              }}
+            >
+              {isConsolidating ? "Merging tags..." : "Merge Tags"}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2890,22 +3269,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const todayStr = today.toLocaleDateString('en-CA');
 
     const getPlannerDays = () => {
-      const start = new Date(plannerStartDate + "T00:00:00");
-      start.setDate(start.getDate() - pastOffset);
-
-      const end = new Date(plannerStartDate + "T00:00:00");
-      end.setDate(end.getDate() + futureOffset);
-
-      const days = [];
-      const curr = new Date(start);
-      while (curr <= end) {
-        days.push({
-          date: new Date(curr),
-          dateStr: curr.toLocaleDateString('en-CA')
-        });
-        curr.setDate(curr.getDate() + 1);
-      }
-      return days;
+      return getPlannerDaysList(plannerStartDate, pastOffset, futureOffset);
     };
 
     const plannerDays = getPlannerDays();
@@ -4192,7 +4556,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 {!isEditingLocale ? (
                   <div 
                     onClick={() => {
-                      setLocaleSearchQuery(trip.currentLocation || "");
+                      const todayStr = new Date().toLocaleDateString('en-CA');
+                      const inheritedLoc = getResolvedDayLocation(todayStr);
+                      setLocaleSearchQuery(trip.currentLocation || inheritedLoc || "");
                       setIsEditingLocale(true);
                     }}
                     style={{
@@ -4204,7 +4570,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     }}
                     title="Tap to change locale"
                   >
-                    <span>📍 {trip.currentLocation || "Where are you today?"}</span>
+                    <span>📍 {trip.currentLocation || getResolvedDayLocation(new Date().toLocaleDateString('en-CA')) || "Where are you today?"}</span>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -4578,7 +4944,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         }}
                         title={showFuture ? "Hide future planned expenses" : "Show future planned expenses"}
                       >
-                        {showFuture ? "Hide Future" : "Show Future"}
+                        Future
                       </button>
                     )}
 
@@ -4919,6 +5285,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         homeCurrency={trip.homeCurrency}
                                         rates={rates}
                                         trip={trip}
+                                        onLongPress={handleLongPressDelete}
                                       />
                                     </div>
                                   );
@@ -5359,6 +5726,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                       homeCurrency={trip.homeCurrency}
                                                       rates={rates}
                                                       trip={trip}
+                                                      onLongPress={handleLongPressDelete}
                                                     />
                                                   ))}
                                                 </div>
@@ -5577,6 +5945,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     homeCurrency={trip.homeCurrency}
                     rates={rates}
                     trip={trip}
+                    onLongPress={handleLongPressDelete}
                   />
                 ));
               })()}
@@ -5831,7 +6200,46 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
           animation: goldGlowPulse 4s infinite ease-in-out !important;
         }
+
+        @keyframes toastFadeIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, 15px);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
       `}</style>
+
+      {toastVisible && toastText && (
+        <div style={{
+          position: "fixed",
+          bottom: "100px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "rgba(15, 23, 42, 0.85)",
+          color: "white",
+          padding: "10px 20px",
+          borderRadius: "30px",
+          fontSize: "0.85rem",
+          fontWeight: 700,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+          zIndex: 3000,
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          animation: "toastFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          whiteSpace: "nowrap"
+        }}>
+          <span>↩️</span>
+          <span>{toastText}</span>
+        </div>
+      )}
     </div>
   ) : (
     <div style={{ minHeight: "100vh", background: "#F9F6ED" }} />
@@ -5846,7 +6254,8 @@ function ExpenseCard({
   convertCurrency,
   homeCurrency,
   rates,
-  trip
+  trip,
+  onLongPress
 }) {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -5854,6 +6263,12 @@ function ExpenseCard({
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [listPhotoIndex, setListPhotoIndex] = useState(0);
+
+  const longPressHandlers = useMemo(() => {
+    return bindLongPress(() => {
+      if (onLongPress) onLongPress(expense);
+    });
+  }, [expense, onLongPress]);
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
   const worthIt = expense.worthIt;
@@ -5913,11 +6328,16 @@ function ExpenseCard({
         </div>
 
         <div
+          onMouseDown={longPressHandlers.onMouseDown}
+          onMouseUp={longPressHandlers.onMouseUp}
+          onMouseMove={longPressHandlers.onMouseMove}
           onTouchStart={(e) => {
             setStartX(e.touches[0].clientX);
             setIsDragging(true);
+            longPressHandlers.onTouchStart(e);
           }}
           onTouchMove={(e) => {
+            longPressHandlers.onTouchMove(e);
             if (!isDragging) return;
             const diffX = e.touches[0].clientX - startX;
             if (diffX < 0 && diffX > -75) {
@@ -5927,8 +6347,9 @@ function ExpenseCard({
               setIsSwipedOpen(false);
             }
           }}
-          onTouchEnd={() => {
+          onTouchEnd={(e) => {
             setIsDragging(false);
+            longPressHandlers.onTouchEnd(e);
             if (offsetX < -40) {
               setOffsetX(-70);
               setIsSwipedOpen(true);
@@ -5952,12 +6373,14 @@ function ExpenseCard({
             cursor: "pointer"
           }}
           onClick={(e) => {
-            if (isSwipedOpen) {
-              setOffsetX(0);
-              setIsSwipedOpen(false);
-            } else {
-              onEdit(expense);
-            }
+            longPressHandlers.clickHandler(e, () => {
+              if (isSwipedOpen) {
+                setOffsetX(0);
+                setIsSwipedOpen(false);
+              } else {
+                onEdit(expense);
+              }
+            });
           }}
         >
           <div style={{
@@ -6417,6 +6840,13 @@ function ManualEntryModal({
       all: Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a])
     };
   })();
+
+  const [modalTags, setModalTags] = useState(() => {
+    if (expenseToEdit && expenseToEdit.tags) {
+      return expenseToEdit.tags.filter(t => !t.startsWith("spread-"));
+    }
+    return [];
+  });
 
   const [amount, setAmount] = useState(() => {
     if (expenseToEdit && expenseToEdit.amount !== undefined && expenseToEdit.amount !== null) {
@@ -6900,6 +7330,9 @@ function ManualEntryModal({
 
       const targetSpread = (isGroup && editEntireGroup) || (!isGroup && expenseToEdit.tags?.some(t => t.startsWith("spread-group-")));
       setSpreadExpense(targetSpread);
+
+      const targetTags = expenseToEdit.tags ? expenseToEdit.tags.filter(t => !t.startsWith("spread-")) : [];
+      setModalTags(targetTags);
     }
   }, [expenseToEdit, trip.homeCurrency, isGroup, editEntireGroup, origAmount]);
 
@@ -7154,7 +7587,7 @@ function ManualEntryModal({
               ? expenseToEdit.tags.filter(t => t.startsWith("spread-") && !t.startsWith("spread-mode-") && !t.startsWith("spread-start-") && !t.startsWith("spread-end-") && !t.startsWith("spread-amount-")) 
               : [];
             
-            const finalTags = [...parsedTags, ...originalSpreadTags];
+            const finalTags = Array.from(new Set([...modalTags, ...parsedTags])).concat(originalSpreadTags);
 
             const cleanTitle = title.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
             const cleanNotes = extraNotes.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
@@ -8529,6 +8962,52 @@ function ManualEntryModal({
                 #
               </button>
             </div>
+
+            {/* Tag Pills */}
+            {modalTags && modalTags.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px", marginBottom: "2px" }}>
+                {modalTags.map(tag => (
+                  <span
+                    key={tag}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "4px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: "rgba(232, 107, 50, 0.08)",
+                      border: "1.5px solid rgba(232, 107, 50, 0.2)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "var(--color-orange)"
+                    }}
+                  >
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() => setModalTags(prev => prev.filter(t => t !== tag))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: "var(--color-orange)",
+                        fontSize: "0.85rem",
+                        fontWeight: "bold",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginLeft: "2px",
+                        lineHeight: 1,
+                        outline: "none"
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Quick-tap frequently used tags */}
             {tripHashtags.top5 && tripHashtags.top5.length > 0 && (
