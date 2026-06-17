@@ -420,6 +420,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [consolidateTarget, setConsolidateTarget] = useState("");
   const [consolidateCustomTarget, setConsolidateCustomTarget] = useState("");
   const [isConsolidating, setIsConsolidating] = useState(false);
+
+  // Insights date range filtering state
+  const [insightsStartDate, setInsightsStartDate] = useState(null);
+  const [insightsEndDate, setInsightsEndDate] = useState(null);
+  const [showInsightsCalendar, setShowInsightsCalendar] = useState(false);
+  const [insightsCalMonth, setInsightsCalMonth] = useState(new Date().getMonth());
+  const [insightsCalYear, setInsightsCalYear] = useState(new Date().getFullYear());
+  const [insightsCalendarTarget, setInsightsCalendarTarget] = useState("start"); // "start" | "end"
   const [showSearch, setShowSearch] = useState(false);
   const [editingItineraryDate, setEditingItineraryDate] = useState(null);
   const [itineraryInput, setItineraryInput] = useState("");
@@ -447,6 +455,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [plannerCalMonth, setPlannerCalMonth] = useState(() => new Date().getMonth());
   const [plannerCalYear, setPlannerCalYear] = useState(() => new Date().getFullYear());
   const plannerCalendarRef = useRef(null);
+  const insightsCalendarRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -456,6 +465,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         !event.target.closest('[data-planner-calendar-toggle="true"]')
       ) {
         setShowPlannerCalendar(false);
+      }
+      if (
+        insightsCalendarRef.current &&
+        !insightsCalendarRef.current.contains(event.target) &&
+        !event.target.closest('[data-insights-calendar-toggle="true"]')
+      ) {
+        setShowInsightsCalendar(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -2691,9 +2707,25 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       );
     }
 
-    // Calculations
+    // 1. Filter expenses based on selected date range
+    const filteredInsightsExpenses = expenses.filter((e) => {
+      // Filter out future expenses unless showFuture is active
+      const isFuture = new Date(e.timestamp) > now;
+      if (isFuture && !showFuture) return false;
+
+      const expDateStr = new Date(e.timestamp).toLocaleDateString('en-CA');
+      if (insightsStartDate && expDateStr < insightsStartDate) return false;
+      if (insightsEndDate && expDateStr > insightsEndDate) return false;
+      return true;
+    });
+
+    const filteredExpensesTotal = filteredInsightsExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
+    const filteredUniqueDatesCount = new Set(filteredInsightsExpenses.map(e => new Date(e.timestamp).toLocaleDateString('en-CA'))).size;
+    const filteredDaysActive = Math.max(1, filteredUniqueDatesCount);
+
+    // Calculations using filteredInsightsExpenses
     const categoryTotals = CATEGORIES.map((cat) => {
-      const catExpenses = visibleExpenses.filter((e) => e.category === cat);
+      const catExpenses = filteredInsightsExpenses.filter((e) => e.category === cat);
       const catTotal = catExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
       return { cat, total: catTotal };
     });
@@ -2701,7 +2733,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const topCategory = sortedCategories[0];
 
     const daySpends = {};
-    visibleExpenses.forEach((e) => {
+    filteredInsightsExpenses.forEach((e) => {
       const dStr = new Date(e.timestamp).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
       const amt = convertCurrency(e.amount, e.currency, trip.homeCurrency, rates);
       daySpends[dStr] = (daySpends[dStr] || 0) + amt;
@@ -2717,7 +2749,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
     const tagSpends = {};
     const tagExpenses = {};
-    visibleExpenses.forEach((e) => {
+    filteredInsightsExpenses.forEach((e) => {
       const amt = convertCurrency(e.amount, e.currency, trip.homeCurrency, rates);
       const cleanTags = e.tags ? e.tags.filter(t => !t.startsWith("spread-")) : [];
       cleanTags.forEach((tag) => {
@@ -2730,9 +2762,163 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       .map(([tag, spend]) => ({ tag, spend }))
       .sort((a, b) => b.spend - a.spend);
 
+    const worthItExpenses = filteredInsightsExpenses.filter((e) => e.worthIt);
+    
+    const changeInsightsMonth = (direction) => {
+      if (direction === -1) {
+        if (insightsCalMonth === 0) {
+          setInsightsCalMonth(11);
+          setInsightsCalYear(prev => prev - 1);
+        } else {
+          setInsightsCalMonth(prev => prev - 1);
+        }
+      } else {
+        if (insightsCalMonth === 11) {
+          setInsightsCalMonth(0);
+          setInsightsCalYear(prev => prev + 1);
+        } else {
+          setInsightsCalMonth(prev => prev + 1);
+        }
+      }
+    };
+
+    const renderInsightsCalendarGrid = () => {
+      const firstDay = new Date(insightsCalYear, insightsCalMonth, 1).getDay();
+      const totalDays = new Date(insightsCalYear, insightsCalMonth + 1, 0).getDate();
+      const prevMonthTotalDays = new Date(insightsCalYear, insightsCalMonth, 0).getDate();
+      const daysGrid = [];
+      
+      for (let i = firstDay - 1; i >= 0; i--) {
+        const d = new Date(insightsCalYear, insightsCalMonth - 1, prevMonthTotalDays - i);
+        daysGrid.push({
+          day: prevMonthTotalDays - i,
+          isCurrentMonth: false,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      
+      for (let i = 1; i <= totalDays; i++) {
+        const d = new Date(insightsCalYear, insightsCalMonth, i);
+        daysGrid.push({
+          day: i,
+          isCurrentMonth: true,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+      
+      const remaining = 42 - daysGrid.length;
+      for (let i = 1; i <= remaining; i++) {
+        const d = new Date(insightsCalYear, insightsCalMonth + 1, i);
+        daysGrid.push({
+          day: i,
+          isCurrentMonth: false,
+          dateStr: d.toLocaleDateString('en-CA')
+        });
+      }
+
+      const handleInsightsDayClick = (dayStr) => {
+        if (insightsCalendarTarget === "start") {
+          setInsightsStartDate(dayStr);
+          setInsightsEndDate(null);
+          setInsightsCalendarTarget("end");
+        } else {
+          if (dayStr >= insightsStartDate) {
+            setInsightsEndDate(dayStr);
+            setShowInsightsCalendar(false);
+            setInsightsCalendarTarget("start");
+          } else {
+            setInsightsStartDate(dayStr);
+            setInsightsEndDate(null);
+            setInsightsCalendarTarget("end");
+          }
+        }
+      };
+
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthLabel = `${months[insightsCalMonth]} ${insightsCalYear}`;
+
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+            <button
+              type="button"
+              onClick={() => changeInsightsMonth(-1)}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.95rem", padding: "4px", color: "var(--color-purple)", fontWeight: 700 }}
+            >
+              ◀
+            </button>
+            <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)" }}>{monthLabel}</span>
+            <button
+              type="button"
+              onClick={() => changeInsightsMonth(1)}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.95rem", padding: "4px", color: "var(--color-purple)", fontWeight: 700 }}
+            >
+              ▶
+            </button>
+          </div>
+
+          <div style={{ fontSize: "0.7rem", color: "#6B7280", textAlign: "center", marginBottom: "4px", fontWeight: 600 }}>
+            {insightsCalendarTarget === "start"
+              ? "Select start date"
+              : `Select end date (after ${new Date(insightsStartDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
+            }
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontSize: "0.7rem", fontWeight: 700, color: "#9CA3AF", marginBottom: "2px" }}>
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+            {daysGrid.map((dGrid, idx) => {
+              const isSelectedStart = dGrid.dateStr === insightsStartDate;
+              const isSelectedEnd = dGrid.dateStr === insightsEndDate;
+              const isSelected = isSelectedStart || isSelectedEnd;
+              const isInRange = insightsStartDate && insightsEndDate && dGrid.dateStr > insightsStartDate && dGrid.dateStr < insightsEndDate;
+              
+              return (
+                <button
+                  type="button"
+                  key={idx}
+                  onClick={() => handleInsightsDayClick(dGrid.dateStr)}
+                  disabled={!dGrid.isCurrentMonth}
+                  style={{
+                    aspectRatio: "1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "50%",
+                    border: "none",
+                    cursor: dGrid.isCurrentMonth ? "pointer" : "default",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    backgroundColor: isSelected
+                      ? "var(--color-purple)"
+                      : isInRange
+                        ? "rgba(133, 58, 81, 0.08)"
+                        : "transparent",
+                    color: isSelected
+                      ? "white"
+                      : dGrid.isCurrentMonth
+                        ? "var(--color-purple)"
+                        : "#D1D5DB",
+                    opacity: dGrid.isCurrentMonth ? 1 : 0.2
+                  }}
+                >
+                  {dGrid.day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    const dateFilterLabel = insightsStartDate && insightsEndDate
+      ? `${new Date(insightsStartDate + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' })} - ${new Date(insightsEndDate + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}`
+      : "All Time";
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
-        {/* Insights Title Header (Premium Glassmorphism + Outer Category Glow Shift) */}
         <div style={{
           position: "relative",
           display: "flex",
@@ -2774,7 +2960,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             }
           `}</style>
 
-          {/* Lightbulb Icon with modern glow background */}
           <div style={{
             display: "flex",
             alignItems: "center",
@@ -2813,27 +2998,100 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
-        {/* Main Stats Grid */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Date Filter</span>
+            {(insightsStartDate || insightsEndDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInsightsStartDate(null);
+                  setInsightsEndDate(null);
+                  setShowInsightsCalendar(false);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-orange)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: "2px 6px"
+                }}
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            data-insights-calendar-toggle="true"
+            onClick={() => setShowInsightsCalendar(!showInsightsCalendar)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              padding: "12px 16px",
+              backgroundColor: "white",
+              borderRadius: "16px",
+              border: "1.5px solid #E5E7EB",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              color: "#374151",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>📅</span>
+              <span>{dateFilterLabel}</span>
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>{showInsightsCalendar ? "▲" : "▼"}</span>
+          </button>
+
+          {showInsightsCalendar && (
+            <div
+              ref={insightsCalendarRef}
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: "8px",
+                backgroundColor: "white",
+                borderRadius: "20px",
+                border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08)",
+                padding: "16px",
+                zIndex: 10,
+                animation: "fadeInUp 0.15s ease-out"
+              }}
+            >
+              {renderInsightsCalendarGrid()}
+            </div>
+          )}
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          {/* Card 1: Total Spend */}
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
             <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Spend</span>
             <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", marginTop: "4px", marginBottom: "2px" }}>
-              {formatMoney(allExpensesTotal, trip.homeCurrency)}
+              {formatMoney(filteredExpensesTotal, trip.homeCurrency)}
             </h3>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {daysActive} days</span>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {filteredDaysActive} active days</span>
           </div>
 
-          {/* Card 2: Daily Average */}
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
             <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Daily Average</span>
             <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-orange)", marginTop: "4px", marginBottom: "2px" }}>
-              {formatMoney(allExpensesTotal / daysActive, trip.homeCurrency)}
+              {formatMoney(filteredExpensesTotal / filteredDaysActive, trip.homeCurrency)}
             </h3>
             <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>per day average</span>
           </div>
 
-          {/* Card 3: Top Category */}
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
             <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Top Category</span>
             <h4 style={{ fontSize: "1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -2851,7 +3109,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </span>
           </div>
 
-          {/* Card 4: Most Expensive Day */}
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
             <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Peak Day</span>
             <h4 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
@@ -2863,14 +3120,138 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
-        {/* Category Breakdown list */}
+        <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+          <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span>✨ Worth It Highlights</span>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF", textTransform: "none", fontWeight: 500 }}>({worthItExpenses.length} memories)</span>
+          </h4>
+
+          {worthItExpenses.length === 0 ? (
+            <p style={{ fontSize: "0.8rem", color: "#9CA3AF", textAlign: "center", padding: "12px 0", margin: 0 }}>
+              No 'Worth It' expenses found in this range. Flag expenses as 'Worth It' to build your memory board!
+            </p>
+          ) : (
+            <div style={{
+              display: "flex",
+              gap: "12px",
+              overflowX: "auto",
+              paddingBottom: "4px",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none"
+            }} className="no-scrollbar">
+              <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
+              {worthItExpenses.map((exp) => {
+                const photos = exp.photoUrls || (exp.photoUrl ? [exp.photoUrl] : []);
+                const hasPhoto = photos.length > 0;
+                
+                return (
+                  <div
+                    key={exp.id}
+                    onClick={() => {
+                      setEditingExpense(exp);
+                      setActiveModal("manual");
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      width: "160px",
+                      borderRadius: "14px",
+                      border: "1.5px solid rgba(245, 158, 11, 0.18)",
+                      backgroundColor: "#FFFDF2",
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.01)"
+                    }}
+                  >
+                    {hasPhoto ? (
+                      <div style={{ width: "100%", height: "100px", position: "relative", backgroundColor: "#F3F4F6" }}>
+                        <img
+                          src={photos[0]}
+                          alt={exp.title || exp.category}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                        {photos.length > 1 && (
+                          <div style={{
+                            position: "absolute",
+                            bottom: "6px",
+                            left: "6px",
+                            backgroundColor: "rgba(0,0,0,0.5)",
+                            color: "white",
+                            fontSize: "0.6rem",
+                            fontWeight: 700,
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            backdropFilter: "blur(2px)"
+                          }}>
+                            📷 {photos.length}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: "100%",
+                        height: "100px",
+                        backgroundColor: "rgba(245, 158, 11, 0.06)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "2.5rem"
+                      }}>
+                        {CATEGORY_EMOJIS[exp.category] || "💸"}
+                      </div>
+                    )}
+
+                    <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between", gap: "6px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 800,
+                          color: "#374151",
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          lineHeight: "1.2",
+                          minHeight: "1.8em"
+                        }}>
+                          {exp.title || exp.note || exp.category}
+                        </span>
+                        <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>
+                          {new Date(exp.timestamp).toLocaleDateString('en-CA')}
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 950, color: "var(--color-orange)" }}>
+                          {formatMoney(exp.amount, exp.currency)}
+                        </span>
+                        {exp.establishment && (
+                          <span style={{ fontSize: "0.6rem", color: "#6B7280", maxWidth: "60px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={exp.establishment}>
+                            📍 {exp.establishment.split(" | ")[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
           <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
             Category Breakdown
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {sortedCategories.map((item) => {
-              const pct = allExpensesTotal > 0 ? (item.total / allExpensesTotal) * 100 : 0;
+              const pct = filteredExpensesTotal > 0 ? (item.total / filteredExpensesTotal) * 100 : 0;
               const shortLabels = {
                 "Accommodation": "Stay",
                 "Transportation": "Transit",
@@ -2890,7 +3271,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       <span style={{ color: "#9CA3AF", fontWeight: 500 }}>({pct.toFixed(0)}%)</span>
                     </div>
                   </div>
-                  {/* Progress bar background */}
                   <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
                     <div style={{
                       height: "100%",
@@ -2906,7 +3286,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
-        {/* Tag Spend Breakdown */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)", marginBottom: "12px" }}>
           <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "14px" }}>
             Spend by Tags (#)
@@ -2918,7 +3297,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {sortedTags.slice(0, showAllTags ? sortedTags.length : 5).map((item) => {
-                const pct = allExpensesTotal > 0 ? (item.spend / allExpensesTotal) * 100 : 0;
+                const pct = filteredExpensesTotal > 0 ? (item.spend / filteredExpensesTotal) * 100 : 0;
                 return (
                   <div 
                     key={item.tag} 
@@ -2936,7 +3315,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         <span style={{ color: "#9CA3AF", fontWeight: 500 }}>({pct.toFixed(0)}%)</span>
                       </div>
                     </div>
-                    {/* Progress bar background */}
                     <div style={{ height: "8px", borderRadius: "4px", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
                       <div style={{
                         height: "100%",
@@ -2975,7 +3353,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           )}
         </div>
 
-        {/* Tag Consolidation Tool */}
         <div style={{
           backgroundColor: "white",
           padding: "18px 16px",
