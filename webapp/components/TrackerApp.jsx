@@ -2732,64 +2732,68 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
-        {/* Insights Title Header (Premium Glassmorphism) */}
+        {/* Insights Title Header (Premium Glassmorphism + Outer Category Glow Shift) */}
         <div style={{
           position: "relative",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
-          gap: "14px",
-          padding: "16px 20px",
+          textAlign: "center",
+          gap: "10px",
+          padding: "20px 24px",
           borderRadius: "24px",
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.4))",
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.45))",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          border: "1px solid rgba(255, 255, 255, 0.6)",
-          boxShadow: "0 8px 32px rgba(133, 58, 81, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
-          marginBottom: "4px",
-          overflow: "hidden"
+          border: "1.5px solid rgba(133, 58, 81, 0.15)",
+          animation: "categoryGlowShift 10s infinite ease-in-out",
+          marginBottom: "4px"
         }}>
-          {/* Subtle Ambient Glow inside the header */}
-          <div style={{
-            position: "absolute",
-            top: "-20px",
-            right: "-20px",
-            width: "80px",
-            height: "80px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0) 70%)",
-            pointerEvents: "none"
-          }} />
-          <div style={{
-            position: "absolute",
-            bottom: "-20px",
-            left: "-20px",
-            width: "80px",
-            height: "80px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(133, 58, 81, 0.1) 0%, rgba(133, 58, 81, 0) 70%)",
-            pointerEvents: "none"
-          }} />
+          <style>{`
+            @keyframes categoryGlowShift {
+              0% {
+                box-shadow: 0 0 16px rgba(133, 58, 81, 0.25), 0 8px 32px rgba(133, 58, 81, 0.03);
+                border-color: rgba(133, 58, 81, 0.2);
+              }
+              25% {
+                box-shadow: 0 0 16px rgba(245, 158, 11, 0.25), 0 8px 32px rgba(245, 158, 11, 0.03);
+                border-color: rgba(245, 158, 11, 0.2);
+              }
+              50% {
+                box-shadow: 0 0 16px rgba(59, 130, 246, 0.25), 0 8px 32px rgba(59, 130, 246, 0.03);
+                border-color: rgba(59, 130, 246, 0.2);
+              }
+              75% {
+                box-shadow: 0 0 16px rgba(16, 185, 129, 0.25), 0 8px 32px rgba(16, 185, 129, 0.03);
+                border-color: rgba(16, 185, 129, 0.2);
+              }
+              100% {
+                box-shadow: 0 0 16px rgba(133, 58, 81, 0.25), 0 8px 32px rgba(133, 58, 81, 0.03);
+                border-color: rgba(133, 58, 81, 0.2);
+              }
+            }
+          `}</style>
 
           {/* Lightbulb Icon with modern glow background */}
           <div style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "42px",
-            height: "42px",
-            borderRadius: "14px",
+            width: "44px",
+            height: "44px",
+            borderRadius: "16px",
             backgroundColor: "rgba(245, 158, 11, 0.12)",
             border: "1px solid rgba(245, 158, 11, 0.25)",
             boxShadow: "0 4px 12px rgba(245, 158, 11, 0.06)",
-            fontSize: "1.35rem",
+            fontSize: "1.4rem",
             flexShrink: 0
           }}>
             💡
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             <h2 style={{
-              fontSize: "1.3rem",
+              fontSize: "1.35rem",
               fontWeight: 900,
               color: "var(--color-purple)",
               margin: 0,
