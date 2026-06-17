@@ -8213,86 +8213,36 @@ function ManualEntryModal({
                 {(() => {
                   const start = new Date(spreadStart + "T00:00:00");
                   const end = new Date(spreadEnd + "T00:00:00");
-                  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
 
                   if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
                     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                    const val = parseFloat(evaluateMathExpression(amount.replace(/,/g, ''))) || 0;
-                    const splitDaily = val / days;
-                    const repeatDaily = val;
-
                     const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
                     const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
 
                     return (
                       <div style={{
                         display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                        padding: "6px",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "6px 8px",
                         backgroundColor: "rgba(232, 107, 50, 0.05)",
                         borderRadius: "12px",
                         border: "1.5px solid rgba(232, 107, 50, 0.15)",
                         marginBottom: "2px"
                       }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
-                            {formattedStart} – {formattedEnd}
-                          </span>
-                          <span style={{
-                            fontSize: "0.68rem",
-                            fontWeight: 750,
-                            backgroundColor: "rgba(232, 107, 50, 0.12)",
-                            color: "#C2410C",
-                            padding: "1px 5px",
-                            borderRadius: "20px"
-                          }}>
-                            {days} Days
-                          </span>
-                        </div>
-
-                        <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleSetSpreadMode("divide")}
-                            style={{
-                              flex: 1,
-                              padding: "3px 4px",
-                              borderRadius: "6px",
-                              border: "1px solid",
-                              fontSize: "0.68rem",
-                              fontWeight: 750,
-                              cursor: "pointer",
-                              backgroundColor: spreadMode === "divide" ? "var(--color-orange)" : "white",
-                              borderColor: spreadMode === "divide" ? "var(--color-orange)" : "#E5E7EB",
-                              color: spreadMode === "divide" ? "white" : "#4B5563",
-                              transition: "all 0.15s",
-                              outline: "none"
-                            }}
-                          >
-                            Split ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{splitDaily.toFixed(2)}/d)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSetSpreadMode("repeat")}
-                            style={{
-                              flex: 1,
-                              padding: "3px 4px",
-                              borderRadius: "6px",
-                              border: "1px solid",
-                              fontSize: "0.68rem",
-                              fontWeight: 750,
-                              cursor: "pointer",
-                              backgroundColor: spreadMode === "repeat" ? "var(--color-orange)" : "white",
-                              borderColor: spreadMode === "repeat" ? "var(--color-orange)" : "#E5E7EB",
-                              color: spreadMode === "repeat" ? "white" : "#4B5563",
-                              transition: "all 0.15s",
-                              outline: "none"
-                            }}
-                          >
-                            Repeat ({currencySymbol.length > 1 ? `${currencySymbol} ` : currencySymbol}{repeatDaily.toFixed(2)}/d)
-                          </button>
-                        </div>
+                        <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
+                          📅 {formattedStart} – {formattedEnd}
+                        </span>
+                        <span style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 750,
+                          backgroundColor: "rgba(232, 107, 50, 0.12)",
+                          color: "#C2410C",
+                          padding: "1px 6px",
+                          borderRadius: "20px"
+                        }}>
+                          {days} Days
+                        </span>
                       </div>
                     );
                   } else {
