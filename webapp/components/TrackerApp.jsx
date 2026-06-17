@@ -226,6 +226,31 @@ const formatMoney = (amount, currency) => {
   return symbol.length > 1 ? `${symbol} ${amount.toFixed(2)}` : `${symbol}${amount.toFixed(2)}`;
 };
 
+const formatMoneyAbbrev = (amount, currency) => {
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  const absVal = Math.abs(amount);
+  let formattedVal = "";
+  if (absVal >= 1000000) {
+    const abbreviated = (amount / 1000000).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+    formattedVal = `${abbreviated}M`;
+  } else if (absVal >= 1000) {
+    const abbreviated = (amount / 1000).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+    formattedVal = `${abbreviated}K`;
+  } else {
+    formattedVal = amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  return symbol.length > 1 ? `${symbol}${formattedVal}` : `${symbol}${formattedVal}`;
+};
+
 const convertCurrency = (amount, fromCurrency, toCurrency, rates) => {
   return (amount * (rates[fromCurrency] || 1)) / (rates[toCurrency] || 1);
 };
@@ -7363,15 +7388,15 @@ function ManualEntryModal({
                   
                   if (isSeriesActive) {
                     return (
-                      <span style={{ fontSize: "0.74rem", fontWeight: 750, color: "#6B7280" }}>
-                        ≈ {homeSymbol}{formatInputWithCommas(convertedHomeTotal.toFixed(2))} total ({homeSymbol}{formatInputWithCommas(convertedHomeDaily.toFixed(2))}/day)
+                      <span style={{ fontSize: "0.74rem", fontWeight: 500, color: "#6B7280" }}>
+                        ≈ {formatMoneyAbbrev(convertedHomeTotal, trip.homeCurrency)} total ({formatMoneyAbbrev(convertedHomeDaily, trip.homeCurrency)}/day)
                       </span>
                     );
                   }
                   
                   return (
-                    <span style={{ fontSize: "0.74rem", fontWeight: 750, color: "#6B7280" }}>
-                      ≈ {homeSymbol}{formatInputWithCommas(convertedHomeTotal.toFixed(2))}
+                    <span style={{ fontSize: "0.74rem", fontWeight: 500, color: "#6B7280" }}>
+                      ≈ {formatMoneyAbbrev(convertedHomeTotal, trip.homeCurrency)}
                     </span>
                   );
                 })()}
@@ -7561,12 +7586,12 @@ function ManualEntryModal({
                     </div>
                   </div>
 
-                  {/* Series Mode Orange Text Helper */}
+                  {/* Multi-Day Mode Orange Text Helper */}
                   {isSeriesActive && (
                     <div
                       style={{
                         fontSize: "0.72rem",
-                        fontWeight: 700,
+                        fontWeight: 600,
                         color: "var(--color-orange)",
                         backgroundColor: "rgba(232, 107, 50, 0.08)",
                         border: "1.5px solid rgba(232, 107, 50, 0.25)",
@@ -7599,15 +7624,25 @@ function ManualEntryModal({
                       <span>
                         {spreadMode === "divide" ? (
                           <>
-                            Series mode: Splitting <strong>{currencySymbol}{amount}</strong> across <strong>{days}</strong> days: <span style={{ textDecoration: "underline", fontWeight: 800 }}>{currencySymbol}{formatInputWithCommas((parseFloat(amount.replace(/,/g, '')) / days || 0).toFixed(2))} per day</span>
+                            Multi-day mode: Splitting {formatMoneyAbbrev(parseFloat(amount.replace(/,/g, '')) || 0, currency)} over {days} days → {formatMoneyAbbrev((parseFloat(amount.replace(/,/g, '')) / days || 0), currency)}/day
                           </>
                         ) : (
                           <>
-                            Series mode: Repeating <strong>{currencySymbol}{amount}</strong> across <strong>{days}</strong> days: <span style={{ textDecoration: "underline", fontWeight: 800 }}>{currencySymbol}{formatInputWithCommas((parseFloat(amount.replace(/,/g, '')) * days || 0).toFixed(2))} total</span>
+                            Multi-day mode: Repeating {formatMoneyAbbrev(parseFloat(amount.replace(/,/g, '')) || 0, currency)} over {days} days → {formatMoneyAbbrev((parseFloat(amount.replace(/,/g, '')) * days || 0), currency)} total
                           </>
                         )}
                       </span>
-                      <span style={{ fontSize: "0.62rem", textTransform: "uppercase", opacity: 0.8, backgroundColor: "var(--color-orange)", color: "white", padding: "1px 4px", borderRadius: "4px" }}>
+                      <span style={{ 
+                        fontSize: "0.62rem", 
+                        fontWeight: 750, 
+                        textTransform: "uppercase", 
+                        backgroundColor: "rgba(232, 107, 50, 0.12)", 
+                        color: "var(--color-orange)", 
+                        padding: "2px 6px", 
+                        borderRadius: "6px",
+                        letterSpacing: "0.5px",
+                        flexShrink: 0
+                      }}>
                         {spreadMode === "divide" ? "Split" : "Repeat"}
                       </span>
                     </div>
@@ -7947,13 +7982,14 @@ function ManualEntryModal({
           }}>
             {/* When? Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "18px" }}>
                 <label style={{
                   fontSize: "0.72rem",
                   fontWeight: 700,
                   color: "#4B5563",
                   textTransform: "uppercase",
-                  letterSpacing: "0.5px"
+                  letterSpacing: "0.5px",
+                  lineHeight: "1"
                 }}>When?</label>
                 <button
                   type="button"
@@ -7963,11 +7999,13 @@ function ManualEntryModal({
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    fontSize: "0.85rem",
-                    padding: "2px",
+                    fontSize: "0.8rem",
+                    padding: 0,
+                    margin: 0,
                     outline: "none",
                     display: "inline-flex",
-                    alignItems: "center"
+                    alignItems: "center",
+                    lineHeight: "1"
                   }}
                   title="Toggle calendar picker"
                 >
@@ -8066,7 +8104,7 @@ function ManualEntryModal({
                         padding: "2px",
                         outline: "none"
                       }}
-                      title="Exit Series Mode"
+                      title="Exit Multi-Day Mode"
                     >
                       ✕
                     </button>
@@ -8148,13 +8186,16 @@ function ManualEntryModal({
 
             {/* Worth It Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-              <label style={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                color: "#4B5563",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-              }}>Worth it?</label>
+              <div style={{ display: "flex", alignItems: "center", height: "18px" }}>
+                <label style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  color: "#4B5563",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  lineHeight: "1"
+                }}>Worth it?</label>
+              </div>
               <button
                 type="button"
                 onClick={() => {
