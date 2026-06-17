@@ -593,7 +593,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const executeUndoRedoAction = async (action, isUndo) => {
     if (!action) return null;
-    const { type, data, oldData, newData } = action;
+    const { type, data, oldData, newData, oldItinerary, newItinerary } = action;
     try {
       if (type === 'insert') {
         if (isUndo) {
@@ -764,13 +764,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       if (type === 'update_itinerary') {
         const targetItinerary = isUndo ? oldItinerary : newItinerary;
         setTrip(prev => ({ ...prev, itinerary: targetItinerary }));
-        if (!isDemo && tripId && supabase) {
-          try {
-            await supabase.from("trips").update({ itinerary: targetItinerary }).eq("id", tripId);
-          } catch (e) {
-            console.error("Failed to sync itinerary via undo/redo to cloud:", e);
-          }
-        }
+        performCloudAction("update_itinerary", { itinerary: targetItinerary });
         return { type: 'update_itinerary', oldItinerary: isUndo ? newItinerary : oldItinerary, newItinerary: targetItinerary, description: action.description };
       }
     } catch (e) {
