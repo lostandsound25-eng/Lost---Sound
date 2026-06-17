@@ -3206,8 +3206,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       </div>
                     )}
 
-                    <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between", gap: "6px" }}>
+                    <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between", gap: "4px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        {/* Title */}
                         <span style={{
                           fontSize: "0.75rem",
                           fontWeight: 800,
@@ -3218,24 +3219,37 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
                           lineHeight: "1.2",
-                          minHeight: "1.8em"
+                          minHeight: "2.4em"
                         }}>
                           {exp.title || exp.note || exp.category}
                         </span>
-                        <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>
-                          {new Date(exp.timestamp).toLocaleDateString('en-CA')}
-                        </span>
-                      </div>
-                      
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 950, color: "var(--color-orange)" }}>
-                          {formatMoney(exp.amount, exp.currency)}
-                        </span>
-                        {exp.establishment && (
-                          <span style={{ fontSize: "0.6rem", color: "#6B7280", maxWidth: "60px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={exp.establishment}>
+
+                        {/* Establishment on own line */}
+                        {exp.establishment ? (
+                          <span style={{
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            color: "var(--color-purple)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            marginTop: "2px"
+                          }} title={exp.establishment}>
                             📍 {exp.establishment.split(" | ")[0]}
                           </span>
+                        ) : (
+                          <span style={{ fontSize: "0.65rem", visibility: "hidden", marginTop: "2px" }}>📍 None</span>
                         )}
+                      </div>
+                      
+                      {/* Footer: Date & Home Currency Cost */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(245, 158, 11, 0.08)", paddingTop: "4px", marginTop: "2px" }}>
+                        <span style={{ fontSize: "0.58rem", color: "#9CA3AF", fontWeight: 500 }}>
+                          {new Date(exp.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 800, color: "var(--color-orange)" }}>
+                          {formatMoney(convertCurrency(exp.amount, exp.currency, trip.homeCurrency, rates), trip.homeCurrency)}
+                        </span>
                       </div>
                     </div>
                   </div>
