@@ -1259,6 +1259,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, [tripId, isDemo]);
 
+  const syncQueueRef = useRef(syncQueue);
+  useEffect(() => {
+    syncQueueRef.current = syncQueue;
+  }, [syncQueue]);
+
   useEffect(() => {
     if (!isDemo && tripId && isMounted) {
       safeSetLocalStorage(`sync_queue_${tripId}`, JSON.stringify(syncQueue));
@@ -1283,6 +1288,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             error = err;
           } else if (op.type === "delete") {
             const { error: err } = await supabase.from("trip_entries").delete().eq("id", op.payload.id);
+            error = err;
+          } else if (op.type === "update_itinerary") {
+            const { error: err } = await supabase.from("trips").update({ itinerary: op.payload.itinerary }).eq("id", tripId);
             error = err;
           }
           if (error) throw error;
@@ -1399,13 +1407,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           if (newRow) {
             setTrip((prev) => {
               if (!prev) return prev;
+              const hasUnsyncedItinerary = syncQueueRef.current?.some(q => q.type === "update_itinerary");
               return {
                 ...prev,
                 name: newRow.name || prev.name,
                 homeCurrency: newRow.home_currency || prev.homeCurrency || "USD",
                 localCurrency: newRow.local_currency || prev.localCurrency || "USD",
                 currentLocation: newRow.current_location !== undefined ? newRow.current_location : prev.currentLocation,
-                itinerary: newRow.itinerary || prev.itinerary || {}
+                itinerary: hasUnsyncedItinerary ? prev.itinerary : (newRow.itinerary || prev.itinerary || {})
               };
             });
           }
@@ -1439,6 +1448,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         error = err;
       } else if (type === "delete") {
         const { error: err } = await supabase.from("trip_entries").delete().eq("id", payload.id);
+        error = err;
+      } else if (type === "update_itinerary") {
+        const { error: err } = await supabase.from("trips").update({ itinerary: payload.itinerary }).eq("id", tripId);
         error = err;
       }
       if (error) throw error;
@@ -1711,13 +1723,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       description: "planned location"
     });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
-    if (!isDemo && tripId && supabase) {
-      try {
-        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
-      } catch (e) {
-        console.error("Failed to sync itinerary to cloud:", e);
-      }
-    }
+    performCloudAction("update_itinerary", { itinerary: updatedItinerary });
   };
 
   const updateItineraryNotes = async (dateKey, notesText) => {
@@ -1741,13 +1747,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       description: "planned notes"
     });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
-    if (!isDemo && tripId && supabase) {
-      try {
-        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
-      } catch (e) {
-        console.error("Failed to sync itinerary notes to cloud:", e);
-      }
-    }
+    performCloudAction("update_itinerary", { itinerary: updatedItinerary });
   };
 
   const updateItineraryLocationsBatch = async (updates) => {
@@ -1779,13 +1779,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       description: "fill planned location"
     });
     setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
-    if (!isDemo && tripId && supabase) {
-      try {
-        await supabase.from("trips").update({ itinerary: updatedItinerary }).eq("id", tripId);
-      } catch (e) {
-        console.error("Failed to sync itinerary batch to cloud:", e);
-      }
-    }
+    performCloudAction("update_itinerary", { itinerary: updatedItinerary });
   };
 
   const searchLocaleNominatim = async (query) => {
