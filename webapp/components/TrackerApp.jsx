@@ -1789,7 +1789,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           .single(),
         supabase
           .from("trip_entries")
-          .select("*")
+          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo")
           .eq("trip_id", tripId)
           .order("created_at", { ascending: false })
       ]);
@@ -1821,8 +1821,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         worthIt: e.worth_it,
         establishment: e.establishment || e.location || "",
         tags: e.tags || [],
-        photoUrl: e.photo_url || "",
-        photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
+        hasPhoto: e.has_photo || false,
+        photoUrl: "",
+        photoUrls: []
       }));
       const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
       setExpenses(merged);
@@ -2124,6 +2125,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             `spread-amount-${expense.amount}`
           ];
 
+          const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
           const singleExpense = {
             amount: amt,
             currency: expense.currency,
@@ -2135,6 +2137,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
+            hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
             photoUrls: expense.photoUrls || []
           };
@@ -2155,7 +2158,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
-              photo_urls: singleExpense.photoUrls || []
+              photo_urls: singleExpense.photoUrls || [],
+              has_photo: singleExpense.hasPhoto
             });
           }
         }
@@ -2217,6 +2221,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             `spread-amount-${expense.amount}`
           ];
 
+          const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
           const singleExpense = {
             amount: amt,
             currency: expense.currency,
@@ -2228,6 +2233,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
+            hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
             photoUrls: expense.photoUrls || []
           };
@@ -2248,7 +2254,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
-              photo_urls: singleExpense.photoUrls || []
+              photo_urls: singleExpense.photoUrls || [],
+              has_photo: singleExpense.hasPhoto
             });
           }
         }
@@ -2269,6 +2276,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const finalEst = expense.establishment || "";
         const ts = expense.timestamp || editingExpense?.timestamp || new Date().toISOString();
 
+        const updatedPhotoUrl = expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "");
+        const updatedPhotoUrls = expense.photoUrls !== undefined ? expense.photoUrls : (editingExpense?.photoUrls || []);
+        const updatedHasPhoto = (updatedPhotoUrl || (updatedPhotoUrls && updatedPhotoUrls.length > 0)) ? true : false;
+
         const updatedExpense = {
           ...expense,
           title: cleanTitle,
@@ -2276,8 +2287,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           tags: baseTags,
           establishment: finalEst,
           timestamp: ts,
-          photoUrl: expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || ""),
-          photoUrls: expense.photoUrls !== undefined ? expense.photoUrls : (editingExpense?.photoUrls || [])
+          hasPhoto: updatedHasPhoto,
+          photoUrl: updatedPhotoUrl,
+          photoUrls: updatedPhotoUrls
         };
 
         const oldExp = expenses.find(e => e.id === expense.id);
@@ -2300,7 +2312,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             created_at: expense.timestamp || editingExpense?.timestamp,
             updated_at: new Date().toISOString(),
             photo_url: updatedExpense.photoUrl || null,
-            photo_urls: updatedExpense.photoUrls || []
+            photo_urls: updatedExpense.photoUrls || [],
+            has_photo: updatedExpense.hasPhoto
           });
         }
       }
@@ -2349,6 +2362,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             `spread-amount-${expense.amount}`
           ];
 
+          const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
           const singleExpense = {
             amount: amt,
             currency: expense.currency,
@@ -2360,6 +2374,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: entryTags,
             id: newId,
             timestamp: timestamp,
+            hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
             photoUrls: expense.photoUrls || []
           };
@@ -2380,7 +2395,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               tags: singleExpense.tags,
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
-              photo_urls: singleExpense.photoUrls || []
+              photo_urls: singleExpense.photoUrls || [],
+              has_photo: singleExpense.hasPhoto
             });
           }
         }
@@ -2398,6 +2414,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const baseTitle = expense.title || expense.category;
         const cleanTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
         
+        const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
         const newExpense = {
           ...expense,
           title: cleanTitle,
@@ -2405,6 +2422,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           establishment: finalEst,
           id: newId,
           timestamp: tsForInsert,
+          hasPhoto: hasPhoto,
           photoUrl: expense.photoUrl || "",
           photoUrls: expense.photoUrls || []
         };
@@ -2425,7 +2443,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             tags: newExpense.tags,
             trip_id: tripId,
             photo_url: newExpense.photoUrl || null,
-            photo_urls: newExpense.photoUrls || []
+            photo_urls: newExpense.photoUrls || [],
+            has_photo: newExpense.hasPhoto
           });
         }
       }
@@ -7032,6 +7051,37 @@ function ExpenseCard({
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [listPhotoIndex, setListPhotoIndex] = useState(0);
+  const [fetchedPhotos, setFetchedPhotos] = useState(null);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  const handleOpenLightbox = async (e) => {
+    e.stopPropagation();
+    if (loadingPhotos) return;
+    if (fetchedPhotos) {
+      setShowLightbox(true);
+      return;
+    }
+    setLoadingPhotos(true);
+    try {
+      const { data, error } = await supabase
+        .from("trip_entries")
+        .select("photo_url, photo_urls")
+        .eq("id", expense.id)
+        .single();
+      if (!error && data) {
+        const urls = data.photo_urls || (data.photo_url ? [data.photo_url] : []);
+        setFetchedPhotos(urls);
+        setListPhotoIndex(0);
+        setShowLightbox(true);
+      } else {
+        throw error || new Error("No data returned");
+      }
+    } catch (err) {
+      console.error("Failed to load photos on demand:", err);
+    } finally {
+      setLoadingPhotos(false);
+    }
+  };
 
   const convertedAmount = convertCurrency(expense.amount, expense.currency, homeCurrency, rates);
   const worthIt = expense.worthIt;
@@ -7270,15 +7320,10 @@ function ExpenseCard({
               </div>
             )}
             {(() => {
-              const displayPhotoUrls = expense.photoUrls || (expense.photoUrl ? [expense.photoUrl] : []);
-              if (displayPhotoUrls.length === 0) return null;
+              if (!expense.hasPhoto) return null;
               return (
                 <div 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setListPhotoIndex(0);
-                    setShowLightbox(true);
-                  }}
+                  onClick={handleOpenLightbox}
                   style={{
                     position: "relative",
                     width: "36px",
@@ -7289,30 +7334,17 @@ function ExpenseCard({
                     marginTop: "6px",
                     cursor: "pointer",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
-                    backgroundColor: "#f3f4f6"
+                    backgroundColor: "#FFEBEB",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
                   }}
-                  title="Click to view receipt"
+                  title={loadingPhotos ? "Loading receipt..." : "Click to view receipt"}
                 >
-                  <img 
-                    src={displayPhotoUrls[0]} 
-                    alt="Receipt thumbnail" 
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                  />
-                  {displayPhotoUrls.length > 1 && (
-                    <div style={{
-                      position: "absolute",
-                      bottom: "1px",
-                      right: "1px",
-                      backgroundColor: "rgba(133, 58, 81, 0.95)",
-                      color: "white",
-                      fontSize: "0.58rem",
-                      fontWeight: 800,
-                      padding: "1px 3px",
-                      borderRadius: "4px",
-                      lineHeight: 1
-                    }}>
-                      +{displayPhotoUrls.length - 1}
-                    </div>
+                  {loadingPhotos ? (
+                    <div style={{ fontSize: "0.75rem", color: "var(--color-orange)", fontWeight: 800 }}>...</div>
+                  ) : (
+                    <span style={{ fontSize: "1.1rem" }}>📷</span>
                   )}
                 </div>
               );
@@ -7322,7 +7354,7 @@ function ExpenseCard({
       </div>
 
       {showLightbox && (() => {
-        const displayPhotoUrls = expense.photoUrls || (expense.photoUrl ? [expense.photoUrl] : []);
+        const displayPhotoUrls = fetchedPhotos || [];
         if (displayPhotoUrls.length === 0 || !displayPhotoUrls[listPhotoIndex]) return null;
         return (
           <div 
@@ -7649,6 +7681,26 @@ function ManualEntryModal({
     if (draft) return draft.photoUrls || (draft.photoUrl ? [draft.photoUrl] : []);
     return [];
   });
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  useEffect(() => {
+    if (expenseToEdit && expenseToEdit.hasPhoto) {
+      setLoadingPhotos(true);
+      supabase
+        .from("trip_entries")
+        .select("photo_url, photo_urls")
+        .eq("id", expenseToEdit.id)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const urls = data.photo_urls || (data.photo_url ? [data.photo_url] : []);
+            setPhotoUrls(urls);
+          }
+        })
+        .catch(err => console.error("Error fetching edit photos on demand:", err))
+        .finally(() => setLoadingPhotos(false));
+    }
+  }, [expenseToEdit]);
   const [category, setCategory] = useState(() => {
     if (expenseToEdit) return expenseToEdit.category || "Everything Else";
     const draft = getDraft();
@@ -8845,7 +8897,12 @@ function ManualEntryModal({
             {/* Horizontal series mode breakdown is displayed inline inside the amount box */}
 
             {/* Compressed photo preview */}
-            {photoUrls && photoUrls.length > 0 && (
+            {loadingPhotos && (
+              <div style={{ fontSize: "0.85rem", color: "#6B7280", fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", gap: "6px" }}>
+                ⏳ Loading receipt images...
+              </div>
+            )}
+            {photoUrls && photoUrls.length > 0 && !loadingPhotos && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
                 {photoUrls.map((url, index) => (
                   <div key={index} style={{
