@@ -8,14 +8,17 @@ export default function TrackerTripPage({ params }) {
   // Start with authorized=true if we have locally-cached trip data —
   // this renders the full app instantly on refresh instead of showing a spinner.
   // The auth check still runs in the background and will redirect if needed.
-  const [authorized, setAuthorized] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      return !!localStorage.getItem(`tracker_trip_${tripId}`);
-    } catch { return false; }
-  });
+  const [isMounted, setIsMounted] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem(`tracker_trip_${tripId}`)) {
+        setAuthorized(true);
+      }
+    } catch {}
+
     if (!supabase || !tripId) {
       setAuthorized(true); // No supabase config — allow through (demo/dev mode)
       return;
@@ -105,7 +108,7 @@ export default function TrackerTripPage({ params }) {
     }
   }, [tripId]);
 
-  if (!authorized) {
+  if (!isMounted || !authorized) {
     // Only show this on first-ever visit with no local cache
     return (
       <div style={{
