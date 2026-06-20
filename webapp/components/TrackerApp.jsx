@@ -47,6 +47,21 @@ const RedoIcon = ({ size = 14 }) => (
   </svg>
 );
 
+const parseCurrentLocation = (currentLocationVal) => {
+  if (!currentLocationVal) return { location: "", date: "" };
+  const parts = currentLocationVal.split("|");
+  if (parts.length > 1) {
+    const datePart = parts[parts.length - 1];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      return {
+        location: parts.slice(0, -1).join("|"),
+        date: datePart
+      };
+    }
+  }
+  return { location: currentLocationVal, date: "" };
+};
+
 const COUNTRY_CURRENCY_MAP = {
   "japan": "JPY", "japanese": "JPY",
   "vietnam": "VND", "vietnamese": "VND",
@@ -540,15 +555,28 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
 
+
+
+  const getTodayLocationOverride = () => {
+    if (!trip?.currentLocation) return "";
+    const parsed = parseCurrentLocation(trip.currentLocation);
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (parsed.date === todayStr) {
+      return parsed.location;
+    }
+    return "";
+  };
+
   const getResolvedDayLocation = (dateStr, expensesForDay) => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (dateStr === todayStr) {
+      const override = getTodayLocationOverride();
+      if (override) return override;
+    }
     if (trip.itinerary && trip.itinerary[dateStr] !== undefined && trip.itinerary[dateStr] !== "") {
       const item = trip.itinerary[dateStr];
       if (typeof item === "string") return item;
       return item.location || "";
-    }
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    if (dateStr === todayStr && trip.currentLocation) {
-      return trip.currentLocation;
     }
     const dayExps = expensesForDay || expenses.filter(e => {
       try {
@@ -1204,7 +1232,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   // Keep locationInput in sync when trip location is loaded/changed
   useEffect(() => {
     if (trip?.currentLocation !== undefined) {
-      setLocationInput(trip.currentLocation);
+      setLocationInput(parseCurrentLocation(trip.currentLocation).location);
     }
   }, [trip?.currentLocation]);
 
@@ -1655,11 +1683,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       safeSetLocalStorage(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
       safeSetLocalStorage(`tracker_expenses_${tripId}`, JSON.stringify(mappedExpenses));
       
-      // Auto-subscribe to mailer list on successful trip load
-      const { data: { session: currentSess } } = await supabase.auth.getSession();
-      if (currentSess?.user?.email) {
-        handleAutoSubscribe(currentSess.user.email);
-      }
+      // Auto-subscribe to mailer list on successful trip load (non-blocking)
+      supabase.auth.getSession().then(({ data: { session: currentSess } }) => {
+        if (currentSess?.user?.email) {
+          handleAutoSubscribe(currentSess.user.email);
+        }
+      }).catch(err => console.error("Session load error in background:", err));
     } catch (e) {
       console.error("Supabase sync failed, loading locally.", e);
       setSyncError("Cloud connection error. Working offline.");
@@ -1670,12 +1699,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const updateLocation = async (loc) => {
-    setTrip((prev) => ({ ...prev, currentLocation: loc }));
     const todayStr = new Date().toLocaleDateString('en-CA');
+    const locWithDate = loc ? `${loc}|${todayStr}` : "";
+    setTrip((prev) => ({ ...prev, currentLocation: locWithDate }));
     await updateItineraryLocation(todayStr, loc);
     if (!isDemo && tripId && supabase) {
       try {
-        await supabase.from("trips").update({ current_location: loc }).eq("id", tripId);
+        await supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId);
       } catch (e) {
         console.error("Failed to sync location to cloud:", e);
       }
@@ -2785,11 +2815,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       .map(([tag, spend]) => ({ tag, spend }))
       .sort((a, b) => b.spend - a.spend);
 
+    const seenGroups = new Set();
     const worthItExpenses = filteredInsightsExpenses.filter((e) => {
       if (!e.worthIt) return false;
       if (worthItShowPhotosOnly) {
         const photos = e.photoUrls || (e.photoUrl ? [e.photoUrl] : []);
-        return photos.length > 0;
+        if (photos.length === 0) return false;
+      }
+      const groupTag = e.tags?.find((t) => t.startsWith("spread-group-"));
+      if (groupTag) {
+        if (seenGroups.has(groupTag)) return false;
+        seenGroups.add(groupTag);
       }
       return true;
     });
@@ -3286,7 +3322,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 // Inherited day location resolution & cleanup
                 const dateKey = new Date(exp.timestamp).toLocaleDateString('en-CA');
                 const resolvedLoc = getResolvedDayLocation(dateKey);
-                const displayLoc = resolvedLoc ? resolvedLoc.replace(/^\s*\|\s*/, "").split(" | ")[0].trim() : "";
+                const rawEst = exp.establishment || exp.location || "";
+                const displayLoc = rawEst 
+                  ? rawEst.replace(/^\s*\|\s*/, "").split(" | ")[0].trim() 
+                  : (resolvedLoc ? resolvedLoc.replace(/^\s*\|\s*/, "").split(" | ")[0].trim() : "");
 
                 return (
                   <div
@@ -4121,23 +4160,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span style={{ fontSize: "0.85rem", opacity: 0.8 }} title="Destination">📍</span>
                     {editingItineraryCell?.date === dayObj.dateStr && editingItineraryCell?.field === "location" ? (
-                      <input
-                        type="text"
-                        value={itineraryInput}
-                        onChange={(e) => setItineraryInput(e.target.value)}
-                        onBlur={() => {
-                          updateItineraryLocation(dayObj.dateStr, itineraryInput);
+                      <ItineraryCellInput
+                        initialValue={itineraryInput}
+                        onSave={(val) => {
+                          updateItineraryLocation(dayObj.dateStr, val);
                           setEditingItineraryCell(null);
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            updateItineraryLocation(dayObj.dateStr, itineraryInput);
-                            setEditingItineraryCell(null);
-                          } else if (e.key === "Escape") {
-                            setEditingItineraryCell(null);
-                          }
-                        }}
-                        autoFocus
+                        onCancel={() => setEditingItineraryCell(null)}
                         style={{
                           flex: 1,
                           padding: "2px 6px",
@@ -4272,23 +4301,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span style={{ fontSize: "0.85rem", opacity: 0.8 }} title="Notes/Todo">📝</span>
                     {editingItineraryCell?.date === dayObj.dateStr && editingItineraryCell?.field === "notes" ? (
-                      <input
-                        type="text"
-                        value={itineraryInput}
-                        onChange={(e) => setItineraryInput(e.target.value)}
-                        onBlur={() => {
-                          updateItineraryNotes(dayObj.dateStr, itineraryInput);
+                      <ItineraryCellInput
+                        initialValue={itineraryInput}
+                        onSave={(val) => {
+                          updateItineraryNotes(dayObj.dateStr, val);
                           setEditingItineraryCell(null);
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            updateItineraryNotes(dayObj.dateStr, itineraryInput);
-                            setEditingItineraryCell(null);
-                          } else if (e.key === "Escape") {
-                            setEditingItineraryCell(null);
-                          }
-                        }}
-                        autoFocus
+                        onCancel={() => setEditingItineraryCell(null)}
                         style={{
                           flex: 1,
                           padding: "2px 6px",
@@ -5130,7 +5149,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     onClick={() => {
                       const todayStr = new Date().toLocaleDateString('en-CA');
                       const inheritedLoc = getResolvedDayLocation(todayStr);
-                      setLocaleSearchQuery(trip.currentLocation || inheritedLoc || "");
+                      setLocaleSearchQuery(parseCurrentLocation(trip.currentLocation).location || inheritedLoc || "");
                       setIsEditingLocale(true);
                     }}
                     style={{
@@ -5142,7 +5161,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     }}
                     title="Tap to change locale"
                   >
-                    <span>📍 {trip.currentLocation || getResolvedDayLocation(new Date().toLocaleDateString('en-CA')) || "Where are you today?"}</span>
+                    <span>📍 {getResolvedDayLocation(new Date().toLocaleDateString('en-CA')) || "Where are you today?"}</span>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -5207,7 +5226,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
               {/* Home Currency settings badge */}
               <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                <span style={{ fontWeight: 600 }}>Home:</span>
+                <span style={{ fontSize: "1.05rem", marginRight: "2px" }}>🏠</span>
                 {isHomeCurrencyLocked ? (
                   <span
                     onClick={() => setIsHomeCurrencyLocked(false)}
@@ -5717,23 +5736,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                     }}
                                   >
                                     {editingItineraryDate === todayStr ? (
-                                      <input
-                                        type="text"
-                                        value={itineraryInput}
-                                        onChange={(e) => setItineraryInput(e.target.value)}
-                                        onBlur={() => {
-                                          updateItineraryLocation(todayStr, itineraryInput);
+                                      <ItineraryCellInput
+                                        initialValue={itineraryInput}
+                                        onSave={(val) => {
+                                          updateItineraryLocation(todayStr, val);
                                           setEditingItineraryDate(null);
                                         }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            updateItineraryLocation(todayStr, itineraryInput);
-                                            setEditingItineraryDate(null);
-                                          } else if (e.key === "Escape") {
-                                            setEditingItineraryDate(null);
-                                          }
-                                        }}
-                                        autoFocus
+                                        onCancel={() => setEditingItineraryDate(null)}
                                         style={{
                                           fontSize: "0.8rem",
                                           fontWeight: 800,
@@ -5808,23 +5817,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                             }}
                                           >
                                             {editingItineraryDate === dateKey ? (
-                                              <input
-                                                type="text"
-                                                value={itineraryInput}
-                                                onChange={(e) => setItineraryInput(e.target.value)}
-                                                onBlur={() => {
-                                                  updateItineraryLocation(dateKey, itineraryInput);
+                                              <ItineraryCellInput
+                                                initialValue={itineraryInput}
+                                                onSave={(val) => {
+                                                  updateItineraryLocation(dateKey, val);
                                                   setEditingItineraryDate(null);
                                                 }}
-                                                onKeyDown={(e) => {
-                                                  if (e.key === "Enter") {
-                                                    updateItineraryLocation(dateKey, itineraryInput);
-                                                    setEditingItineraryDate(null);
-                                                  } else if (e.key === "Escape") {
-                                                    setEditingItineraryDate(null);
-                                                  }
-                                                }}
-                                                autoFocus
+                                                onCancel={() => setEditingItineraryDate(null)}
                                                 style={{
                                                   fontSize: "0.8rem",
                                                   fontWeight: 800,
@@ -5835,9 +5834,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   width: "85px",
                                                   background: "transparent",
                                                   padding: 0
-                                        }}
-                                      />
-                                    ) : (
+                                                }}
+                                              />
+                                            ) : (
                                       <span title="Click to edit destination">
                                         📍 {dayLocation || "Add destination"}
                                       </span>
@@ -5931,7 +5930,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                            })();
                            const rawLoc = exp.establishment || exp.location || "";
                            const highLevelLoc = isToday 
-                             ? (trip.currentLocation || "") 
+                             ? (parseCurrentLocation(trip.currentLocation).location || "") 
                              : (exp.locationLocale || (rawLoc ? (rawLoc.split(" | ")[0] || rawLoc) : ""));
                            if (highLevelLoc && !olderGroups[dateKey].locationsList.includes(highLevelLoc)) {
                              olderGroups[dateKey].locationsList.push(highLevelLoc);
@@ -6059,23 +6058,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                               }}
                                             >
                                               {editingItineraryDate === group.dateKey ? (
-                                                <input
-                                                  type="text"
-                                                  value={itineraryInput}
-                                                  onChange={(e) => setItineraryInput(e.target.value)}
-                                                  onBlur={() => {
-                                                    updateItineraryLocation(group.dateKey, itineraryInput);
+                                                <ItineraryCellInput
+                                                  initialValue={itineraryInput}
+                                                  onSave={(val) => {
+                                                    updateItineraryLocation(group.dateKey, val);
                                                     setEditingItineraryDate(null);
                                                   }}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                      updateItineraryLocation(group.dateKey, itineraryInput);
-                                                      setEditingItineraryDate(null);
-                                                    } else if (e.key === "Escape") {
-                                                      setEditingItineraryDate(null);
-                                                    }
-                                                  }}
-                                                  autoFocus
+                                                  onCancel={() => setEditingItineraryDate(null)}
                                                   style={{
                                                     fontSize: "0.7rem",
                                                     fontWeight: 700,
@@ -6160,23 +6149,13 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                           }}
                                         >
                                           {editingItineraryDate === group.dateKey ? (
-                                            <input
-                                              type="text"
-                                              value={itineraryInput}
-                                              onChange={(e) => setItineraryInput(e.target.value)}
-                                              onBlur={() => {
-                                                updateItineraryLocation(group.dateKey, itineraryInput);
+                                            <ItineraryCellInput
+                                              initialValue={itineraryInput}
+                                              onSave={(val) => {
+                                                updateItineraryLocation(group.dateKey, val);
                                                 setEditingItineraryDate(null);
                                               }}
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  updateItineraryLocation(group.dateKey, itineraryInput);
-                                                  setEditingItineraryDate(null);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingItineraryDate(null);
-                                                }
-                                              }}
-                                              autoFocus
+                                              onCancel={() => setEditingItineraryDate(null)}
                                               style={{
                                                 fontSize: "0.75rem",
                                                 fontWeight: 600,
@@ -6367,8 +6346,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         bottom: "30px",
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 100
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        gap: "16px"
       }}>
+        {undoStack.length > 0 && (
+          <button
+            onClick={handleUndo}
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              backgroundColor: "white",
+              color: "var(--color-purple)",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.15s ease"
+            }}
+            title="Undo"
+            onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+            onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            <UndoIcon size={18} />
+          </button>
+        )}
+
         <button
           onClick={() => {
             setEditingExpense(null);
@@ -6393,6 +6400,31 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         >
           <PlusIcon />
         </button>
+
+        {redoStack.length > 0 && (
+          <button
+            onClick={handleRedo}
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              backgroundColor: "white",
+              color: "var(--color-purple)",
+              border: "1.5px solid rgba(133, 58, 81, 0.15)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.15s ease"
+            }}
+            title="Redo"
+            onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+            onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            <RedoIcon size={18} />
+          </button>
+        )}
       </div>
 
       {/* Modals */}
@@ -6815,6 +6847,28 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   );
 }
 
+function ItineraryCellInput({ initialValue, onSave, onCancel, style }) {
+  const [val, setVal] = useState(initialValue || "");
+
+  return (
+    <input
+      type="text"
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => onSave(val)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          onSave(val);
+        } else if (e.key === "Escape") {
+          onCancel();
+        }
+      }}
+      autoFocus
+      style={style}
+    />
+  );
+}
+
 function ExpenseCard({
   expense,
   onEdit,
@@ -6839,7 +6893,10 @@ function ExpenseCard({
   const displayTitle = expense.title || expense.note || "";
   const spreadMatch = displayTitle ? displayTitle.match(/(.*)\s\(Day\s(\d+)\/(\d+),\s(.*)\)/) : null;
   const rawDisplayNote = displayTitle ? (spreadMatch ? spreadMatch[1].trim() : displayTitle) : (expense.category || "");
-  const displayNote = rawDisplayNote.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
+  let displayNote = rawDisplayNote.replace(/#[a-zA-Z0-9_-]+/g, "").replace(/\s+/g, " ").trim();
+  if (!displayNote) {
+    displayNote = expense.category || "Expense";
+  }
   const isRepeat = expense.tags?.includes("spread-mode-repeat");
   const spreadInfo = spreadMatch 
     ? `Day ${spreadMatch[2]}/${spreadMatch[3]}` 
@@ -6856,7 +6913,8 @@ function ExpenseCard({
         marginBottom: "12px",
         boxShadow: worthIt ? undefined : "0 4px 10px rgba(0,0,0,0.02)",
         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        overflow: "hidden"
+        overflow: "hidden",
+        flexShrink: 0
       }}
     >
       <div style={{ position: "relative" }}>
@@ -6992,7 +7050,7 @@ function ExpenseCard({
                 const dateKey = `${expDateObj.getFullYear()}-${String(expDateObj.getMonth() + 1).padStart(2, '0')}-${String(expDateObj.getDate()).padStart(2, '0')}`;
                 const itVal = trip?.itinerary?.[dateKey];
                 const itLoc = itVal ? (typeof itVal === 'string' ? itVal : itVal.location) : undefined;
-                const locale = (itLoc || trip?.currentLocation || "").trim();
+                const locale = (itLoc || parseCurrentLocation(trip?.currentLocation).location || "").trim();
                 
                 const cleanEst = dbEst.includes(" | ") ? dbEst.split(" | ")[0].trim() : dbEst.trim();
                 const cleanLoc = locale;

@@ -42,8 +42,14 @@ export default function TrackerTripPage({ params }) {
           .single();
 
         if (error || !data) {
-          alert('This trip does not exist or you do not have permission to view it.');
-          window.location.href = '/tracker';
+          const hasCache = typeof window !== 'undefined' && !!localStorage.getItem(`tracker_trip_${tripId}`);
+          if (hasCache) {
+            console.log("Working offline with cached data");
+            setAuthorized(true);
+          } else {
+            alert('This trip does not exist or you do not have permission to view it.');
+            window.location.href = '/tracker';
+          }
         } else {
           // Resolve any pending member invitation for this user
           if (session.user?.email) {
@@ -56,8 +62,9 @@ export default function TrackerTripPage({ params }) {
         }
       } catch (err) {
         console.error("Access check error:", err);
-        // Only redirect if we have no cached data to show
-        if (!localStorage.getItem(`tracker_trip_${tripId}`)) {
+        if (typeof window !== 'undefined' && localStorage.getItem(`tracker_trip_${tripId}`)) {
+          setAuthorized(true);
+        } else {
           window.location.href = '/tracker';
         }
       }
