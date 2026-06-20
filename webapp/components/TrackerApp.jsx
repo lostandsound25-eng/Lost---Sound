@@ -337,8 +337,36 @@ const convertCurrency = (amount, fromCurrency, toCurrency, rates) => {
 
 const safeSetLocalStorage = (key, value) => {
   if (typeof window === "undefined") return;
+
+  let valueToWrite = value;
+
+  // Strip massive base64 image strings from cached expenses to prevent exceeding the browser quota limit
+  if (key.startsWith("tracker_expenses_") && typeof value === "string") {
+    try {
+      const expenses = JSON.parse(value);
+      if (Array.isArray(expenses)) {
+        const optimized = expenses.map(e => {
+          const hasBase64Url = typeof e.photoUrl === "string" && e.photoUrl.startsWith("data:image/");
+          const hasBase64Urls = Array.isArray(e.photoUrls) && e.photoUrls.some(url => typeof url === "string" && url.startsWith("data:image/"));
+          
+          if (hasBase64Url || hasBase64Urls) {
+            return {
+              ...e,
+              photoUrl: hasBase64Url ? "" : e.photoUrl,
+              photoUrls: []
+            };
+          }
+          return e;
+        });
+        valueToWrite = JSON.stringify(optimized);
+      }
+    } catch (parseError) {
+      console.warn("Failed to optimize expenses for local cache:", parseError);
+    }
+  }
+
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(key, valueToWrite);
   } catch (e) {
     console.warn("localStorage write failed, attempting cleanup...", e);
     if (e.name === "QuotaExceededError" || e.code === 22) {
@@ -352,7 +380,7 @@ const safeSetLocalStorage = (key, value) => {
         }
         keysToRemove.forEach(k => localStorage.removeItem(k));
         console.log(`Cleaned up ${keysToRemove.length} cached keys to free up space.`);
-        localStorage.setItem(key, value);
+        localStorage.setItem(key, valueToWrite);
         console.log("Successfully wrote key after cleanup:", key);
       } catch (retryError) {
         console.error("localStorage write failed even after cleanup:", retryError);
