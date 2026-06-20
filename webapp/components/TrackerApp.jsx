@@ -62,6 +62,71 @@ const parseCurrentLocation = (currentLocationVal) => {
   return { location: currentLocationVal, date: "" };
 };
 
+const getMergedExpenses = (cloudExpenses, queue) => {
+  if (!queue || queue.length === 0) return cloudExpenses;
+  
+  const pendingInserts = [];
+  const pendingDeletes = new Set();
+  const pendingUpdates = new Map();
+
+  queue.forEach(op => {
+    if (op.type === "insert") {
+      pendingInserts.push(op.payload);
+    } else if (op.type === "delete") {
+      pendingDeletes.add(op.payload.id);
+    } else if (op.type === "update") {
+      pendingUpdates.set(op.payload.id, op.payload);
+    }
+  });
+
+  // 1. Start with cloud expenses, filter out pending deletes
+  let merged = (cloudExpenses || []).filter(e => !pendingDeletes.has(e.id));
+
+  // 2. Apply pending updates
+  merged = merged.map(e => {
+    const update = pendingUpdates.get(e.id);
+    if (update) {
+      return {
+        ...e,
+        amount: update.amount !== undefined ? parseFloat(update.amount) : e.amount,
+        currency: update.currency || e.currency,
+        category: update.category || e.category,
+        title: update.title || e.title,
+        notes: update.notes !== undefined ? update.notes : e.notes,
+        worthIt: update.worth_it !== undefined ? update.worth_it : e.worthIt,
+        establishment: update.establishment || e.establishment,
+        tags: update.tags || e.tags,
+        photoUrl: update.photo_url || e.photoUrl,
+        photoUrls: update.photo_urls || e.photoUrls
+      };
+    }
+    return e;
+  });
+
+  // 3. Add pending inserts
+  pendingInserts.forEach(ins => {
+    if (!merged.some(e => e.id === ins.id)) {
+      merged.push({
+        id: ins.id,
+        timestamp: ins.created_at || new Date().toISOString(),
+        amount: parseFloat(ins.amount),
+        currency: ins.currency,
+        category: ins.category,
+        title: ins.title || ins.note || "",
+        notes: ins.notes || "",
+        worthIt: ins.worth_it,
+        establishment: ins.establishment || ins.location || "",
+        tags: ins.tags || [],
+        photoUrl: ins.photo_url || "",
+        photoUrls: ins.photo_urls || (ins.photo_url ? [ins.photo_url] : [])
+      });
+    }
+  });
+
+  // 4. Sort chronologically (most recent first)
+  return merged.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+};
+
 const COUNTRY_CURRENCY_MAP = {
   "japan": "JPY", "japanese": "JPY",
   "vietnam": "VND", "vietnamese": "VND",
@@ -398,7 +463,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (!key) return [];
     try {
       const cached = localStorage.getItem(key);
-      return cached ? JSON.parse(cached) : [];
+      const parsedExpenses = cached ? JSON.parse(cached) : [];
+      if (isDemo) return parsedExpenses;
+      const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
+      const parsedQueue = savedQueue ? JSON.parse(savedQueue) : [];
+      return getMergedExpenses(parsedExpenses, parsedQueue);
     } catch { return []; }
   });
   const [trip, setTrip] = useState(() => {
@@ -1262,6 +1331,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   }, [tripId, isDemo]);
 
   const syncQueueRef = useRef(syncQueue);
+  const isSyncingRef = useRef(false);
+
   useEffect(() => {
     syncQueueRef.current = syncQueue;
   }, [syncQueue]);
@@ -1273,9 +1344,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   }, [syncQueue, tripId, isMounted, isDemo]);
 
   const processSyncQueue = async () => {
-    if (isDemo || syncQueue.length === 0 || !navigator.onLine || !supabase) return;
+    const queue = syncQueueRef.current || [];
+    if (isDemo || queue.length === 0 || !navigator.onLine || !supabase || isSyncingRef.current) return;
+
+    isSyncingRef.current = true;
     setIsSyncing(true);
-    const queue = [...syncQueue];
     let successCount = 0;
 
     try {
@@ -1283,7 +1356,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         try {
           let error = null;
           if (op.type === "insert") {
-            const { error: err } = await supabase.from("trip_entries").insert(op.payload);
+            const { error: err } = await supabase.from("trip_entries").upsert(op.payload);
             error = err;
           } else if (op.type === "update") {
             const { error: err } = await supabase.from("trip_entries").update(op.payload).eq("id", op.payload.id);
@@ -1303,12 +1376,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
       }
 
-      setSyncQueue((prev) => prev.slice(successCount));
-      if (successCount === queue.length) {
+      if (successCount > 0) {
+        setSyncQueue((prev) => prev.slice(successCount));
+      }
+      
+      const updatedQueue = (syncQueueRef.current || []).slice(successCount);
+      if (updatedQueue.length === 0) {
         setSyncError(null);
+      } else {
+        setSyncError("Sync pending. Action queued.");
       }
     } finally {
       setIsSyncing(false);
+      isSyncingRef.current = false;
     }
   };
 
@@ -1334,7 +1414,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
     };
-  }, [syncQueue]);
+  }, []);
 
   // Realtime replication subscription
   useEffect(() => {
@@ -1434,16 +1514,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const performCloudAction = async (type, payload) => {
     if (isDemo || !tripId || !supabase) return;
 
-    if (!navigator.onLine) {
+    const currentQueue = syncQueueRef.current || [];
+    if (currentQueue.length > 0 || !navigator.onLine) {
       setSyncQueue((prev) => [...prev, { type, payload, timestamp: Date.now() }]);
-      setSyncError("Working offline. Action queued.");
+      if (!navigator.onLine) {
+        setSyncError("Working offline. Action queued.");
+      } else {
+        setSyncError("Sync pending. Action queued.");
+        processSyncQueue();
+      }
       return;
     }
 
     try {
       let error = null;
       if (type === "insert") {
-        const { error: err } = await supabase.from("trip_entries").insert(payload);
+        const { error: err } = await supabase.from("trip_entries").upsert(payload);
         error = err;
       } else if (type === "update") {
         const { error: err } = await supabase.from("trip_entries").update(payload).eq("id", payload.id);
@@ -1678,10 +1764,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         photoUrl: e.photo_url || "",
         photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
       }));
-      setExpenses(mappedExpenses);
+      const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
+      setExpenses(merged);
 
       safeSetLocalStorage(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
-      safeSetLocalStorage(`tracker_expenses_${tripId}`, JSON.stringify(mappedExpenses));
+      safeSetLocalStorage(`tracker_expenses_${tripId}`, JSON.stringify(merged));
       
       // Auto-subscribe to mailer list on successful trip load (non-blocking)
       supabase.auth.getSession().then(({ data: { session: currentSess } }) => {
