@@ -340,7 +340,39 @@ const safeSetLocalStorage = (key, value) => {
   try {
     localStorage.setItem(key, value);
   } catch (e) {
-    console.warn("localStorage write failed for key:", key, e);
+    console.warn("localStorage write failed, attempting cleanup...", e);
+    if (e.name === "QuotaExceededError" || e.code === 22) {
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k !== key && (k.startsWith("tracker_expenses_") || k.startsWith("tracker_trip_"))) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        console.log(`Cleaned up ${keysToRemove.length} cached keys to free up space.`);
+        localStorage.setItem(key, value);
+        console.log("Successfully wrote key after cleanup:", key);
+      } catch (retryError) {
+        console.error("localStorage write failed even after cleanup:", retryError);
+        try {
+          console.group("LocalStorage Usage Diagnostics");
+          let total = 0;
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            const val = localStorage.getItem(k) || "";
+            const size = val.length * 2;
+            total += size;
+            console.log(`- ${k}: ${(size / 1024).toFixed(2)} KB`);
+          }
+          console.log(`Total LocalStorage Size: ${(total / 1024).toFixed(2)} KB`);
+          console.groupEnd();
+        } catch (diagError) {
+          console.error("Failed to run storage diagnostics:", diagError);
+        }
+      }
+    }
   }
 };
 
