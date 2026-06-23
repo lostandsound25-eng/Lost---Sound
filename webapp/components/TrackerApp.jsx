@@ -1405,30 +1405,44 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const processSyncQueue = async () => {
     const queue = syncQueueRef.current || [];
-    if (isDemo || queue.length === 0 || !navigator.onLine || !supabase || isSyncingRef.current) return;
+    console.log("[Sync] processSyncQueue called. Queue length:", queue.length);
+    if (isDemo || queue.length === 0 || !navigator.onLine || !supabase || isSyncingRef.current) {
+      console.log("[Sync] processSyncQueue returning early:", { isDemo, queueLength: queue.length, onLine: navigator.onLine, hasSupabase: !!supabase, isSyncingRef: isSyncingRef.current });
+      return;
+    }
 
     isSyncingRef.current = true;
     setIsSyncing(true);
     let successCount = 0;
 
+    console.log("[Sync] Start processing queue of", queue.length, "items");
     try {
       for (const op of queue) {
+        console.log("[Sync] Processing op:", op.type, op.payload?.id || op.payload);
         try {
           let error = null;
           if (op.type === "insert") {
+            console.log("[Sync] Upserting entry...");
             const { error: err } = await supabase.from("trip_entries").upsert(op.payload);
             error = err;
           } else if (op.type === "update") {
+            console.log("[Sync] Updating entry...");
             const { error: err } = await supabase.from("trip_entries").update(op.payload).eq("id", op.payload.id);
             error = err;
           } else if (op.type === "delete") {
+            console.log("[Sync] Deleting entry...");
             const { error: err } = await supabase.from("trip_entries").delete().eq("id", op.payload.id);
             error = err;
           } else if (op.type === "update_itinerary") {
+            console.log("[Sync] Updating itinerary...");
             const { error: err } = await supabase.from("trips").update({ itinerary: op.payload.itinerary }).eq("id", tripId);
             error = err;
           }
-          if (error) throw error;
+          if (error) {
+            console.error("[Sync] Supabase error:", error);
+            throw error;
+          }
+          console.log("[Sync] Op succeeded!");
           successCount++;
         } catch (err) {
           console.error("Queue execution error:", err);
@@ -1436,6 +1450,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         }
       }
 
+      console.log("[Sync] Queue processed. Success count:", successCount);
       if (successCount > 0) {
         setSyncQueue((prev) => prev.slice(successCount));
       }
@@ -1449,6 +1464,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     } finally {
       setIsSyncing(false);
       isSyncingRef.current = false;
+      console.log("[Sync] Finished processSyncQueue run");
     }
   };
 
