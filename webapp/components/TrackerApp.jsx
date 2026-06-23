@@ -97,7 +97,8 @@ const getMergedExpenses = (cloudExpenses, queue) => {
         establishment: update.establishment || e.establishment,
         tags: update.tags || e.tags,
         photoUrl: update.photo_url || e.photoUrl,
-        photoUrls: update.photo_urls || e.photoUrls
+        photoUrls: update.photo_urls || e.photoUrls,
+        photoUrlsFull: update.photo_urls_full || e.photoUrlsFull
       };
     }
     return e;
@@ -118,7 +119,8 @@ const getMergedExpenses = (cloudExpenses, queue) => {
         establishment: ins.establishment || ins.location || "",
         tags: ins.tags || [],
         photoUrl: ins.photo_url || "",
-        photoUrls: ins.photo_urls || (ins.photo_url ? [ins.photo_url] : [])
+        photoUrls: ins.photo_urls || (ins.photo_url ? [ins.photo_url] : []),
+        photoUrlsFull: ins.photo_urls_full || []
       });
     }
   });
@@ -512,6 +514,25 @@ const getPlannerDaysList = (startDateStr, pastOffset, futureOffset) => {
   }
   return days;
 };
+const base64ToBlob = (base64DataUrl) => {
+  const parts = base64DataUrl.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+  return new Blob([uInt8Array], { type: contentType });
+};
+
+const hasBase64Photos = (payload) => {
+  if (!payload) return false;
+  if (typeof payload.photo_url === "string" && payload.photo_url.startsWith("data:image/")) return true;
+  if (Array.isArray(payload.photo_urls) && payload.photo_urls.some(url => typeof url === "string" && url.startsWith("data:image/"))) return true;
+  if (Array.isArray(payload.photo_urls_full) && payload.photo_urls_full.some(url => typeof url === "string" && url.startsWith("data:image/"))) return true;
+  return false;
+};
 
 
 export default function TrackerApp({ tripId = null, isDemo = false }) {
@@ -754,14 +775,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: data.amount,
             currency: data.currency,
             category: data.category,
-            note: data.note,
+            title: data.title || data.note || "",
+            notes: data.notes || "",
             worth_it: data.worthIt,
-            location: data.location,
-            location_locale: data.locationLocale,
+            establishment: data.establishment || data.location || "",
             tags: data.tags,
             trip_id: tripId,
             photo_url: data.photoUrl || null,
-            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : [])
+            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : []),
+            photo_urls_full: data.photoUrlsFull || []
           });
           return { type: 'insert', data };
         }
@@ -776,14 +798,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: data.amount,
             currency: data.currency,
             category: data.category,
-            note: data.note,
+            title: data.title || data.note || "",
+            notes: data.notes || "",
             worth_it: data.worthIt,
-            location: data.location,
-            location_locale: data.locationLocale,
+            establishment: data.establishment || data.location || "",
             tags: data.tags,
             trip_id: tripId,
             photo_url: data.photoUrl || null,
-            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : [])
+            photo_urls: data.photoUrls || (data.photoUrl ? [data.photoUrl] : []),
+            photo_urls_full: data.photoUrlsFull || []
           });
           return { type: 'insert', data };
         } else {
@@ -802,14 +825,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           amount: target.amount,
           currency: target.currency,
           category: target.category,
-          note: target.note,
+          title: target.title || target.note || "",
+          notes: target.notes || "",
           worth_it: target.worthIt,
-          location: target.location,
-          location_locale: target.locationLocale,
+          establishment: target.establishment || target.location || "",
           tags: target.tags,
           created_at: target.timestamp,
           photo_url: target.photoUrl || null,
-          photo_urls: target.photoUrls || (target.photoUrl ? [target.photoUrl] : [])
+          photo_urls: target.photoUrls || (target.photoUrl ? [target.photoUrl] : []),
+          photo_urls_full: target.photoUrlsFull || []
         });
         return { type: 'update', oldData: reverseTarget, newData: target };
       }
@@ -831,14 +855,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: e.amount,
               currency: e.currency,
               category: e.category,
-              note: e.note,
+              title: e.title || e.note || "",
+              notes: e.notes || "",
               worth_it: e.worthIt,
-              location: e.location,
-              location_locale: e.locationLocale,
+              establishment: e.establishment || e.location || "",
               tags: e.tags,
               trip_id: tripId,
               photo_url: e.photoUrl || null,
-              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
+              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : []),
+              photo_urls_full: e.photoUrlsFull || []
             });
           });
           return { type: 'insert_bulk', data };
@@ -855,14 +880,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               amount: e.amount,
               currency: e.currency,
               category: e.category,
-              note: e.note,
+              title: e.title || e.note || "",
+              notes: e.notes || "",
               worth_it: e.worthIt,
-              location: e.location,
-              location_locale: e.locationLocale,
+              establishment: e.establishment || e.location || "",
               tags: e.tags,
               trip_id: tripId,
               photo_url: e.photoUrl || null,
-              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
+              photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : []),
+              photo_urls_full: e.photoUrlsFull || []
             });
           });
           return { type: 'insert_bulk', data };
@@ -894,14 +920,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             amount: e.amount,
             currency: e.currency,
             category: e.category,
-            note: e.note,
+            title: e.title || e.note || "",
+            notes: e.notes || "",
             worth_it: e.worthIt,
-            location: e.location,
-            location_locale: e.locationLocale,
+            establishment: e.establishment || e.location || "",
             tags: e.tags,
             trip_id: tripId,
             photo_url: e.photoUrl || null,
-            photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : [])
+            photo_urls: e.photoUrls || (e.photoUrl ? [e.photoUrl] : []),
+            photo_urls_full: e.photoUrlsFull || []
           });
         });
         return { type: 'update_bulk', oldData: isUndo ? newData : oldData, newData: isUndo ? oldData : newData };
@@ -1403,8 +1430,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, [syncQueue, tripId, isMounted, isDemo]);
 
-  const processSyncQueue = async () => {
-    const queue = syncQueueRef.current || [];
+  const processSyncQueue = async (customQueue = null) => {
+    const queue = customQueue || syncQueueRef.current || [];
     console.log("[Sync] processSyncQueue called. Queue length:", queue.length);
     if (isDemo || queue.length === 0 || !navigator.onLine || !supabase || isSyncingRef.current) {
       console.log("[Sync] processSyncQueue returning early:", { isDemo, queueLength: queue.length, onLine: navigator.onLine, hasSupabase: !!supabase, isSyncingRef: isSyncingRef.current });
@@ -1420,6 +1447,67 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       for (const op of queue) {
         console.log("[Sync] Processing op:", op.type, op.payload?.id || op.payload);
         try {
+          if (op.payload) {
+            const payloadCopy = { ...op.payload };
+            
+            // Upload thumbnails (photo_urls)
+            if (Array.isArray(payloadCopy.photo_urls) && payloadCopy.photo_urls.length > 0) {
+              const uploadedUrls = [];
+              for (let i = 0; i < payloadCopy.photo_urls.length; i++) {
+                const url = payloadCopy.photo_urls[i];
+                if (typeof url === "string" && url.startsWith("data:image/")) {
+                  try {
+                    const blob = base64ToBlob(url);
+                    const path = `${tripId}/${payloadCopy.id || 'unassigned'}_${i}_thumb.jpg`;
+                    const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+                    if (uploadErr) throw uploadErr;
+                    
+                    const { data: { publicUrl } } = supabase.storage.from("receipts").getPublicUrl(path);
+                    uploadedUrls.push(publicUrl);
+                    console.log("[Sync] Successfully uploaded thumbnail to storage:", publicUrl);
+                  } catch (e) {
+                    console.error("Failed to upload thumbnail to storage:", e);
+                    uploadedUrls.push(url);
+                  }
+                } else {
+                  uploadedUrls.push(url);
+                }
+              }
+              payloadCopy.photo_urls = uploadedUrls;
+              if (uploadedUrls.length > 0) {
+                payloadCopy.photo_url = uploadedUrls[0];
+              }
+            }
+
+            // Upload full-resolution images (photo_urls_full)
+            if (Array.isArray(payloadCopy.photo_urls_full) && payloadCopy.photo_urls_full.length > 0) {
+              const uploadedUrls = [];
+              for (let i = 0; i < payloadCopy.photo_urls_full.length; i++) {
+                const url = payloadCopy.photo_urls_full[i];
+                if (typeof url === "string" && url.startsWith("data:image/")) {
+                  try {
+                    const blob = base64ToBlob(url);
+                    const path = `${tripId}/${payloadCopy.id || 'unassigned'}_${i}_full.jpg`;
+                    const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+                    if (uploadErr) throw uploadErr;
+                    
+                    const { data: { publicUrl } } = supabase.storage.from("receipts").getPublicUrl(path);
+                    uploadedUrls.push(publicUrl);
+                    console.log("[Sync] Successfully uploaded full-res photo to storage:", publicUrl);
+                  } catch (e) {
+                    console.error("Failed to upload full-res photo to storage:", e);
+                    uploadedUrls.push(url);
+                  }
+                } else {
+                  uploadedUrls.push(url);
+                }
+              }
+              payloadCopy.photo_urls_full = uploadedUrls;
+            }
+
+            op.payload = payloadCopy;
+          }
+
           let error = null;
           if (op.type === "insert") {
             console.log("[Sync] Upserting entry...");
@@ -1465,6 +1553,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       setIsSyncing(false);
       isSyncingRef.current = false;
       console.log("[Sync] Finished processSyncQueue run");
+      setTimeout(() => {
+        if (syncQueueRef.current && syncQueueRef.current.length > 0 && !isSyncingRef.current && navigator.onLine) {
+          console.log("[Sync] More items found in queue after run, triggering processSyncQueue");
+          processSyncQueue();
+        }
+      }, 0);
     }
   };
 
@@ -1521,7 +1615,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || "",
-              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
+              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
+              photoUrlsFull: newRow.photo_urls_full || []
             };
             setExpenses((prev) => {
               if (prev.some(e => e.id === mapped.id)) return prev;
@@ -1540,7 +1635,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               photoUrl: newRow.photo_url || "",
-              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : [])
+              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
+              photoUrlsFull: newRow.photo_urls_full || []
             };
             setExpenses((prev) => prev.map(e => e.id === mapped.id ? mapped : e));
           } else if (eventType === "DELETE") {
@@ -1591,13 +1687,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (isDemo || !tripId || !supabase) return;
 
     const currentQueue = syncQueueRef.current || [];
-    if (currentQueue.length > 0 || !navigator.onLine) {
-      setSyncQueue((prev) => [...prev, { type, payload, timestamp: Date.now() }]);
+    const hasBase64 = hasBase64Photos(payload);
+
+    if (currentQueue.length > 0 || !navigator.onLine || hasBase64) {
+      const newItem = { type, payload, timestamp: Date.now() };
+      const nextQueue = [...currentQueue, newItem];
+      setSyncQueue(nextQueue);
       if (!navigator.onLine) {
         setSyncError("Working offline. Action queued.");
       } else {
         setSyncError("Sync pending. Action queued.");
-        processSyncQueue();
+        processSyncQueue(nextQueue);
       }
       return;
     }
@@ -1620,8 +1720,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       if (error) throw error;
     } catch (err) {
       console.error("Cloud action failed, queuing:", err);
-      setSyncQueue((prev) => [...prev, { type, payload, timestamp: Date.now() }]);
+      const newItem = { type, payload, timestamp: Date.now() };
+      const nextQueue = [...currentQueue, newItem];
+      setSyncQueue(nextQueue);
       setSyncError("Sync pending. Action queued.");
+      processSyncQueue(nextQueue);
     }
   };
 
@@ -1666,7 +1769,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           tags: e.tags,
           created_at: e.timestamp,
           photo_url: e.photoUrl || null,
-          photo_urls: e.photoUrls || []
+          photo_urls: e.photoUrls || [],
+          photo_urls_full: e.photoUrlsFull || []
         }));
         const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
         if (expErr) throw expErr;
@@ -1805,7 +1909,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           .single(),
         supabase
           .from("trip_entries")
-          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls")
+          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls, photo_urls_full")
           .eq("trip_id", tripId)
           .order("created_at", { ascending: false })
       ]);
@@ -1839,7 +1943,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         tags: e.tags || [],
         hasPhoto: e.has_photo || false,
         photoUrl: e.photo_url || "",
-        photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
+        photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : []),
+        photoUrlsFull: e.photo_urls_full || []
       }));
       const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
       setExpenses(merged);
@@ -2399,7 +2504,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             timestamp: timestamp,
             hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
-            photoUrls: expense.photoUrls || []
+            photoUrls: expense.photoUrls || [],
+            photoUrlsFull: expense.photoUrlsFull || []
           };
 
           newExpenses.push(singleExpense);
@@ -2419,6 +2525,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
               photo_urls: singleExpense.photoUrls || [],
+              photo_urls_full: singleExpense.photoUrlsFull || [],
               has_photo: singleExpense.hasPhoto
             });
           }
