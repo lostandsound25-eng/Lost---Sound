@@ -1414,27 +1414,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     try {
       for (const op of queue) {
         try {
-          if (op.payload) {
-            const sanitizedPayload = { ...op.payload };
-            if (sanitizedPayload.location !== undefined && sanitizedPayload.establishment === undefined) {
-              sanitizedPayload.establishment = sanitizedPayload.location;
-            }
-            delete sanitizedPayload.location;
-            delete sanitizedPayload.location_locale;
-            
-            if (sanitizedPayload.note !== undefined) {
-              if (!sanitizedPayload.title) {
-                sanitizedPayload.title = sanitizedPayload.note.split("\n\n")[0].trim();
-              }
-              if (!sanitizedPayload.notes) {
-                const parts = sanitizedPayload.note.split("\n\n");
-                sanitizedPayload.notes = parts.length > 1 ? parts.slice(1).join("\n\n").trim() : "";
-              }
-              delete sanitizedPayload.note;
-            }
-            op.payload = sanitizedPayload;
-          }
-
           let error = null;
           if (op.type === "insert") {
             const { error: err } = await supabase.from("trip_entries").upsert(op.payload);
