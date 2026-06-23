@@ -1789,7 +1789,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           .single(),
         supabase
           .from("trip_entries")
-          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo")
+          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls")
           .eq("trip_id", tripId)
           .order("created_at", { ascending: false })
       ]);
@@ -1822,8 +1822,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         establishment: e.establishment || e.location || "",
         tags: e.tags || [],
         hasPhoto: e.has_photo || false,
-        photoUrl: "",
-        photoUrls: []
+        photoUrl: e.photo_url || "",
+        photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : [])
       }));
       const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
       setExpenses(merged);
@@ -2139,7 +2139,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             timestamp: timestamp,
             hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
-            photoUrls: expense.photoUrls || []
+            photoUrls: expense.photoUrls || [],
+            photoUrlsFull: expense.photoUrlsFull || []
           };
 
           newExpenses.push(singleExpense);
@@ -2159,6 +2160,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
               photo_urls: singleExpense.photoUrls || [],
+              photo_urls_full: singleExpense.photoUrlsFull || [],
               has_photo: singleExpense.hasPhoto
             });
           }
@@ -2235,7 +2237,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             timestamp: timestamp,
             hasPhoto: hasPhoto,
             photoUrl: expense.photoUrl || "",
-            photoUrls: expense.photoUrls || []
+            photoUrls: expense.photoUrls || [],
+            photoUrlsFull: expense.photoUrlsFull || []
           };
 
           newExpenses.push(singleExpense);
@@ -2255,6 +2258,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               trip_id: tripId,
               photo_url: singleExpense.photoUrl || null,
               photo_urls: singleExpense.photoUrls || [],
+              photo_urls_full: singleExpense.photoUrlsFull || [],
               has_photo: singleExpense.hasPhoto
             });
           }
@@ -2278,6 +2282,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
         const updatedPhotoUrl = expense.photoUrl !== undefined ? expense.photoUrl : (editingExpense?.photoUrl || "");
         const updatedPhotoUrls = expense.photoUrls !== undefined ? expense.photoUrls : (editingExpense?.photoUrls || []);
+        const updatedPhotoUrlsFull = expense.photoUrlsFull !== undefined ? expense.photoUrlsFull : (editingExpense?.photoUrlsFull || []);
         const updatedHasPhoto = (updatedPhotoUrl || (updatedPhotoUrls && updatedPhotoUrls.length > 0)) ? true : false;
 
         const updatedExpense = {
@@ -2289,7 +2294,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           timestamp: ts,
           hasPhoto: updatedHasPhoto,
           photoUrl: updatedPhotoUrl,
-          photoUrls: updatedPhotoUrls
+          photoUrls: updatedPhotoUrls,
+          photoUrlsFull: updatedPhotoUrlsFull
         };
 
         const oldExp = expenses.find(e => e.id === expense.id);
@@ -2313,6 +2319,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             updated_at: new Date().toISOString(),
             photo_url: updatedExpense.photoUrl || null,
             photo_urls: updatedExpense.photoUrls || [],
+            photo_urls_full: updatedExpense.photoUrlsFull || [],
             has_photo: updatedExpense.hasPhoto
           });
         }
@@ -2424,7 +2431,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           timestamp: tsForInsert,
           hasPhoto: hasPhoto,
           photoUrl: expense.photoUrl || "",
-          photoUrls: expense.photoUrls || []
+          photoUrls: expense.photoUrls || [],
+          photoUrlsFull: expense.photoUrlsFull || []
         };
         pushToUndo({ type: 'insert', data: newExpense, description: "add expense" });
         setExpenses((prev) => [newExpense, ...prev]);
@@ -2444,6 +2452,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             trip_id: tripId,
             photo_url: newExpense.photoUrl || null,
             photo_urls: newExpense.photoUrls || [],
+            photo_urls_full: newExpense.photoUrlsFull || [],
             has_photo: newExpense.hasPhoto
           });
         }
@@ -5067,48 +5076,37 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         👥
                       </button>
 
-                      {/* Sync Status Badge */}
+                      {/* Sync Status Light */}
                       {(() => {
                         let statusText = "Synced";
-                        let statusEmoji = "●";
-                        let badgeColor = "#10B981";
-                        let badgeBg = "#ECFDF5";
-                        let glow = "0 0 4px rgba(16, 185, 129, 0.25)";
+                        let lightColor = "#10B981"; // Emerald green
+                        let glow = "0 0 8px rgba(16, 185, 129, 0.6)";
                         
                         if (!isOnline) {
-                          statusText = "Offline";
-                          statusEmoji = "✈️";
-                          badgeColor = "#D97706";
-                          badgeBg = "#FEF3C7";
-                          glow = "0 0 4px rgba(217, 119, 6, 0.25)";
+                          statusText = "Offline / Queuing Updates";
+                          lightColor = "#EF4444"; // Red
+                          glow = "0 0 8px rgba(239, 68, 68, 0.6)";
                         } else if (isSyncing || syncQueue.length > 0) {
-                          statusText = "Syncing...";
-                          statusEmoji = "🔄";
-                          badgeColor = "#2563EB";
-                          badgeBg = "#EFF6FF";
-                          glow = "0 0 4px rgba(37, 99, 235, 0.25)";
+                          statusText = "Syncing / Processing Queue...";
+                          lightColor = "#F59E0B"; // Amber/Yellow
+                          glow = "0 0 8px rgba(245, 158, 11, 0.6)";
                         }
                         
                         return (
-                          <span 
+                          <div 
                             title={statusText}
                             style={{
-                              fontSize: "0.8rem",
-                              color: badgeColor,
-                              backgroundColor: badgeBg,
-                              width: "22px",
-                              height: "22px",
+                              width: "10px",
+                              height: "10px",
                               borderRadius: "50%",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
+                              backgroundColor: lightColor,
                               boxShadow: glow,
                               transition: "all 0.3s ease",
-                              cursor: "pointer"
+                              display: "inline-block",
+                              alignSelf: "center",
+                              marginLeft: "4px"
                             }}
-                          >
-                            {statusEmoji === "🟢" || statusEmoji === "●" ? "●" : statusEmoji}
-                          </span>
+                          />
                         );
                       })()}
                     </div>
@@ -7065,11 +7063,12 @@ function ExpenseCard({
     try {
       const { data, error } = await supabase
         .from("trip_entries")
-        .select("photo_url, photo_urls")
+        .select("photo_url, photo_urls, photo_urls_full")
         .eq("id", expense.id)
         .single();
       if (!error && data) {
-        const urls = data.photo_urls || (data.photo_url ? [data.photo_url] : []);
+        const fullUrls = data.photo_urls_full || [];
+        const urls = fullUrls.length > 0 ? fullUrls : (data.photo_urls || (data.photo_url ? [data.photo_url] : []));
         setFetchedPhotos(urls);
         setListPhotoIndex(0);
         setShowLightbox(true);
@@ -7618,17 +7617,19 @@ function ManualEntryModal({
     
     const uniqueTags = Object.keys(tagCounts);
     uniqueTags.sort((a, b) => {
+      if (tagCounts[b] !== tagCounts[a]) {
+        return tagCounts[b] - tagCounts[a];
+      }
       const timeA = tagLastUsed[a] || "";
       const timeB = tagLastUsed[b] || "";
       return timeB.localeCompare(timeA);
     });
     
-    const top5Recent = uniqueTags.slice(0, 5);
-    top5Recent.sort((a, b) => tagCounts[b] - tagCounts[a]);
+    const top5Frequent = uniqueTags.slice(0, 5);
     
     return {
-      top5: top5Recent,
-      all: Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a])
+      top5: top5Frequent,
+      all: uniqueTags
     };
   })();
 
@@ -7681,6 +7682,12 @@ function ManualEntryModal({
     if (draft) return draft.photoUrls || (draft.photoUrl ? [draft.photoUrl] : []);
     return [];
   });
+  const [photoUrlsFull, setPhotoUrlsFull] = useState(() => {
+    if (expenseToEdit) return expenseToEdit.photoUrlsFull || expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []);
+    const draft = getDraft();
+    if (draft) return draft.photoUrlsFull || draft.photoUrls || (draft.photoUrl ? [draft.photoUrl] : []);
+    return [];
+  });
   const [loadingPhotos, setLoadingPhotos] = useState(false);
 
   useEffect(() => {
@@ -7688,13 +7695,15 @@ function ManualEntryModal({
       setLoadingPhotos(true);
       supabase
         .from("trip_entries")
-        .select("photo_url, photo_urls")
+        .select("photo_url, photo_urls, photo_urls_full")
         .eq("id", expenseToEdit.id)
         .single()
         .then(({ data, error }) => {
           if (!error && data) {
             const urls = data.photo_urls || (data.photo_url ? [data.photo_url] : []);
+            const fullUrls = data.photo_urls_full || [];
             setPhotoUrls(urls);
+            setPhotoUrlsFull(fullUrls.length > 0 ? fullUrls : urls);
           }
         })
         .catch(err => console.error("Error fetching edit photos on demand:", err))
@@ -8128,6 +8137,7 @@ function ManualEntryModal({
         : (expenseToEdit.location ? (expenseToEdit.location.split(" | ")[0] || "") : "");
       setEstablishment(baseEst);
       setPhotoUrls(expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []));
+      setPhotoUrlsFull(expenseToEdit.photoUrlsFull || expenseToEdit.photoUrls || (expenseToEdit.photoUrl ? [expenseToEdit.photoUrl] : []));
 
       let initialDateStr = new Date().toLocaleDateString('en-CA');
       if (expenseToEdit.timestamp) {
@@ -8150,10 +8160,10 @@ function ManualEntryModal({
   // Auto-save draft as the user types (only for new expenses)
   useEffect(() => {
     if (!expenseToEdit) {
-      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrls };
+      const draftObj = { amount, title, extraNotes, category, worthIt, currency, location: establishment, photoUrls, photoUrlsFull };
       safeSetLocalStorage("tracker_expense_draft", JSON.stringify(draftObj));
     }
-  }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrls, expenseToEdit]);
+  }, [amount, title, extraNotes, category, worthIt, currency, establishment, photoUrls, photoUrlsFull, expenseToEdit]);
 
   const handleCloseWithX = () => {
     localStorage.removeItem("tracker_expense_draft");
@@ -8200,25 +8210,38 @@ function ManualEntryModal({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 1200;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
+          // --- 1. Create Tiny Thumbnail ---
+          const canvasThumb = document.createElement("canvas");
+          const THUMB_MAX_WIDTH = 150;
+          let thumbWidth = img.width;
+          let thumbHeight = img.height;
+          if (thumbWidth > THUMB_MAX_WIDTH) {
+            thumbHeight = Math.round((thumbHeight * THUMB_MAX_WIDTH) / thumbWidth);
+            thumbWidth = THUMB_MAX_WIDTH;
           }
+          canvasThumb.width = thumbWidth;
+          canvasThumb.height = thumbHeight;
+          const ctxThumb = canvasThumb.getContext("2d");
+          ctxThumb.drawImage(img, 0, 0, thumbWidth, thumbHeight);
+          const thumbBase64 = canvasThumb.toDataURL("image/jpeg", 0.55);
 
-          canvas.width = width;
-          canvas.height = height;
+          // --- 2. Create Full Resolution ---
+          const canvasFull = document.createElement("canvas");
+          const FULL_MAX_WIDTH = 1000;
+          let fullWidth = img.width;
+          let fullHeight = img.height;
+          if (fullWidth > FULL_MAX_WIDTH) {
+            fullHeight = Math.round((fullHeight * FULL_MAX_WIDTH) / fullWidth);
+            fullWidth = FULL_MAX_WIDTH;
+          }
+          canvasFull.width = fullWidth;
+          canvasFull.height = fullHeight;
+          const ctxFull = canvasFull.getContext("2d");
+          ctxFull.drawImage(img, 0, 0, fullWidth, fullHeight);
+          const fullBase64 = canvasFull.toDataURL("image/jpeg", 0.70);
 
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
-
-          // Compress as JPEG with 0.85 quality
-          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
-          setPhotoUrls(prev => [...prev, compressedBase64]);
+          setPhotoUrls(prev => [...prev, thumbBase64]);
+          setPhotoUrlsFull(prev => [...prev, fullBase64]);
         };
         img.src = event.target.result;
       };
@@ -8413,6 +8436,7 @@ function ManualEntryModal({
               establishment: establishment.trim(),
               photoUrl: photoUrls && photoUrls.length > 0 ? photoUrls[0] : "",
               photoUrls: photoUrls || [],
+              photoUrlsFull: photoUrlsFull || [],
               tags: finalTags,
               id: expenseToEdit?.id,
               editEntireGroup,
@@ -8928,6 +8952,7 @@ function ManualEntryModal({
                       onClick={(e) => {
                         e.stopPropagation();
                         setPhotoUrls(prev => prev.filter((_, idx) => idx !== index));
+                        setPhotoUrlsFull(prev => prev.filter((_, idx) => idx !== index));
                       }}
                       style={{
                         position: "absolute",
@@ -9003,7 +9028,7 @@ function ManualEntryModal({
                 }}
               >
                 <img 
-                  src={photoUrls[lightboxPhotoIndex]} 
+                  src={(photoUrlsFull && photoUrlsFull[lightboxPhotoIndex]) || photoUrls[lightboxPhotoIndex]} 
                   alt="Full receipt" 
                   onClick={(e) => e.stopPropagation()}
                   style={{

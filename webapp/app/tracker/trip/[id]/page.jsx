@@ -3,13 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../../lib/supabase';
 import TrackerApp from '../../../../components/TrackerApp';
 
-const withTimeout = (promise, ms = 4000) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
-  ]);
-};
-
 export default function TrackerTripPage({ params }) {
   const tripId = params.id;
   // Start with authorized=true if we have locally-cached trip data —
@@ -37,7 +30,7 @@ export default function TrackerTripPage({ params }) {
 
     const checkTripAccess = async () => {
       try {
-        const { data: { session } } = await withTimeout(supabase.auth.getSession(), 4000);
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           // Not logged in — redirect to login
           sessionStorage.setItem('pending_trip_id', tripId);
@@ -45,14 +38,11 @@ export default function TrackerTripPage({ params }) {
           return;
         }
 
-        const { data, error } = await withTimeout(
-          supabase
-            .from('trips')
-            .select('id')
-            .eq('id', tripId)
-            .single(),
-          4000
-        );
+        const { data, error } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('id', tripId)
+          .single();
 
         if (error || !data) {
           const hasCache = typeof window !== 'undefined' && !!localStorage.getItem(`tracker_trip_${tripId}`);
@@ -66,13 +56,10 @@ export default function TrackerTripPage({ params }) {
         } else {
           // Resolve any pending member invitation for this user
           if (session.user?.email) {
-            await withTimeout(
-              supabase
-                .from('trip_members')
-                .update({ user_id: session.user.id })
-                .eq('email', session.user.email.toLowerCase().trim()),
-              4000
-            );
+            await supabase
+              .from('trip_members')
+              .update({ user_id: session.user.id })
+              .eq('email', session.user.email.toLowerCase().trim());
           }
           setAuthorized(true);
         }
@@ -88,7 +75,7 @@ export default function TrackerTripPage({ params }) {
 
     if (code) {
       // Exchange PKCE code
-      withTimeout(supabase.auth.exchangeCodeForSession(code), 6000).then(({ data, error }) => {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
         if (!error && data?.session) {
           // Remove code from URL without reloading
           const newUrl = window.location.pathname;
