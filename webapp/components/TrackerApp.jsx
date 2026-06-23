@@ -7343,7 +7343,15 @@ function ExpenseCard({
                   {loadingPhotos ? (
                     <div style={{ fontSize: "0.75rem", color: "var(--color-orange)", fontWeight: 800 }}>...</div>
                   ) : (
-                    <span style={{ fontSize: "1.1rem" }}>📷</span>
+                    (expense.photoUrls && expense.photoUrls.length > 0) ? (
+                      <img 
+                        src={expense.photoUrls[0]} 
+                        alt="Receipt thumbnail" 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                    ) : (
+                      <span style={{ fontSize: "1.1rem" }}>📷</span>
+                    )
                   )}
                 </div>
               );
