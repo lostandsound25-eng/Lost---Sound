@@ -3,6 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import SearchableCurrencySelect from '../../../components/SearchableCurrencySelect';
 
+const withTimeout = (promise, ms = 4000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+  ]);
+};
+
 export default function TripsDashboard() {
   const [session, setSession] = useState(null);
   const [trips, setTrips] = useState([]);
@@ -61,7 +68,7 @@ export default function TripsDashboard() {
     };
 
     if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+      withTimeout(supabase.auth.exchangeCodeForSession(code), 6000).then(({ data, error }) => {
         if (!error && data?.session) {
           const newUrl = window.location.pathname;
           window.history.replaceState({}, document.title, newUrl);
@@ -72,11 +79,16 @@ export default function TripsDashboard() {
           setTrips([]);
           setLoading(false);
         }
+      }).catch(err => {
+        console.error("Code exchange timed out/failed:", err);
+        setSession(null);
+        setTrips([]);
+        setLoading(false);
       });
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    withTimeout(supabase.auth.getSession(), 4000).then(({ data: { session } }) => {
       if (session) {
         handleAuthSession(session);
       } else {
@@ -84,6 +96,11 @@ export default function TripsDashboard() {
         setTrips([]);
         setLoading(false);
       }
+    }).catch(err => {
+      console.error("Session load timed out/failed:", err);
+      setSession(null);
+      setTrips([]);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -99,12 +116,15 @@ export default function TripsDashboard() {
     let fallbackTimeout;
     if (isAuthCallback) {
       fallbackTimeout = setTimeout(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        withTimeout(supabase.auth.getSession(), 4000).then(({ data: { session } }) => {
           if (!session) {
             window.location.href = '/tracker';
           } else {
             setLoading(false);
           }
+        }).catch(err => {
+          console.error("Fallback session load timed out/failed:", err);
+          window.location.href = '/tracker';
         });
       }, 6000);
     }
@@ -119,10 +139,13 @@ export default function TripsDashboard() {
     if (!supabase) return;
     try {
       // 1. Get trip IDs where email or user_id matches
-      const { data: members, error: memErr } = await supabase
-        .from('trip_members')
-        .select('trip_id, role, user_id')
-        .or(`user_id.eq.${user.id},email.eq.${user.email}`);
+      const { data: members, error: memErr } = await withTimeout(
+        supabase
+          .from('trip_members')
+          .select('trip_id, role, user_id')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`),
+        4000
+      );
       if (memErr) throw memErr;
 
       if (!members || members.length === 0) {
@@ -136,21 +159,27 @@ export default function TripsDashboard() {
         .map(m => m.trip_id);
 
       if (unresolvedIds.length > 0) {
-        await supabase
-          .from('trip_members')
-          .update({ user_id: user.id })
-          .in('trip_id', unresolvedIds)
-          .eq('email', user.email);
+        await withTimeout(
+          supabase
+            .from('trip_members')
+            .update({ user_id: user.id })
+            .in('trip_id', unresolvedIds)
+            .eq('email', user.email),
+          4000
+        );
       }
 
       const tripIds = members.map(m => m.trip_id);
 
       // 2. Fetch the trip details
-      const { data: tripsList, error: tripErr } = await supabase
-        .from('trips')
-        .select('*')
-        .in('id', tripIds)
-        .order('created_at', { ascending: false });
+      const { data: tripsList, error: tripErr } = await withTimeout(
+        supabase
+          .from('trips')
+          .select('*')
+          .in('id', tripIds)
+          .order('created_at', { ascending: false }),
+        4000
+      );
       if (tripErr) throw tripErr;
 
       // Merge role info

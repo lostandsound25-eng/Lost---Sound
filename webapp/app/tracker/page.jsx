@@ -3,6 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import TrackerApp from '../../components/TrackerApp';
 
+const withTimeout = (promise, ms = 4000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+  ]);
+};
+
 export default function TrackerLandingPage() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,10 +30,13 @@ export default function TrackerLandingPage() {
       if (pendingTripId) {
         if (supabase && user?.email) {
           // Resolve pending invitation matching the logged-in email
-          await supabase
-            .from('trip_members')
-            .update({ user_id: user.id })
-            .eq('email', user.email.toLowerCase().trim());
+          await withTimeout(
+            supabase
+              .from('trip_members')
+              .update({ user_id: user.id })
+              .eq('email', user.email.toLowerCase().trim()),
+            4000
+          );
         }
         sessionStorage.removeItem('pending_trip_id');
         targetUrl = `/tracker/trip/${pendingTripId}`;
@@ -54,16 +64,18 @@ export default function TrackerLandingPage() {
       sessionStorage.setItem('pending_trip_id', queryTripId);
       if (supabase) {
         // Fetch trip name to display a personal welcome message
-        supabase
-          .from('trips')
-          .select('name')
-          .eq('id', queryTripId)
-          .single()
-          .then(({ data }) => {
-            if (data?.name) {
-              setInvitedTripName(data.name);
-            }
-          });
+        withTimeout(
+          supabase
+            .from('trips')
+            .select('name')
+            .eq('id', queryTripId)
+            .single(),
+          4000
+        ).then(({ data }) => {
+          if (data?.name) {
+            setInvitedTripName(data.name);
+          }
+        }).catch(err => console.error("Error fetching welcome trip details:", err));
       }
     }
     if (queryEmail) {
@@ -80,7 +92,7 @@ export default function TrackerLandingPage() {
       // Handle PKCE code exchange
       const handleCodeExchange = async () => {
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await withTimeout(supabase.auth.exchangeCodeForSession(code), 6000);
           if (error) throw error;
           if (data?.session) {
             setIsLoggedIn(true);
@@ -97,11 +109,16 @@ export default function TrackerLandingPage() {
         handleCodeExchange();
       }
 
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
+      withTimeout(supabase.auth.getSession(), 4000).then(async ({ data: { session } }) => {
         if (session && !code) {
           setIsLoggedIn(true);
           await handleRedirectAfterLogin(session.user);
         } else if (!isAuthCallback) {
+          setLoading(false);
+        }
+      }).catch(err => {
+        console.error("Session load timed out/failed:", err);
+        if (!isAuthCallback) {
           setLoading(false);
         }
       });
