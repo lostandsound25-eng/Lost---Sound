@@ -1570,7 +1570,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             error = err;
           } else if (op.type === "update_itinerary") {
             console.log("[Sync] Updating itinerary...");
-            const { error: err } = await supabase.from("trips").update({ itinerary: op.payload.itinerary }).eq("id", tripId);
+            const updateObj = { itinerary: op.payload.itinerary };
+            if (op.payload.current_location !== undefined) {
+              updateObj.current_location = op.payload.current_location;
+            }
+            const { error: err } = await supabase.from("trips").update(updateObj).eq("id", tripId);
             error = err;
           }
           if (error) {
@@ -1779,7 +1783,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const { error: err } = await supabase.from("trip_entries").delete().eq("id", payload.id);
         error = err;
       } else if (type === "update_itinerary") {
-        const { error: err } = await supabase.from("trips").update({ itinerary: payload.itinerary }).eq("id", tripId);
+        const updateObj = { itinerary: payload.itinerary };
+        if (payload.current_location !== undefined) {
+          updateObj.current_location = payload.current_location;
+        }
+        const { error: err } = await supabase.from("trips").update(updateObj).eq("id", tripId);
         error = err;
       }
       if (error) throw error;
@@ -2035,15 +2043,47 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const updateLocation = async (loc) => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const locWithDate = loc ? `${loc}|${todayStr}` : "";
-    setTrip((prev) => ({ ...prev, currentLocation: locWithDate }));
-    await updateItineraryLocation(todayStr, loc);
-    if (!isDemo && tripId && supabase) {
-      try {
-        await supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId);
-      } catch (e) {
-        console.error("Failed to sync location to cloud:", e);
-      }
+
+    let updatedItinerary = trip.itinerary || {};
+    let shouldUpdateItinerary = false;
+
+    if (loc) {
+      const oldItinerary = trip.itinerary || {};
+      const existing = oldItinerary[todayStr];
+      const existingObj = typeof existing === "string"
+        ? { location: existing, notes: "" }
+        : (existing || { location: "", notes: "" });
+
+      updatedItinerary = {
+        ...oldItinerary,
+        [todayStr]: {
+          ...existingObj,
+          location: loc
+        }
+      };
+      shouldUpdateItinerary = true;
+
+      pushToUndo({
+        type: 'update_itinerary',
+        oldItinerary,
+        newItinerary: updatedItinerary,
+        description: "manual location override"
+      });
     }
+
+    setTrip((prev) => {
+      const nextTrip = { ...prev, currentLocation: locWithDate };
+      if (shouldUpdateItinerary) {
+        nextTrip.itinerary = updatedItinerary;
+      }
+      return nextTrip;
+    });
+
+    const payload = { current_location: locWithDate };
+    if (shouldUpdateItinerary) {
+      payload.itinerary = updatedItinerary;
+    }
+    performCloudAction("update_itinerary", payload);
   };
   const updateItineraryLocation = async (dateKey, locationText) => {
     const oldItinerary = trip.itinerary || {};
@@ -2065,22 +2105,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       newItinerary: updatedItinerary,
       description: "planned location"
     });
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const locWithDate = locationText ? `${locationText}|${todayStr}` : "";
+
     setTrip((prev) => {
       const nextTrip = { ...prev, itinerary: updatedItinerary };
-      const todayStr = new Date().toLocaleDateString('en-CA');
       if (dateKey === todayStr) {
-        nextTrip.currentLocation = locationText ? `${locationText}|${todayStr}` : "";
+        nextTrip.currentLocation = locWithDate;
       }
       return nextTrip;
     });
-    performCloudAction("update_itinerary", { itinerary: updatedItinerary });
-    
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    if (dateKey === todayStr && !isDemo && tripId && supabase) {
-      const locWithDate = locationText ? `${locationText}|${todayStr}` : "";
-      supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId)
-        .catch(err => console.error("Failed to sync current_location from itinerary:", err));
+
+    const payload = { itinerary: updatedItinerary };
+    if (dateKey === todayStr) {
+      payload.current_location = locWithDate;
     }
+    performCloudAction("update_itinerary", payload);
   };
 
   const updateItineraryNotes = async (dateKey, notesText) => {
@@ -2136,26 +2177,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       description: "fill planned location"
     });
 
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    let locWithDate = undefined;
+    if (updates[todayStr] !== undefined) {
+      const val = updates[todayStr];
+      const newLoc = typeof val === "string" ? val : (val.location || "");
+      locWithDate = newLoc ? `${newLoc}|${todayStr}` : "";
+    }
+
     setTrip((prev) => {
       const nextTrip = { ...prev, itinerary: updatedItinerary };
-      const todayStr = new Date().toLocaleDateString('en-CA');
-      if (updates[todayStr] !== undefined) {
-        const val = updates[todayStr];
-        const newLoc = typeof val === "string" ? val : (val.location || "");
-        nextTrip.currentLocation = newLoc ? `${newLoc}|${todayStr}` : "";
+      if (locWithDate !== undefined) {
+        nextTrip.currentLocation = locWithDate;
       }
       return nextTrip;
     });
-    performCloudAction("update_itinerary", { itinerary: updatedItinerary });
 
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    if (updates[todayStr] !== undefined && !isDemo && tripId && supabase) {
-      const val = updates[todayStr];
-      const newLoc = typeof val === "string" ? val : (val.location || "");
-      const locWithDate = newLoc ? `${newLoc}|${todayStr}` : "";
-      supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId)
-        .catch(err => console.error("Failed to sync current_location batch:", err));
+    const payload = { itinerary: updatedItinerary };
+    if (locWithDate !== undefined) {
+      payload.current_location = locWithDate;
     }
+    performCloudAction("update_itinerary", payload);
   };
 
   const searchLocaleNominatim = async (query) => {
@@ -8757,6 +8799,15 @@ function ManualEntryModal({
                     setHashtagFilter("");
                   }
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (totalInputRef.current) {
+                      totalInputRef.current.focus();
+                      totalInputRef.current.select();
+                    }
+                  }
+                }}
                 placeholder="Coffee before train"
                 required
                 style={{
@@ -9020,6 +9071,11 @@ function ManualEntryModal({
                           if (currency !== trip.homeCurrency) {
                             setCurrency(trip.homeCurrency);
                             safeSetLocalStorage("tracker_last_used_currency", trip.homeCurrency);
+                            setTimeout(() => {
+                              if (totalInputRef.current) {
+                                totalInputRef.current.focus();
+                              }
+                            }, 50);
                           }
                         }}
                         style={{
@@ -9046,6 +9102,11 @@ function ManualEntryModal({
                           if (val !== trip.homeCurrency) {
                             safeSetLocalStorage("tracker_last_used_non_home_currency", val);
                           }
+                          setTimeout(() => {
+                            if (totalInputRef.current) {
+                              totalInputRef.current.focus();
+                            }
+                          }, 50);
                         }}
                         rates={rates}
                         customCurrencies={customCurrencies}
@@ -9083,6 +9144,7 @@ function ManualEntryModal({
                     {/* Right Side: Input Box */}
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
                       <input
+                        ref={totalInputRef}
                         type="text"
                         className="amount-input-placeholder"
                         value={amount}
