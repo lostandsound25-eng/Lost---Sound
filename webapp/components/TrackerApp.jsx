@@ -1398,6 +1398,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, [expenses, isMounted, isDemo, tripId]);
 
+  // Auto-sync stale/empty current_location in the database with today's resolved itinerary location
+  useEffect(() => {
+    if (isDemo || !tripId || !supabase || !isMounted || !trip) return;
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const parsedCurrent = parseCurrentLocation(trip.currentLocation);
+    
+    let todayLocation = "";
+    if (parsedCurrent.date === todayStr) {
+      todayLocation = parsedCurrent.location;
+    } else if (trip.itinerary && trip.itinerary[todayStr]) {
+      const item = trip.itinerary[todayStr];
+      todayLocation = typeof item === "string" ? item : (item.location || "");
+    }
+
+    const targetLocWithDate = todayLocation ? `${todayLocation}|${todayStr}` : "";
+    if (trip.currentLocation !== targetLocWithDate) {
+      setTrip(prev => ({ ...prev, currentLocation: targetLocWithDate }));
+      
+      supabase
+        .from("trips")
+        .update({ current_location: targetLocWithDate })
+        .eq("id", tripId)
+        .then(({ error }) => {
+          if (error) console.error("Failed to auto-update current_location:", error);
+          else console.log("Successfully auto-updated current_location in DB.");
+        });
+    }
+  }, [trip?.itinerary, trip?.currentLocation, tripId, isDemo, isMounted]);
+
   // Offline background queue storage & processing
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
 
