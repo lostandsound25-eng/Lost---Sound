@@ -1567,12 +1567,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       setIsSyncing(false);
       isSyncingRef.current = false;
       console.log("[Sync] Finished processSyncQueue run");
-      setTimeout(() => {
-        if (syncQueueRef.current && syncQueueRef.current.length > 0 && !isSyncingRef.current && navigator.onLine) {
-          console.log("[Sync] More items found in queue after run, triggering processSyncQueue");
-          processSyncQueue();
-        }
-      }, 0);
+      if (successCount > 0) {
+        setTimeout(() => {
+          if (syncQueueRef.current && syncQueueRef.current.length > 0 && !isSyncingRef.current && navigator.onLine) {
+            console.log("[Sync] More items found in queue after run, triggering processSyncQueue");
+            processSyncQueue();
+          }
+        }, 0);
+      }
     }
   };
 
