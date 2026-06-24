@@ -730,18 +730,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       if (typeof item === "string") return item;
       return item.location || "";
     }
-    const dayExps = expensesForDay || expenses.filter(e => {
-      try {
-        return new Date(e.timestamp).toLocaleDateString('en-CA') === dateStr;
-      } catch (err) {
-        return false;
-      }
-    });
-    const expLoc = dayExps.map(e => {
-      const rawLoc = e.establishment || e.location || "";
-      return e.locationLocale || (rawLoc ? (rawLoc.split(" | ")[0] || rawLoc) : "");
-    }).find(loc => loc);
-    return expLoc || "";
+    return "";
   };
 
   const getResolvedDayNotes = (dateStr) => {
@@ -1938,7 +1927,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           .single(),
         supabase
           .from("trip_entries")
-          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls, photo_urls_full")
+          .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls")
           .eq("trip_id", tripId)
           .order("created_at", { ascending: false })
       ]);
@@ -1973,7 +1962,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         hasPhoto: e.has_photo || false,
         photoUrl: e.photo_url || "",
         photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : []),
-        photoUrlsFull: e.photo_urls_full || []
+        photoUrlsFull: []
       }));
       const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
       setExpenses(merged);
@@ -5481,7 +5470,30 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     }}
                     title="Tap to change locale"
                   >
-                    <span>📍 {getResolvedDayLocation(new Date().toLocaleDateString('en-CA')) || "Where are you today?"}</span>
+                    {(() => {
+                      const currentLoc = getResolvedDayLocation(new Date().toLocaleDateString('en-CA'));
+                      if (currentLoc) {
+                        return <span>📍 {currentLoc}</span>;
+                      }
+                      return (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          background: "rgba(59, 130, 246, 0.08)",
+                          color: "#2563EB",
+                          padding: "3px 10px",
+                          borderRadius: "20px",
+                          border: "1px solid rgba(59, 130, 246, 0.2)",
+                          boxShadow: "0 0 12px rgba(59, 130, 246, 0.25)",
+                          fontSize: "0.78rem",
+                          fontWeight: 800,
+                          animation: "blueGlowPulse 2.5s infinite ease-in-out"
+                        }}>
+                          📍 Where are you today?
+                        </span>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -5489,7 +5501,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       type="text"
                       value={localeSearchQuery}
                       onChange={(e) => setLocaleSearchQuery(e.target.value)}
-                      placeholder="Town/city..."
+                      placeholder="Where are you today?"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -7095,6 +7107,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         />
       )}
       <style>{`
+        @keyframes blueGlowPulse {
+          0% {
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.2);
+          }
+          50% {
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.45);
+            border-color: rgba(59, 130, 246, 0.4);
+          }
+          100% {
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.2);
+          }
+        }
+
         @keyframes goldGlowPulse {
           0% {
             box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
