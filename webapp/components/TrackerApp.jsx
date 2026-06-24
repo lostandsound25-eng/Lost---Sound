@@ -1448,6 +1448,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           if (op.payload) {
             const payloadCopy = { ...op.payload };
             
+            // Backward-compatibility mappings for older database column structures
+            if (payloadCopy.location !== undefined && payloadCopy.establishment === undefined) {
+              payloadCopy.establishment = payloadCopy.location;
+              delete payloadCopy.location;
+            }
+            if (payloadCopy.note !== undefined && payloadCopy.title === undefined) {
+              payloadCopy.title = payloadCopy.note;
+              delete payloadCopy.note;
+            }
+            if (payloadCopy.location_locale !== undefined) {
+              delete payloadCopy.location_locale;
+            }
+            
             // Upload thumbnails (photo_urls)
             if (Array.isArray(payloadCopy.photo_urls) && payloadCopy.photo_urls.length > 0) {
               const uploadedUrls = [];
