@@ -350,12 +350,14 @@ const safeSetLocalStorage = (key, value) => {
         const optimized = expenses.map(e => {
           const hasBase64Url = typeof e.photoUrl === "string" && e.photoUrl.startsWith("data:image/");
           const hasBase64Urls = Array.isArray(e.photoUrls) && e.photoUrls.some(url => typeof url === "string" && url.startsWith("data:image/"));
+          const hasBase64UrlsFull = Array.isArray(e.photoUrlsFull) && e.photoUrlsFull.some(url => typeof url === "string" && url.startsWith("data:image/"));
           
-          if (hasBase64Url || hasBase64Urls) {
+          if (hasBase64Url || hasBase64Urls || hasBase64UrlsFull) {
             return {
               ...e,
               photoUrl: hasBase64Url ? "" : e.photoUrl,
-              photoUrls: []
+              photoUrls: [],
+              photoUrlsFull: []
             };
           }
           return e;
@@ -1410,12 +1412,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   // Offline background queue storage & processing
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
 
-  useEffect(() => {
-    if (!isDemo && tripId) {
-      const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
-      if (savedQueue) setSyncQueue(JSON.parse(savedQueue));
-    }
-  }, [tripId, isDemo]);
+
 
   const syncQueueRef = useRef(syncQueue);
   const isSyncingRef = useRef(false);
@@ -1441,6 +1438,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     isSyncingRef.current = true;
     setIsSyncing(true);
     let successCount = 0;
+    let syncFailedWith = null;
 
     console.log("[Sync] Start processing queue of", queue.length, "items");
     try {
@@ -1467,7 +1465,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     console.log("[Sync] Successfully uploaded thumbnail to storage:", publicUrl);
                   } catch (e) {
                     console.error("Failed to upload thumbnail to storage:", e);
-                    uploadedUrls.push(url);
+                    throw e;
                   }
                 } else {
                   uploadedUrls.push(url);
@@ -1496,7 +1494,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     console.log("[Sync] Successfully uploaded full-res photo to storage:", publicUrl);
                   } catch (e) {
                     console.error("Failed to upload full-res photo to storage:", e);
-                    uploadedUrls.push(url);
+                    throw e;
                   }
                 } else {
                   uploadedUrls.push(url);
@@ -1534,6 +1532,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           successCount++;
         } catch (err) {
           console.error("Queue execution error:", err);
+          syncFailedWith = err;
           break; // Stop sequencing to maintain order of operations
         }
       }
@@ -1546,6 +1545,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       const updatedQueue = (syncQueueRef.current || []).slice(successCount);
       if (updatedQueue.length === 0) {
         setSyncError(null);
+      } else if (syncFailedWith) {
+        setSyncError(`Sync error: ${syncFailedWith.message || syncFailedWith.toString()}`);
       } else {
         setSyncError("Sync pending. Action queued.");
       }
@@ -1561,6 +1562,19 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }, 0);
     }
   };
+
+  useEffect(() => {
+    if (!isDemo && tripId) {
+      const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
+      if (savedQueue) {
+        const parsed = JSON.parse(savedQueue);
+        setSyncQueue(parsed);
+        if (parsed.length > 0 && navigator.onLine) {
+          processSyncQueue(parsed);
+        }
+      }
+    }
+  }, [tripId, isDemo]);
 
   useEffect(() => {
     const goOnline = () => {
@@ -5207,6 +5221,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                         
                         if (!isOnline) {
                           statusText = "Offline / Queuing Updates";
+                          lightColor = "#EF4444"; // Red
+                          glow = "0 0 8px rgba(239, 68, 68, 0.6)";
+                        } else if (syncError) {
+                          statusText = syncError;
                           lightColor = "#EF4444"; // Red
                           glow = "0 0 8px rgba(239, 68, 68, 0.6)";
                         } else if (isSyncing || syncQueue.length > 0) {
