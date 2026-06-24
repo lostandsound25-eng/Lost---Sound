@@ -1989,7 +1989,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       }).catch(err => console.error("Session load error in background:", err));
     } catch (e) {
       console.error("Supabase sync failed, loading locally.", e);
-      setSyncError("Cloud connection error. Working offline.");
+      setSyncError(`Cloud connection error: ${e.message || e.toString()}`);
     } finally {
       setIsSyncing(false);
       setIsMounted(true);
