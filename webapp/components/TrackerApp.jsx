@@ -1403,12 +1403,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (isDemo || !tripId || !supabase || !isMounted || !trip) return;
 
     const todayStr = new Date().toLocaleDateString('en-CA');
-    const parsedCurrent = parseCurrentLocation(trip.currentLocation);
     
     let todayLocation = "";
-    if (parsedCurrent.date === todayStr) {
-      todayLocation = parsedCurrent.location;
-    } else if (trip.itinerary && trip.itinerary[todayStr]) {
+    if (trip.itinerary && trip.itinerary[todayStr]) {
       const item = trip.itinerary[todayStr];
       todayLocation = typeof item === "string" ? item : (item.location || "");
     }
