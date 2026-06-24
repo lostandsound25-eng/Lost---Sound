@@ -1398,20 +1398,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, [expenses, isMounted, isDemo, tripId]);
 
-  // Auto-sync stale/empty current_location in the database with today's resolved itinerary location
+  // Auto-sync stale/empty current_location in the database when the day changes
+  const [activeDateKey, setActiveDateKey] = useState("");
+
   useEffect(() => {
-    if (isDemo || !tripId || !supabase || !isMounted || !trip) return;
-
     const todayStr = new Date().toLocaleDateString('en-CA');
+    setActiveDateKey(todayStr);
     
-    let todayLocation = "";
-    if (trip.itinerary && trip.itinerary[todayStr]) {
-      const item = trip.itinerary[todayStr];
-      todayLocation = typeof item === "string" ? item : (item.location || "");
-    }
+    // Set up a timer to update activeDateKey at midnight
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+    const msToMidnight = midnight.getTime() - now.getTime();
+    
+    const timer = setTimeout(() => {
+      setActiveDateKey(new Date().toLocaleDateString('en-CA'));
+    }, msToMidnight);
 
-    const targetLocWithDate = todayLocation ? `${todayLocation}|${todayStr}` : "";
-    if (trip.currentLocation !== targetLocWithDate) {
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isDemo || !tripId || !supabase || !isMounted || !trip || !activeDateKey) return;
+
+    const parsedCurrent = parseCurrentLocation(trip.currentLocation);
+    
+    // Only auto-sync if the database current_location date is stale (not today)
+    if (parsedCurrent.date !== activeDateKey) {
+      console.log("[Sync] Stale database current_location date detected. Auto-syncing with itinerary...");
+      let todayLocation = "";
+      if (trip.itinerary && trip.itinerary[activeDateKey]) {
+        const item = trip.itinerary[activeDateKey];
+        todayLocation = typeof item === "string" ? item : (item.location || "");
+      }
+
+      const targetLocWithDate = todayLocation ? `${todayLocation}|${activeDateKey}` : "";
       setTrip(prev => ({ ...prev, currentLocation: targetLocWithDate }));
       
       supabase
@@ -1423,7 +1443,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           else console.log("Successfully auto-updated current_location in DB.");
         });
     }
-  }, [trip?.itinerary, trip?.currentLocation, tripId, isDemo, isMounted]);
+  }, [activeDateKey, isMounted, tripId, isDemo]);
 
   // Offline background queue storage & processing
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -2045,8 +2065,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       newItinerary: updatedItinerary,
       description: "planned location"
     });
-    setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
+    setTrip((prev) => {
+      const nextTrip = { ...prev, itinerary: updatedItinerary };
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (dateKey === todayStr) {
+        nextTrip.currentLocation = locationText ? `${locationText}|${todayStr}` : "";
+      }
+      return nextTrip;
+    });
     performCloudAction("update_itinerary", { itinerary: updatedItinerary });
+    
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (dateKey === todayStr && !isDemo && tripId && supabase) {
+      const locWithDate = locationText ? `${locationText}|${todayStr}` : "";
+      supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId)
+        .catch(err => console.error("Failed to sync current_location from itinerary:", err));
+    }
   };
 
   const updateItineraryNotes = async (dateKey, notesText) => {
@@ -2101,8 +2135,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       newItinerary: updatedItinerary,
       description: "fill planned location"
     });
-    setTrip((prev) => ({ ...prev, itinerary: updatedItinerary }));
+
+    setTrip((prev) => {
+      const nextTrip = { ...prev, itinerary: updatedItinerary };
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (updates[todayStr] !== undefined) {
+        const val = updates[todayStr];
+        const newLoc = typeof val === "string" ? val : (val.location || "");
+        nextTrip.currentLocation = newLoc ? `${newLoc}|${todayStr}` : "";
+      }
+      return nextTrip;
+    });
     performCloudAction("update_itinerary", { itinerary: updatedItinerary });
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (updates[todayStr] !== undefined && !isDemo && tripId && supabase) {
+      const val = updates[todayStr];
+      const newLoc = typeof val === "string" ? val : (val.location || "");
+      const locWithDate = newLoc ? `${newLoc}|${todayStr}` : "";
+      supabase.from("trips").update({ current_location: locWithDate }).eq("id", tripId)
+        .catch(err => console.error("Failed to sync current_location batch:", err));
+    }
   };
 
   const searchLocaleNominatim = async (query) => {
