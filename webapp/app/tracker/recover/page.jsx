@@ -37,7 +37,6 @@ export default function RecoverPage() {
       addLog(`Authenticated successfully as: ${session.user.email}`);
 
       const entryId = "79704f59-d1aa-4c77-b6bb-c71fbe5bfc90";
-      const tripId = "fa31fe5e-ff15-4b38-86ea-0afd99eeb7ae";
 
       // 1. Fetch the entry
       addLog(`Fetching database entry: ${entryId}...`);
@@ -53,7 +52,8 @@ export default function RecoverPage() {
         return;
       }
 
-      addLog(`Found entry: "${entry.title}"`);
+      const tripId = entry.trip_id;
+      addLog(`Found entry: "${entry.title}" (Trip: ${tripId})`);
 
       function base64ToBlob(base64DataUrl) {
         const parts = base64DataUrl.split(';base64,');
