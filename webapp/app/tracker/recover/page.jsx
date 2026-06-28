@@ -70,26 +70,6 @@ export default function RecoverPage() {
       const updatedData = {};
       let needsUpdate = false;
 
-      // Migrate photo_url
-      if (entry.photo_url && entry.photo_url.startsWith('data:image/')) {
-        addLog("Uploading main photo to storage...");
-        try {
-          const blob = base64ToBlob(entry.photo_url);
-          const path = `${tripId}/${entry.id}_url_thumb.jpg`;
-          const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, blob, { contentType: "image/jpeg", upsert: true });
-          if (uploadErr) throw uploadErr;
-          
-          const { data: { publicUrl } } = supabase.storage.from("receipts").getPublicUrl(path);
-          updatedData.photo_url = publicUrl;
-          needsUpdate = true;
-          addLog(`Main photo uploaded successfully: ${publicUrl.substring(0, 60)}...`);
-        } catch (e) {
-          setStatus('error');
-          addLog(`Failed to upload main photo: ${e.message || e.toString()}`);
-          return;
-        }
-      }
-
       // Migrate photo_urls
       if (Array.isArray(entry.photo_urls) && entry.photo_urls.some(url => url && url.startsWith('data:image/'))) {
         addLog("Uploading photo_urls array...");
@@ -121,6 +101,15 @@ export default function RecoverPage() {
         }
         if (modified) {
           updatedData.photo_urls = nextUrls;
+        }
+
+        // Failsafe: Set main photo_url to the first thumbnail URL
+        if (entry.photo_url && entry.photo_url.startsWith('data:image/')) {
+          if (nextUrls.length > 0) {
+            updatedData.photo_url = nextUrls[0];
+            needsUpdate = true;
+            addLog(`Setting main photo_url to first thumbnail: ${nextUrls[0].substring(0, 60)}...`);
+          }
         }
       }
 
