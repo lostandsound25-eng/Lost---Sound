@@ -98,7 +98,8 @@ const getMergedExpenses = (cloudExpenses, queue) => {
         tags: update.tags || e.tags,
         photoUrl: update.photo_url || e.photoUrl,
         photoUrls: update.photo_urls || e.photoUrls,
-        photoUrlsFull: update.photo_urls_full || e.photoUrlsFull
+        photoUrlsFull: update.photo_urls_full || e.photoUrlsFull,
+        deletedAt: update.deleted_at !== undefined ? update.deleted_at : e.deletedAt
       };
     }
     return e;
@@ -120,7 +121,8 @@ const getMergedExpenses = (cloudExpenses, queue) => {
         tags: ins.tags || [],
         photoUrl: ins.photo_url || "",
         photoUrls: ins.photo_urls || (ins.photo_url ? [ins.photo_url] : []),
-        photoUrlsFull: ins.photo_urls_full || []
+        photoUrlsFull: ins.photo_urls_full || [],
+        deletedAt: ins.deleted_at || null
       });
     }
   });
@@ -1980,20 +1982,29 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setIsSyncing(true);
     setSyncError(null);
     try {
-      const [tripResult, expensesResult] = await Promise.all([
-        supabase
-          .from("trips")
-          .select("*")
-          .eq("id", tripId)
-          .single(),
-        supabase
+      const tripResult = await supabase
+        .from("trips")
+        .select("*")
+        .eq("id", tripId)
+        .single();
+
+      if (tripResult.error) throw tripResult.error;
+
+      let expensesResult = await supabase
+        .from("trip_entries")
+        .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls, deleted_at")
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false });
+
+      if (expensesResult.error && expensesResult.error.message?.includes("deleted_at")) {
+        console.warn("deleted_at column missing, falling back to legacy select");
+        expensesResult = await supabase
           .from("trip_entries")
           .select("id, trip_id, created_by, amount, currency, category, title, notes, worth_it, establishment, tags, created_at, updated_at, has_photo, photo_url, photo_urls")
           .eq("trip_id", tripId)
-          .order("created_at", { ascending: false })
-      ]);
+          .order("created_at", { ascending: false });
+      }
 
-      if (tripResult.error) throw tripResult.error;
       if (expensesResult.error) throw expensesResult.error;
 
       const tripData = tripResult.data;
@@ -2023,7 +2034,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         hasPhoto: e.has_photo || false,
         photoUrl: e.photo_url || "",
         photoUrls: e.photo_urls || (e.photo_url ? [e.photo_url] : []),
-        photoUrlsFull: []
+        photoUrlsFull: [],
+        deletedAt: e.deleted_at || null
       }));
       const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
       setExpenses(merged);
@@ -2296,9 +2308,11 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setIsEditingLocalCurrency(false);
   };
 
+  const activeExpenses = useMemo(() => expenses.filter(e => !e.deletedAt), [expenses]);
+
   const allHistoricalTags = (() => {
     const tagCounts = {};
-    expenses.forEach(e => {
+    activeExpenses.forEach(e => {
       if (e.tags) {
         e.tags.forEach(t => {
           if (!t.startsWith("spread-") && !t.startsWith("spread-group-")) {
@@ -2312,14 +2326,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const saveExpense = async (expense) => {
     if (expense.delete) {
+      const nowStr = new Date().toISOString();
       if (expense.deleteEntireGroup && expense.groupTag) {
         const siblings = expenses.filter(e => e.tags && e.tags.includes(expense.groupTag));
         pushToUndo({ type: 'delete_bulk', data: siblings, description: "delete group expenses" });
         const siblingIds = siblings.map(s => s.id);
-        setExpenses((prev) => prev.filter((e) => !siblingIds.includes(e.id)));
+        setExpenses((prev) => prev.map((e) => siblingIds.includes(e.id) ? { ...e, deletedAt: nowStr } : e));
         if (!isDemo && tripId) {
           siblings.forEach(s => {
-            performCloudAction("delete", { id: s.id });
+            performCloudAction("update", { id: s.id, deleted_at: nowStr });
           });
         }
       } else {
@@ -2327,9 +2342,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         if (oldExp) {
           pushToUndo({ type: 'delete', data: oldExp, description: "delete expense" });
         }
-        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+        setExpenses((prev) => prev.map((e) => e.id === expense.id ? { ...e, deletedAt: nowStr } : e));
         if (!isDemo && tripId) {
-          performCloudAction("delete", { id: expense.id });
+          performCloudAction("update", { id: expense.id, deleted_at: nowStr });
         }
       }
       setActiveModal(null);
@@ -2343,103 +2358,197 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         const siblings = expenses.filter(e => e.tags && e.tags.includes(expense.groupTag));
         const siblingIds = siblings.map(s => s.id);
 
-        // 2. Delete them from state and cloud database
-        setExpenses((prev) => prev.filter((e) => !siblingIds.includes(e.id)));
-        if (!isDemo && tripId) {
-          siblings.forEach(s => {
-            performCloudAction("delete", { id: s.id });
-          });
-        }
+        const oldStartTag = siblings[0]?.tags?.find(t => t.startsWith("spread-start-"));
+        const oldN = siblings.length;
+        const newStartStr = `spread-start-${expense.spreadStart}`;
+        const newN = expense.spreadDays;
 
-        // 3. Re-generate new expenses for the new range/amount
-        const newGroupTag = expense.groupTag;
-        const N = expense.spreadDays;
-        const totalAmount = expense.amount;
-        const isRepeat = expense.spreadMode === "repeat";
-        const dailyAmount = isRepeat ? totalAmount : parseFloat((totalAmount / N).toFixed(2));
-        const remainder = isRepeat ? 0 : parseFloat((totalAmount - dailyAmount * N).toFixed(2));
+        if (oldN === newN && oldStartTag === newStartStr) {
+          // SAFE UPDATE IN-PLACE! (Failsafe to prevent data loss when only photos or details are changed)
+          const sortedSiblings = [...siblings].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        const newExpenses = [];
-        const dbInserts = [];
-        const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
+          const totalAmount = expense.amount;
+          const isRepeat = expense.spreadMode === "repeat";
+          const dailyAmount = isRepeat ? totalAmount : parseFloat((totalAmount / newN).toFixed(2));
+          const remainder = isRepeat ? 0 : parseFloat((totalAmount - dailyAmount * newN).toFixed(2));
 
-        const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
-        const finalEst = expense.establishment || "";
-
-        for (let i = 0; i < N; i++) {
-          const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
-          const newId = crypto.randomUUID ? crypto.randomUUID() : (Date.now() + i).toString();
+          const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
+          const finalEst = expense.establishment || "";
           
-          const d = new Date(startD);
-          d.setDate(d.getDate() + i);
-          const timestamp = d.toISOString();
+          const updatedSiblings = [];
+          
+          for (let i = 0; i < newN; i++) {
+            const oldSibling = sortedSiblings[i];
+            const amt = isRepeat ? totalAmount : ((i === newN - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
+            
+            const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+            const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+            const baseTitle = expense.title || expense.category;
+            const cleanBaseTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
 
-          const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
-          const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
-          const baseTitle = expense.title || expense.category;
-          const cleanBaseTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+            const titleWithSuffix = startStr && endStr 
+              ? `${cleanBaseTitle} (Day ${i + 1}/${newN}, ${startStr} - ${endStr})` 
+              : `${cleanBaseTitle} (Day ${i + 1}/${newN})`;
 
-          const titleWithSuffix = startStr && endStr 
-            ? `${cleanBaseTitle} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
-            : `${cleanBaseTitle} (Day ${i + 1}/${N})`;
+            const entryTags = [
+              ...baseTags,
+              expense.groupTag,
+              `spread-mode-${expense.spreadMode}`,
+              `spread-start-${expense.spreadStart}`,
+              `spread-end-${expense.spreadEnd}`,
+              `spread-amount-${expense.amount}`
+            ];
 
-          const entryTags = [
-            ...baseTags,
-            newGroupTag,
-            `spread-mode-${expense.spreadMode}`,
-            `spread-start-${expense.spreadStart}`,
-            `spread-end-${expense.spreadEnd}`,
-            `spread-amount-${expense.amount}`
-          ];
+            const updatedPhotoUrl = expense.photoUrl !== undefined ? expense.photoUrl : (oldSibling.photoUrl || "");
+            const updatedPhotoUrls = expense.photoUrls !== undefined ? expense.photoUrls : (oldSibling.photoUrls || []);
+            const updatedPhotoUrlsFull = expense.photoUrlsFull !== undefined ? expense.photoUrlsFull : (oldSibling.photoUrlsFull || []);
+            const updatedHasPhoto = (updatedPhotoUrl || (updatedPhotoUrls && updatedPhotoUrls.length > 0)) ? true : false;
 
-          const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
-          const singleExpense = {
-            amount: amt,
-            currency: expense.currency,
-            category: expense.category,
-            title: titleWithSuffix,
-            notes: expense.notes || "",
-            worthIt: expense.worthIt,
-            establishment: finalEst,
-            tags: entryTags,
-            id: newId,
-            timestamp: timestamp,
-            hasPhoto: hasPhoto,
-            photoUrl: expense.photoUrl || "",
-            photoUrls: expense.photoUrls || [],
-            photoUrlsFull: expense.photoUrlsFull || []
-          };
+            const updatedSibling = {
+              ...oldSibling,
+              amount: amt,
+              currency: expense.currency,
+              category: expense.category,
+              title: titleWithSuffix,
+              notes: expense.notes || "",
+              worthIt: expense.worthIt,
+              establishment: finalEst,
+              tags: entryTags,
+              hasPhoto: updatedHasPhoto,
+              photoUrl: updatedPhotoUrl,
+              photoUrls: updatedPhotoUrls,
+              photoUrlsFull: updatedPhotoUrlsFull
+            };
+            
+            updatedSiblings.push(updatedSibling);
+          }
 
-          newExpenses.push(singleExpense);
+          pushToUndo({ type: 'update_bulk', oldData: siblings, newData: updatedSiblings, description: "update group expenses in-place" });
+          
+          setExpenses((prev) => prev.map(e => {
+            const found = updatedSiblings.find(u => u.id === e.id);
+            return found ? found : e;
+          }));
 
           if (!isDemo && tripId) {
-            dbInserts.push({
-              id: singleExpense.id,
-              created_at: singleExpense.timestamp,
-              amount: singleExpense.amount,
-              currency: singleExpense.currency,
-              category: singleExpense.category,
-              title: singleExpense.title,
-              notes: singleExpense.notes,
-              worth_it: singleExpense.worthIt,
-              establishment: singleExpense.establishment,
-              tags: singleExpense.tags,
-              trip_id: tripId,
-              photo_url: singleExpense.photoUrl || null,
-              photo_urls: singleExpense.photoUrls || [],
-              photo_urls_full: singleExpense.photoUrlsFull || [],
-              has_photo: singleExpense.hasPhoto
+            updatedSiblings.forEach((sibling) => {
+              performCloudAction("update", {
+                id: sibling.id,
+                amount: sibling.amount,
+                currency: sibling.currency,
+                category: sibling.category,
+                title: sibling.title,
+                notes: sibling.notes,
+                worth_it: sibling.worthIt,
+                establishment: sibling.establishment,
+                tags: sibling.tags,
+                photo_url: sibling.photoUrl || null,
+                photo_urls: sibling.photoUrls || [],
+                photo_urls_full: sibling.photoUrlsFull || [],
+                has_photo: sibling.hasPhoto
+              });
             });
           }
-        }
+        } else {
+          // Range changed: Soft-delete old siblings (failsafe instead of hard-deleting)
+          const nowStr = new Date().toISOString();
+          setExpenses((prev) => prev.map((e) => siblingIds.includes(e.id) ? { ...e, deletedAt: nowStr } : e));
+          if (!isDemo && tripId) {
+            siblings.forEach(s => {
+              performCloudAction("update", { id: s.id, deleted_at: nowStr });
+            });
+          }
 
-        pushToUndo({ type: 'update_bulk', oldData: siblings, newData: newExpenses, description: "update group expenses" });
-        setExpenses((prev) => [...newExpenses, ...prev]);
+          // Re-generate new expenses for the new range/amount
+          const newGroupTag = expense.groupTag;
+          const N = expense.spreadDays;
+          const totalAmount = expense.amount;
+          const isRepeat = expense.spreadMode === "repeat";
+          const dailyAmount = isRepeat ? totalAmount : parseFloat((totalAmount / N).toFixed(2));
+          const remainder = isRepeat ? 0 : parseFloat((totalAmount - dailyAmount * N).toFixed(2));
 
-        if (!isDemo && tripId && dbInserts.length > 0) {
-          dbInserts.forEach((dbEntry) => {
-            performCloudAction("insert", dbEntry);
-          });
+          const newExpenses = [];
+          const dbInserts = [];
+          const startD = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00") : new Date();
+
+          const baseTags = expense.tags.filter(t => !t.startsWith("spread-"));
+          const finalEst = expense.establishment || "";
+
+          for (let i = 0; i < N; i++) {
+            const amt = isRepeat ? totalAmount : ((i === N - 1) ? parseFloat((dailyAmount + remainder).toFixed(2)) : dailyAmount);
+            const newId = crypto.randomUUID ? crypto.randomUUID() : (Date.now() + i).toString();
+            
+            const d = new Date(startD);
+            d.setDate(d.getDate() + i);
+            const timestamp = d.toISOString();
+
+            const startStr = expense.spreadStart ? new Date(expense.spreadStart + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+            const endStr = expense.spreadEnd ? new Date(expense.spreadEnd + "T00:00:00").toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' }) : "";
+            const baseTitle = expense.title || expense.category;
+            const cleanBaseTitle = baseTitle.replace(/\s*\(Day\s+\d+\/\d+.*\)$/, "");
+
+            const titleWithSuffix = startStr && endStr 
+              ? `${cleanBaseTitle} (Day ${i + 1}/${N}, ${startStr} - ${endStr})` 
+              : `${cleanBaseTitle} (Day ${i + 1}/${N})`;
+
+            const entryTags = [
+              ...baseTags,
+              newGroupTag,
+              `spread-mode-${expense.spreadMode}`,
+              `spread-start-${expense.spreadStart}`,
+              `spread-end-${expense.spreadEnd}`,
+              `spread-amount-${expense.amount}`
+            ];
+
+            const hasPhoto = (expense.photoUrl || (expense.photoUrls && expense.photoUrls.length > 0)) ? true : false;
+            const singleExpense = {
+              amount: amt,
+              currency: expense.currency,
+              category: expense.category,
+              title: titleWithSuffix,
+              notes: expense.notes || "",
+              worthIt: expense.worthIt,
+              establishment: finalEst,
+              tags: entryTags,
+              id: newId,
+              timestamp: timestamp,
+              hasPhoto: hasPhoto,
+              photoUrl: expense.photoUrl || "",
+              photoUrls: expense.photoUrls || [],
+              photoUrlsFull: expense.photoUrlsFull || []
+            };
+
+            newExpenses.push(singleExpense);
+
+            if (!isDemo && tripId) {
+              dbInserts.push({
+                id: singleExpense.id,
+                created_at: singleExpense.timestamp,
+                amount: singleExpense.amount,
+                currency: singleExpense.currency,
+                category: singleExpense.category,
+                title: singleExpense.title,
+                notes: singleExpense.notes,
+                worth_it: singleExpense.worthIt,
+                establishment: singleExpense.establishment,
+                tags: singleExpense.tags,
+                trip_id: tripId,
+                photo_url: singleExpense.photoUrl || null,
+                photo_urls: singleExpense.photoUrls || [],
+                photo_urls_full: singleExpense.photoUrlsFull || [],
+                has_photo: singleExpense.hasPhoto
+              });
+            }
+          }
+
+          pushToUndo({ type: 'update_bulk', oldData: siblings, newData: newExpenses, description: "update group expenses range" });
+          setExpenses((prev) => [...newExpenses, ...prev]);
+
+          if (!isDemo && tripId && dbInserts.length > 0) {
+            dbInserts.forEach((dbEntry) => {
+              performCloudAction("insert", dbEntry);
+            });
+          }
         }
       } else if (expense.spreadDays && expense.spreadDays > 1) {
         // 1. Upgrading a single expense to a range: delete the original single expense
@@ -2733,12 +2842,46 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const deleteExpense = async (id) => {
     const oldExp = expenses.find(e => e.id === id);
+    const nowStr = new Date().toISOString();
     if (oldExp) {
       pushToUndo({ type: 'delete', data: oldExp, description: "delete expense" });
     }
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    setExpenses((prev) => prev.map((e) => e.id === id ? { ...e, deletedAt: nowStr } : e));
+    if (!isDemo && tripId) {
+      performCloudAction("update", { id, deleted_at: nowStr });
+    }
+  };
+
+  const handleRestoreExpense = async (id) => {
+    const expenseToRestore = expenses.find(e => e.id === id);
+    if (!expenseToRestore) return;
+
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, deletedAt: null } : e));
+
+    if (!isDemo && tripId) {
+      performCloudAction("update", { id, deleted_at: null });
+    }
+    pushToUndo({ type: 'insert', data: { ...expenseToRestore, deletedAt: null }, description: "restore expense" });
+  };
+
+  const handleDeleteExpensePermanent = async (id) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+
     if (!isDemo && tripId) {
       performCloudAction("delete", { id });
+    }
+  };
+
+  const handleEmptyBin = async () => {
+    const deletedItems = expenses.filter(e => e.deletedAt);
+    if (deletedItems.length === 0) return;
+
+    setExpenses(prev => prev.filter(e => !e.deletedAt));
+
+    if (!isDemo && tripId) {
+      deletedItems.forEach(item => {
+        performCloudAction("delete", { id: item.id });
+      });
     }
   };
 
@@ -2828,7 +2971,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const now = new Date();
   const todayLocalStr = now.toLocaleDateString('en-CA');
   
-  const visibleExpenses = expenses.filter((e) => {
+  const visibleExpenses = activeExpenses.filter((e) => {
     try {
       const expDateStr = new Date(e.timestamp).toLocaleDateString('en-CA');
       if (expDateStr <= todayLocalStr) return true;
@@ -3205,7 +3348,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
 
     // 1. Filter expenses based on selected date range
-    const filteredInsightsExpenses = expenses.filter((e) => {
+    const filteredInsightsExpenses = activeExpenses.filter((e) => {
       // Filter out future expenses unless showFuture is active
       const isFuture = new Date(e.timestamp) > now;
       if (isFuture && !showFuture) return false;
@@ -5235,6 +5378,29 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
             {/* Actions and Settings on the right */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {/* Trash Bin Button */}
+              <button
+                type="button"
+                onClick={() => setActiveModal("bin")}
+                style={{
+                  fontSize: "0.82rem",
+                  color: "var(--color-purple)",
+                  backgroundColor: "rgba(133, 58, 81, 0.08)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "22px",
+                  height: "22px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  outline: "none"
+                }}
+                title="Trash / Recently Deleted"
+              >
+                🗑️
+              </button>
+
               {/* Settings Button */}
               <button
                 type="button"
@@ -5868,8 +6034,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         {/* Log */}
         <section style={{ padding: "0 24px" }}>
           {(() => {
-            const hasFutureExpenses = expenses.some((e) => new Date(e.timestamp) > now);
-            const baseExpenses = (showFuture || searchQuery) ? expenses : visibleExpenses;
+            const hasFutureExpenses = activeExpenses.some((e) => new Date(e.timestamp) > now);
+            const baseExpenses = (showFuture || searchQuery) ? activeExpenses : visibleExpenses;
             const filteredExpenses = searchQuery
               ? baseExpenses.filter((e) => parseSearchQuery(searchQuery, e, trip.homeCurrency, convertCurrency, rates))
               : baseExpenses;
@@ -7232,6 +7398,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           expenses={expenses}
           convertCurrency={convertCurrency}
           onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === "bin" && (
+        <TrashBinModal
+          expenses={expenses}
+          onClose={() => setActiveModal(null)}
+          onRestore={handleRestoreExpense}
+          onDeletePermanent={handleDeleteExpensePermanent}
+          onEmptyBin={handleEmptyBin}
+          homeCurrency={trip.homeCurrency}
+          rates={rates}
         />
       )}
       <style>{`
@@ -11214,6 +11392,274 @@ function SettingsModal({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TrashBinModal({ 
+  expenses, 
+  onClose, 
+  onRestore, 
+  onDeletePermanent, 
+  onEmptyBin, 
+  homeCurrency, 
+  rates 
+}) {
+  const deletedExpenses = React.useMemo(() => {
+    return expenses
+      .filter(e => e.deletedAt)
+      .sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  }, [expenses]);
+
+  const handleEmptyClick = () => {
+    if (window.confirm("Are you sure you want to permanently delete all items in the bin? This cannot be undone!")) {
+      onEmptyBin();
+    }
+  };
+
+  const handleDeleteClick = (id, title) => {
+    if (window.confirm(`Permanently delete "${title}"? This cannot be undone.`)) {
+      onDeletePermanent(id);
+    }
+  };
+
+  const formatDeletedTime = (deletedAtStr) => {
+    try {
+      const dt = new Date(deletedAtStr);
+      const diffMs = Date.now() - dt.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHrs = Math.floor(diffMins / 60);
+      
+      if (diffMins < 1) return "just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHrs < 24) return `${diffHrs}h ago`;
+      return dt.toLocaleDateString("en-US", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "recently";
+    }
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0, right: 0, bottom: 0, left: 0,
+      backgroundColor: "rgba(15, 23, 42, 0.4)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: "20px"
+    }}>
+      <div style={{
+        backgroundColor: "#F9F6ED",
+        borderRadius: "24px",
+        border: "1.5px solid rgba(133, 58, 81, 0.15)",
+        boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
+        width: "100%",
+        maxWidth: "400px",
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "16px",
+        maxHeight: "85vh",
+        position: "relative",
+        animation: "fadeInScale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ fontSize: "1.2rem", fontWeight: 900, color: "var(--color-purple)", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+            🗑️ Trash Bin
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none", border: "none", fontSize: "1.1rem", cursor: "pointer",
+              color: "#9CA3AF", padding: "4px"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {deletedExpenses.length > 0 && (
+          <div style={{ textAlign: "right" }}>
+            <button
+              onClick={handleEmptyClick}
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "#EF4444",
+                backgroundColor: "transparent",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                borderRadius: "8px",
+                padding: "4px 8px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              Empty Trash Bin
+            </button>
+          </div>
+        )}
+
+        <div style={{
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          paddingRight: "4px",
+          minHeight: "150px"
+        }}>
+          {deletedExpenses.length === 0 ? (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "200px",
+              color: "#9CA3AF",
+              textAlign: "center",
+              gap: "8px"
+            }}>
+              <span style={{ fontSize: "2.5rem" }}>🗑️</span>
+              <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600 }}>Your bin is empty</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#6B7280", maxWidth: "260px" }}>
+                Items you delete will show up here so you can recover them if needed.
+              </p>
+            </div>
+          ) : (
+            deletedExpenses.map((exp) => {
+              // Helper to format money inline
+              const formatMoney = (amount, currency) => {
+                try {
+                  return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currency
+                  }).format(amount);
+                } catch {
+                  return `${currency} ${amount.toFixed(2)}`;
+                }
+              };
+
+              // Helper to convert currency inline
+              const convertCurrency = (amount, from, to, rates) => {
+                if (from === to) return amount;
+                if (!rates || !rates[from] || !rates[to]) return amount;
+                return (amount / rates[from]) * rates[to];
+              };
+
+              return (
+                <div key={exp.id} style={{
+                  backgroundColor: "white",
+                  borderRadius: "14px",
+                  border: "1px solid rgba(133, 58, 81, 0.08)",
+                  padding: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 0, flex: 1, marginRight: "8px" }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#374151", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                        {exp.title}
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: "2px" }}>
+                        {new Date(exp.timestamp).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })} • {exp.category}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)" }}>
+                        {exp.amount} {exp.currency}
+                      </div>
+                      {exp.currency !== homeCurrency && rates && (
+                        <div style={{ fontSize: "0.72rem", color: "#6B7280", marginTop: "1px" }}>
+                          ≈ {formatMoney(convertCurrency(exp.amount, exp.currency, homeCurrency, rates), homeCurrency)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center",
+                    borderTop: "1px solid #F3F4F6",
+                    paddingTop: "8px",
+                    marginTop: "2px"
+                  }}>
+                    <span style={{ fontSize: "0.7rem", color: "#9CA3AF", fontStyle: "italic" }}>
+                      Deleted {formatDeletedTime(exp.deletedAt)}
+                    </span>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        onClick={() => onRestore(exp.id)}
+                        style={{
+                          backgroundColor: "#E1F8EB",
+                          color: "#10B981",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "4px 8px",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          transition: "opacity 0.2s"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 0.8}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 1}
+                      >
+                        Restore
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(exp.id, exp.title)}
+                        style={{
+                          backgroundColor: "transparent",
+                          color: "#9CA3AF",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "4px 6px",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "color 0.2s"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#9CA3AF"}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid #E5E7EB",
+            borderRadius: "12px",
+            padding: "10px",
+            fontSize: "0.85rem",
+            color: "#6B7280",
+            cursor: "pointer",
+            fontWeight: 600,
+            marginTop: "4px"
+          }}
+        >
+          Close
+        </button>
       </div>
     </div>
   );

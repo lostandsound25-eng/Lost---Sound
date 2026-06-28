@@ -178,3 +178,7 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.trip_members;
   END IF;
 END $$;
+
+-- Migration helper: Add deleted_at for Soft Deletes
+ALTER TABLE public.trip_entries ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
