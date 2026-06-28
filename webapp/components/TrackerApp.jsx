@@ -658,6 +658,12 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && supabase) {
+      window.supabase = supabase;
+    }
+  }, [supabase]);
+
   const [showPlannerCalendar, setShowPlannerCalendar] = useState(false);
   const [plannerCalMonth, setPlannerCalMonth] = useState(() => new Date().getMonth());
   const [plannerCalYear, setPlannerCalYear] = useState(() => new Date().getFullYear());
