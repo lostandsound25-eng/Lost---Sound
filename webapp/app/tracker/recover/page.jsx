@@ -21,6 +21,21 @@ export default function RecoverPage() {
       setStatus('running');
       addLog("Starting Yogyakarta Hotel (Day 3/5) photo optimization...");
 
+      // 0. Wait for session to initialize
+      addLog("Initializing authentication session...");
+      const { data: { session }, error: authErr } = await supabase.auth.getSession();
+      if (authErr) {
+        setStatus('error');
+        addLog(`Authentication error: ${authErr.message}`);
+        return;
+      }
+      if (!session || !session.user) {
+        setStatus('error');
+        addLog("No active user session found. Please log in to the app first in another tab, then refresh this page.");
+        return;
+      }
+      addLog(`Authenticated successfully as: ${session.user.email}`);
+
       const entryId = "79704f59-d1aa-4c77-b6bb-c71fbe5bfc90";
       const tripId = "fa31fe5e-ff15-4b38-86ea-0afd99eeb7ae";
 
