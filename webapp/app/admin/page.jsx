@@ -133,9 +133,14 @@ export default function AdminPortal() {
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontFamily: 'var(--font-heading)' }}>Itineraries Dashboard</h2>
               <p style={{ color: '#6B7280', marginTop: '0.25rem' }}>Manage and publish your travel guides here.</p>
             </div>
-            <button onClick={() => router.push('/admin/new')} className="btn btn-primary" style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontWeight: 600 }}>
-              + New Itinerary
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => router.push('/admin/gallery')} className="btn" style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontWeight: 600, backgroundColor: 'rgba(133, 58, 81, 0.08)', color: 'var(--color-purple)', border: '1px solid rgba(133, 58, 81, 0.2)' }}>
+                🖼️ Manage Gallery
+              </button>
+              <button onClick={() => router.push('/admin/new')} className="btn btn-primary" style={{ padding: '0.5rem 1.5rem', borderRadius: '12px', fontWeight: 600 }}>
+                + New Itinerary
+              </button>
+            </div>
           </div>
           
           <div style={{ padding: '3rem', textAlign: 'center', color: '#6B7280' }}>

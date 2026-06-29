@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import Navbar from '../../components/Navbar';
-import { Camera, MapPin, Tag, RefreshCw, X, Play, Volume2, VolumeX } from 'lucide-react';
+import { Camera, MapPin, Tag, Shuffle, Search, X, Play, Volume2, VolumeX } from 'lucide-react';
 
 // Seeding standard mockup travel moments
 const MOCK_GALLERY = [
@@ -119,18 +118,63 @@ const getShapeStyle = (index, isHovered) => {
   return isHovered ? shape.hover : shape.normal;
 };
 
-const COLOR_PILLS = [
-  { id: 'all', label: 'All Colors', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.1)' },
-  { id: 'blue', label: '🔵 Blues', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
-  { id: 'green', label: '🟢 Greens', color: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' },
-  { id: 'gold', label: '🟡 Golds/Oranges', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)' }
+// 5 Alternating preset layout patterns for our organic grid (dense packing)
+const LAYOUT_PATTERNS = [
+  // Pattern 0: Large blocks spread out
+  [
+    'col-span-2 row-span-2', 'col-span-1 row-span-1', 'col-span-1 row-span-2',
+    'col-span-2 row-span-1', 'col-span-1 row-span-1', 'col-span-1 row-span-1',
+    'col-span-2 row-span-2', 'col-span-1 row-span-1'
+  ],
+  // Pattern 1: Horizontal stripes and tall verticals
+  [
+    'col-span-2 row-span-1', 'col-span-1 row-span-2', 'col-span-1 row-span-1',
+    'col-span-2 row-span-2', 'col-span-1 row-span-1', 'col-span-2 row-span-1',
+    'col-span-1 row-span-1', 'col-span-1 row-span-1'
+  ],
+  // Pattern 2: Dense cluster
+  [
+    'col-span-1 row-span-2', 'col-span-2 row-span-2', 'col-span-1 row-span-1',
+    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-2 row-span-1',
+    'col-span-1 row-span-2', 'col-span-1 row-span-1'
+  ],
+  // Pattern 3: Asymmetrical waterfall
+  [
+    'col-span-1 row-span-1', 'col-span-2 row-span-1', 'col-span-1 row-span-2',
+    'col-span-1 row-span-1', 'col-span-2 row-span-2', 'col-span-1 row-span-1',
+    'col-span-1 row-span-1', 'col-span-1 row-span-1'
+  ],
+  // Pattern 4: Alternating showcase
+  [
+    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-2 row-span-2',
+    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-1 row-span-2',
+    'col-span-2 row-span-1', 'col-span-1 row-span-1'
+  ]
 ];
+
+// Helper to translate spans into grid style objects
+const getGridSpanStyle = (layoutClass) => {
+  switch (layoutClass) {
+    case 'col-span-2 row-span-2':
+      return { gridColumn: 'span 2', gridRow: 'span 2' };
+    case 'col-span-1 row-span-2':
+      return { gridColumn: 'span 1', gridRow: 'span 2' };
+    case 'col-span-2 row-span-1':
+      return { gridColumn: 'span 2', gridRow: 'span 1' };
+    default:
+      return { gridColumn: 'span 1', gridRow: 'span 1' };
+  }
+};
 
 export default function GalleryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTag, setSelectedTag] = useState('all');
-  const [selectedColor, setSelectedColor] = useState('all');
+  
+  // Minimalist search input
+  const [searchQuery, setSearchQuery] = useState('');
+  // Grid layout index (determines which of the 5 organic patterns is active)
+  const [patternIndex, setPatternIndex] = useState(0);
+
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
   
@@ -147,14 +191,12 @@ export default function GalleryPage() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          // Parse tag string arrays safely if needed
           const formatted = data.map(d => ({
             ...d,
             tags: Array.isArray(d.tags) ? d.tags : (d.tags ? d.tags.split(',') : [])
           }));
           setItems(formatted);
         } else {
-          // Fallback to beautiful default mock items
           setItems(MOCK_GALLERY);
         }
       } catch (e) {
@@ -167,25 +209,45 @@ export default function GalleryPage() {
     fetchGallery();
   }, []);
 
-  // Collect all unique tags
-  const allTags = ['all', ...Array.from(new Set(items.flatMap(item => item.tags || [])))];
-
-  // Filter items based on active tags & colors
+  // Filter items based on organic keyword search matching (tags, colors, location, title)
   const filteredItems = items.filter(item => {
-    const matchTag = selectedTag === 'all' || item.tags?.includes(selectedTag);
-    const matchColor = selectedColor === 'all' || item.dominant_color === selectedColor;
-    return matchTag && matchColor;
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase().trim();
+
+    const matchesTag = item.tags?.some(t => t.toLowerCase().includes(query));
+    const matchesColor = item.dominant_color?.toLowerCase().includes(query);
+    const matchesLocation = item.location?.toLowerCase().includes(query);
+    const matchesTitle = item.title?.toLowerCase().includes(query);
+
+    return matchesTag || matchesColor || matchesLocation || matchesTitle;
   });
+
+  // Random reshuffle of item positions and cycle to a new layout pattern
+  const handleReshuffle = () => {
+    // 1. Randomize items order in local state
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    setItems(shuffled);
+
+    // 2. Select next random layout pattern
+    const nextPattern = Math.floor(Math.random() * LAYOUT_PATTERNS.length);
+    setPatternIndex(nextPattern);
+  };
+
+  const activePattern = LAYOUT_PATTERNS[patternIndex];
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar />
+      {/* Navbar deleted here because it is globally rendered in RootLayout (app/layout.jsx) */}
 
       <main style={{ flex: 1, padding: '120px 24px 80px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <h1 style={{ 
               fontSize: '3.5rem', 
               fontWeight: 900, 
@@ -200,73 +262,97 @@ export default function GalleryPage() {
             </p>
           </div>
 
-          {/* Filter Bar */}
+          {/* Minimalist Control Bar (Shuffle & Search) */}
           <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '24px', 
-            padding: '20px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)', 
-            border: '1px solid rgba(133, 58, 81, 0.08)',
-            marginBottom: '3rem',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            marginBottom: '3rem',
+            maxWidth: '550px',
+            margin: '0 auto 3rem auto'
           }}>
-            {/* Tag Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <Tag size={14} /> Tag:
-              </span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {allTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setSelectedTag(tag)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: 'none',
-                      fontSize: '0.88rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.25s ease',
-                      backgroundColor: selectedTag === tag ? 'var(--color-purple)' : '#F3F4F6',
-                      color: selectedTag === tag ? 'white' : '#4B5563'
-                    }}
-                  >
-                    #{tag === 'all' ? 'show-all' : tag}
-                  </button>
-                ))}
-              </div>
+            {/* Search Input */}
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search (e.g. coffee, orange, beach)..."
+                style={{
+                  width: '100%',
+                  padding: '12px 16px 12px 42px',
+                  borderRadius: '16px',
+                  border: '1.5px solid rgba(133, 58, 81, 0.15)',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  backgroundColor: 'white',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                  transition: 'all 0.25s ease'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--color-purple)'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(133, 58, 81, 0.15)'}
+              />
+              <Search 
+                size={18} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '14px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  color: '#9CA3AF' 
+                }} 
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    padding: '2px'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
-            {/* Color Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <RefreshCw size={14} /> Hue:
-              </span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {COLOR_PILLS.map(pill => (
-                  <button
-                    key={pill.id}
-                    onClick={() => setSelectedColor(pill.id)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: selectedColor === pill.id ? `1.5px solid ${pill.color}` : '1.5px solid transparent',
-                      fontSize: '0.88rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: 'all 0.25s ease',
-                      backgroundColor: pill.bg,
-                      color: pill.color
-                    }}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Reshuffle Button */}
+            <button
+              onClick={handleReshuffle}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                borderRadius: '16px',
+                border: 'none',
+                backgroundColor: 'var(--color-purple)',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '0.92rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(133, 58, 81, 0.2)',
+                transition: 'all 0.25s ease',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.backgroundColor = '#6e2b40';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.backgroundColor = 'var(--color-purple)';
+              }}
+            >
+              <Shuffle size={16} /> Shuffle
+            </button>
           </div>
 
           {/* Mosaic Grid */}
@@ -279,23 +365,34 @@ export default function GalleryPage() {
               {filteredItems.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px 20px', backgroundColor: 'white', borderRadius: '24px', border: '1px dashed rgba(133,58,81,0.2)' }}>
                   <h3 style={{ fontSize: '1.25rem', color: 'var(--color-purple)', marginBottom: '0.5rem' }}>No travel moments match</h3>
-                  <p style={{ color: '#666', fontSize: '0.95rem' }}>Try clearing your active category or color filters.</p>
+                  <p style={{ color: '#666', fontSize: '0.95rem' }}>Try searching another keyword (e.g. coffee, gold, Bali).</p>
                 </div>
               ) : (
                 <motion.div 
                   layout
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                    gridAutoRows: '260px',
-                    gap: '20px',
-                    marginTop: '20px'
+                    // Organic grid layouts utilizing tight responsive columns
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gridAutoRows: '160px',
+                    // dense grid packing fills all remaining holes dynamically
+                    gridAutoFlow: 'dense',
+                    gap: '8px',
+                    marginTop: '20px',
+                    borderRadius: '24px',
+                    overflow: 'hidden',
+                    backgroundColor: '#FAF9F6',
+                    padding: '8px'
                   }}
                 >
                   <AnimatePresence mode="popLayout">
                     {filteredItems.map((item, index) => {
                       const isHovered = hoveredIndex === index;
                       const clipPathValue = getShapeStyle(index, isHovered);
+                      
+                      // Match current item to active layout pattern for size span
+                      const layoutClass = activePattern[index % activePattern.length];
+                      const gridStyle = getGridSpanStyle(layoutClass);
 
                       return (
                         <motion.div
@@ -304,11 +401,12 @@ export default function GalleryPage() {
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.35, ease: 'easeInOut' }}
+                          transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
                           onMouseEnter={() => setHoveredIndex(index)}
                           onMouseLeave={() => setHoveredIndex(null)}
                           onClick={() => setActiveItem(item)}
                           style={{
+                            ...gridStyle,
                             position: 'relative',
                             width: '100%',
                             height: '100%',
@@ -318,9 +416,9 @@ export default function GalleryPage() {
                             clipPath: clipPathValue,
                             WebkitClipPath: clipPathValue,
                             transition: 'clip-path 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), -webkit-clip-path 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.45s ease',
-                            transform: isHovered ? 'scale(1.04) rotate(0.5deg)' : 'scale(1) rotate(0deg)',
+                            transform: isHovered ? 'scale(1.03) rotate(0.3deg)' : 'scale(1) rotate(0deg)',
                             zIndex: isHovered ? 10 : 1,
-                            boxShadow: isHovered ? '0 20px 25px -5px rgba(0,0,0,0.1)' : 'none'
+                            boxShadow: isHovered ? '0 12px 20px -5px rgba(0,0,0,0.15)' : 'none'
                           }}
                         >
                           {/* Image Thumbnail */}
@@ -357,10 +455,10 @@ export default function GalleryPage() {
                               />
                               <div style={{
                                 position: 'absolute',
-                                bottom: '12px',
-                                right: '12px',
-                                width: '28px',
-                                height: '28px',
+                                bottom: '8px',
+                                right: '8px',
+                                width: '24px',
+                                height: '24px',
                                 borderRadius: '50%',
                                 backgroundColor: 'rgba(0,0,0,0.5)',
                                 display: 'flex',
@@ -369,7 +467,7 @@ export default function GalleryPage() {
                                 color: 'white',
                                 backdropFilter: 'blur(4px)'
                               }}>
-                                <Play size={12} fill="white" />
+                                <Play size={10} fill="white" />
                               </div>
                             </div>
                           )}
@@ -504,7 +602,6 @@ export default function GalleryPage() {
                 maxHeight: '85vh'
               }}
             >
-              {/* Main Container */}
               <div style={{ display: 'flex', flex: 1, flexDirection: 'row', flexWrap: 'wrap', minHeight: 0 }}>
                 
                 {/* Media Pane */}
@@ -569,7 +666,6 @@ export default function GalleryPage() {
                   borderLeft: '1px solid rgba(133, 58, 81, 0.06)',
                   position: 'relative'
                 }}>
-                  {/* Close button inside panel for cleaner look */}
                   <button
                     onClick={() => setActiveItem(null)}
                     style={{
@@ -587,7 +683,6 @@ export default function GalleryPage() {
                   </button>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Header */}
                     <div>
                       <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-purple)', margin: 0, fontFamily: 'var(--font-heading)', lineHeight: 1.25 }}>
                         {activeItem.title}
@@ -598,7 +693,6 @@ export default function GalleryPage() {
                       </div>
                     </div>
 
-                    {/* Notes block */}
                     <div style={{ borderLeft: '3px solid var(--color-golden)', paddingLeft: '16px', marginTop: '10px' }}>
                       <p style={{ margin: 0, color: '#4B5563', fontSize: '1.05rem', lineHeight: 1.6, fontStyle: 'italic' }}>
                         "{activeItem.notes}"
@@ -606,7 +700,6 @@ export default function GalleryPage() {
                     </div>
                   </div>
 
-                  {/* Tags & Meta footer */}
                   <div style={{ borderTop: '1px solid rgba(133, 58, 81, 0.08)', paddingTop: '24px', marginTop: '30px' }}>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
                       {activeItem.tags?.map(t => (
