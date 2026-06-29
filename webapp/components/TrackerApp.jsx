@@ -1691,6 +1691,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               worthIt: newRow.worth_it,
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
+              hasPhoto: newRow.has_photo || false,
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
               photoUrlsFull: newRow.photo_urls_full || []
@@ -1711,6 +1712,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               worthIt: newRow.worth_it,
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
+              hasPhoto: newRow.has_photo || false,
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
               photoUrlsFull: newRow.photo_urls_full || []
@@ -9580,7 +9582,8 @@ function ManualEntryModal({
                         transform: isDragged ? "scale(1.06)" : "none",
                         transition: "transform 0.15s, border 0.15s, opacity 0.15s",
                         userSelect: "none",
-                        touchAction: "none" // Disable browser scroll during long-press drag
+                        touchAction: "none", // Disable browser scroll during long-press drag
+                        pointerEvents: isDragged ? "none" : "auto"
                       }}
                     >
                       {/* Cover Badge for first photo (index 0) */}
