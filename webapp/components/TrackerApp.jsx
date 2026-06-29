@@ -8187,6 +8187,108 @@ function ManualEntryModal({
   });
   const [loadingPhotos, setLoadingPhotos] = useState(false);
 
+  // Photo rearrange drag states
+  const [draggedPhotoIndex, setDraggedPhotoIndex] = useState(null);
+  const [dragOverPhotoIndex, setDragOverPhotoIndex] = useState(null);
+  const [isTouchDraggingPhoto, setIsTouchDraggingPhoto] = useState(false);
+  const [photoTouchTimer, setPhotoTouchTimer] = useState(null);
+  const touchDragActiveRef = useRef(false);
+
+  // Photo Drag & Drop handlers
+  const handlePhotoDragStart = (e, index) => {
+    setDraggedPhotoIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handlePhotoDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedPhotoIndex === null || draggedPhotoIndex === index) return;
+    setDragOverPhotoIndex(index);
+  };
+
+  const handlePhotoDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedPhotoIndex === null || draggedPhotoIndex === targetIndex) return;
+
+    const newPhotoUrls = [...photoUrls];
+    const newPhotoUrlsFull = [...photoUrlsFull];
+
+    const [movedUrl] = newPhotoUrls.splice(draggedPhotoIndex, 1);
+    newPhotoUrls.splice(targetIndex, 0, movedUrl);
+
+    const [movedUrlFull] = newPhotoUrlsFull.splice(draggedPhotoIndex, 1);
+    newPhotoUrlsFull.splice(targetIndex, 0, movedUrlFull);
+
+    setPhotoUrls(newPhotoUrls);
+    setPhotoUrlsFull(newPhotoUrlsFull);
+
+    setDraggedPhotoIndex(null);
+    setDragOverPhotoIndex(null);
+  };
+
+  const handlePhotoDragEnd = () => {
+    setDraggedPhotoIndex(null);
+    setDragOverPhotoIndex(null);
+  };
+
+  // Photo Touch Drag handlers for mobile (Touch & Hold)
+  const handlePhotoTouchStart = (e, index) => {
+    touchDragActiveRef.current = false;
+    const timer = setTimeout(() => {
+      setIsTouchDraggingPhoto(true);
+      touchDragActiveRef.current = true;
+      setDraggedPhotoIndex(index);
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 400); // 400ms touch and hold
+    setPhotoTouchTimer(timer);
+  };
+
+  const handlePhotoTouchMove = (e) => {
+    if (!isTouchDraggingPhoto) {
+      if (photoTouchTimer) {
+        clearTimeout(photoTouchTimer);
+        setPhotoTouchTimer(null);
+      }
+      return;
+    }
+
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = element?.closest('[data-photo-index]');
+    if (card) {
+      const overIndex = parseInt(card.getAttribute('data-photo-index'), 10);
+      if (overIndex !== null && !isNaN(overIndex) && overIndex !== draggedPhotoIndex) {
+        const newPhotoUrls = [...photoUrls];
+        const newPhotoUrlsFull = [...photoUrlsFull];
+
+        const [movedUrl] = newPhotoUrls.splice(draggedPhotoIndex, 1);
+        newPhotoUrls.splice(overIndex, 0, movedUrl);
+
+        const [movedUrlFull] = newPhotoUrlsFull.splice(draggedPhotoIndex, 1);
+        newPhotoUrlsFull.splice(overIndex, 0, movedUrlFull);
+
+        setPhotoUrls(newPhotoUrls);
+        setPhotoUrlsFull(newPhotoUrlsFull);
+        setDraggedPhotoIndex(overIndex);
+      }
+    }
+  };
+
+  const handlePhotoTouchEnd = () => {
+    if (photoTouchTimer) {
+      clearTimeout(photoTouchTimer);
+      setPhotoTouchTimer(null);
+    }
+    setIsTouchDraggingPhoto(false);
+    setDraggedPhotoIndex(null);
+  };
+
   useEffect(() => {
     if (expenseToEdit && expenseToEdit.hasPhoto) {
       setLoadingPhotos(true);
@@ -9445,51 +9547,125 @@ function ManualEntryModal({
             )}
             {photoUrls && photoUrls.length > 0 && !loadingPhotos && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
-                {photoUrls.map((url, index) => (
-                  <div key={index} style={{
-                    position: "relative",
-                    width: "80px",
-                    height: "80px",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    border: "1px solid #E5E7EB",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-                  }}>
-                    <img 
-                      src={url} 
-                      alt={`Receipt ${index + 1}`} 
-                      onClick={() => {
-                        setLightboxPhotoIndex(index);
-                        setShowModalLightbox(true);
-                      }}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPhotoUrls(prev => prev.filter((_, idx) => idx !== index));
-                        setPhotoUrlsFull(prev => prev.filter((_, idx) => idx !== index));
-                      }}
+                {photoUrls.map((url, index) => {
+                  const isDragged = draggedPhotoIndex === index;
+                  const isOver = dragOverPhotoIndex === index;
+
+                  return (
+                    <div
+                      key={index}
+                      data-photo-index={index}
+                      draggable={true}
+                      onDragStart={(e) => handlePhotoDragStart(e, index)}
+                      onDragOver={(e) => handlePhotoDragOver(e, index)}
+                      onDrop={(e) => handlePhotoDrop(e, index)}
+                      onDragEnd={handlePhotoDragEnd}
+                      onTouchStart={(e) => handlePhotoTouchStart(e, index)}
+                      onTouchMove={handlePhotoTouchMove}
+                      onTouchEnd={handlePhotoTouchEnd}
+                      onTouchCancel={handlePhotoTouchEnd}
                       style={{
+                        position: "relative",
+                        width: "80px",
+                        height: "80px",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        border: isOver 
+                          ? "2.5px solid var(--color-purple)" 
+                          : (isDragged ? "2px dashed var(--color-purple)" : "1px solid #E5E7EB"),
+                        boxShadow: isDragged 
+                          ? "0 8px 24px rgba(0,0,0,0.18)" 
+                          : "0 2px 8px rgba(0,0,0,0.08)",
+                        opacity: isDragged ? 0.4 : 1,
+                        transform: isDragged ? "scale(1.06)" : "none",
+                        transition: "transform 0.15s, border 0.15s, opacity 0.15s",
+                        userSelect: "none",
+                        touchAction: "none" // Disable browser scroll during long-press drag
+                      }}
+                    >
+                      {/* Cover Badge for first photo (index 0) */}
+                      {index === 0 && (
+                        <div style={{
+                          position: "absolute",
+                          top: "4px",
+                          left: "4px",
+                          backgroundColor: "var(--color-purple)",
+                          color: "white",
+                          padding: "1px 5px",
+                          borderRadius: "6px",
+                          fontSize: "8px",
+                          fontWeight: "800",
+                          zIndex: 3,
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+                          pointerEvents: "none",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3px"
+                        }}>
+                          ★ Cover
+                        </div>
+                      )}
+
+                      <img 
+                        src={url} 
+                        alt={`Receipt ${index + 1}`} 
+                        onClick={() => {
+                          if (touchDragActiveRef.current) return;
+                          setLightboxPhotoIndex(index);
+                          setShowModalLightbox(true);
+                        }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                      />
+
+                      {/* Rearrange Drag Handle for desktop */}
+                      <div style={{
                         position: "absolute",
-                        top: "4px",
-                        right: "4px",
+                        bottom: "4px",
+                        left: "4px",
                         backgroundColor: "rgba(0,0,0,0.6)",
                         color: "white",
-                        border: "none",
-                        borderRadius: "50%",
-                        width: "20px",
-                        height: "20px",
-                        fontSize: "10px",
-                        cursor: "pointer",
+                        borderRadius: "4px",
+                        width: "18px",
+                        height: "18px",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center"
-                      }}
-                    >✕</button>
-                  </div>
-                ))}
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        cursor: "grab",
+                        zIndex: 3,
+                        pointerEvents: "none",
+                        userSelect: "none"
+                      }} title="Click and drag to rearrange">
+                        ⠿
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhotoUrls(prev => prev.filter((_, idx) => idx !== index));
+                          setPhotoUrlsFull(prev => prev.filter((_, idx) => idx !== index));
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: "4px",
+                          right: "4px",
+                          backgroundColor: "rgba(0,0,0,0.6)",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "20px",
+                          height: "20px",
+                          fontSize: "10px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 3
+                        }}
+                      >✕</button>
+                    </div>
+                  );
+                })}
                 {/* Plus button to add more photos */}
                 <button
                   type="button"
