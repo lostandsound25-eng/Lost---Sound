@@ -1694,7 +1694,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               hasPhoto: newRow.has_photo || false,
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
-              photoUrlsFull: newRow.photo_urls_full || []
+              photoUrlsFull: newRow.photo_urls_full || [],
+              deletedAt: newRow.deleted_at || null
             };
             setExpenses((prev) => {
               if (prev.some(e => e.id === mapped.id)) return prev;
@@ -1715,7 +1716,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               hasPhoto: newRow.has_photo || false,
               photoUrl: newRow.photo_url || "",
               photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
-              photoUrlsFull: newRow.photo_urls_full || []
+              photoUrlsFull: newRow.photo_urls_full || [],
+              deletedAt: newRow.deleted_at || null
             };
             setExpenses((prev) => prev.map(e => e.id === mapped.id ? mapped : e));
           } else if (eventType === "DELETE") {
@@ -5425,44 +5427,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               >
                 ⚙️
               </button>
-              {/* Undo Button */}
-              {undoStack.length > 0 && (
-                <button
-                  onClick={handleUndo}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--color-purple)",
-                    cursor: "pointer",
-                    padding: "2px",
-                    display: "flex",
-                    alignItems: "center",
-                    outline: "none"
-                  }}
-                  title="Undo"
-                >
-                  <UndoIcon size={16} />
-                </button>
-              )}
-              {/* Redo Button */}
-              {redoStack.length > 0 && (
-                <button
-                  onClick={handleRedo}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--color-purple)",
-                    cursor: "pointer",
-                    padding: "2px",
-                    display: "flex",
-                    alignItems: "center",
-                    outline: "none"
-                  }}
-                  title="Redo"
-                >
-                  <RedoIcon size={16} />
-                </button>
-              )}
 
               {/* Cloud Save & Sync (for Demo Mode) or Share & Sync for non-demo */}
               {supabase && (
