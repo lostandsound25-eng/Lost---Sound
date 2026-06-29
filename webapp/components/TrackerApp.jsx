@@ -11716,12 +11716,6 @@ function TrashBinModal({
                 }
               };
 
-              // Helper to convert currency inline
-              const convertCurrency = (amount, from, to, rates) => {
-                if (from === to) return amount;
-                if (!rates || !rates[from] || !rates[to]) return amount;
-                return (amount / rates[from]) * rates[to];
-              };
 
               return (
                 <div key={exp.id} style={{
