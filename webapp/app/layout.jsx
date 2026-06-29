@@ -43,7 +43,7 @@ export default function RootLayout({ children }) {
             </div>
             <div className="footer-links" style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '3rem' }}>
               <Link href="/blog">Blog</Link>
-              <Link href="/routes">Routes</Link>
+              <Link href="/gallery">Gallery</Link>
               <Link href="/travel-tricks">Travel Tricks</Link>
               <Link href="/about">Our Story</Link>
             </div>

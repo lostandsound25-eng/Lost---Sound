@@ -21,13 +21,13 @@ export default function Home() {
               This site is everything we wish we knew, all in one place.
             </h2>
             <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
-              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Use our tried-and-true free <Link href="/routes" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>routes</Link> to take the guesswork out of planning your trip. 
+              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Browse our curated <Link href="/gallery" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>travel gallery</Link> for visual inspiration and highlights of our journeys. 
               <br /><br />
               Or, if you are feeling overwhelmed and want help structuring your journey sustainably, we offer 1-on-1 strategy calls to help you curate your own unforgettable route.
             </p>
             <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
-              <Link href="/routes" className="btn btn-secondary">Routes</Link>
+              <Link href="/gallery" className="btn btn-secondary">Gallery</Link>
             </div>
           </div>
           <div className="hero-visuals">
@@ -83,7 +83,7 @@ export default function Home() {
           </div>
 
           <div className="text-center" style={{ marginTop: '60px' }}>
-            <Link href="/routes" className="btn btn-outline" style={{ background: 'white' }}>View All Routes</Link>
+            <Link href="/gallery" className="btn btn-outline" style={{ background: 'white' }}>View Gallery</Link>
           </div>
         </div>
       </section>

@@ -45,7 +45,7 @@ export default function Navbar() {
           <div className="nav-links desktop-only">
             <Search />
             <Link href="/blog">Blog</Link>
-            <Link href="/routes">Routes</Link>
+            <Link href="/gallery">Gallery</Link>
             <Link href="/travel-tricks">Travel Tricks</Link>
             <Link href="/about">Our Story</Link>
             <Link href="/start-planning" className="btn btn-primary btn-nav">Start Planning</Link>
@@ -107,7 +107,7 @@ export default function Navbar() {
 
             <div className="drawer-links">
               <Link href="/blog" onClick={() => setIsMenuOpen(false)}>Blog</Link>
-              <Link href="/routes" onClick={() => setIsMenuOpen(false)}>Routes</Link>
+              <Link href="/gallery" onClick={() => setIsMenuOpen(false)}>Gallery</Link>
               <Link href="/travel-tricks" onClick={() => setIsMenuOpen(false)}>Travel Tricks</Link>
               <Link href="/about" onClick={() => setIsMenuOpen(false)}>Our Story</Link>
               <Link href="/start-planning" className="btn btn-primary drawer-cta" onClick={() => setIsMenuOpen(false)}>
