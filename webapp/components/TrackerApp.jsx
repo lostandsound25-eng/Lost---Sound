@@ -8248,7 +8248,7 @@ function ManualEntryModal({
   };
 
   const handlePhotoTouchMove = (e) => {
-    if (!isTouchDraggingPhoto) {
+    if (!isTouchDraggingPhoto || draggedPhotoIndex === null) {
       if (photoTouchTimer) {
         clearTimeout(photoTouchTimer);
         setPhotoTouchTimer(null);
@@ -8261,7 +8261,20 @@ function ManualEntryModal({
     }
 
     const touch = e.touches[0];
+    const draggedElement = document.querySelector(`[data-photo-index="${draggedPhotoIndex}"]`);
+    
+    let oldPointerEvents = "";
+    if (draggedElement) {
+      oldPointerEvents = draggedElement.style.pointerEvents;
+      draggedElement.style.pointerEvents = "none";
+    }
+
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (draggedElement) {
+      draggedElement.style.pointerEvents = oldPointerEvents;
+    }
+
     const card = element?.closest('[data-photo-index]');
     if (card) {
       const overIndex = parseInt(card.getAttribute('data-photo-index'), 10);
@@ -9566,6 +9579,12 @@ function ManualEntryModal({
                       onTouchMove={handlePhotoTouchMove}
                       onTouchEnd={handlePhotoTouchEnd}
                       onTouchCancel={handlePhotoTouchEnd}
+                      onContextMenu={(e) => e.preventDefault()} // Disable native long-press menu
+                      onClick={() => {
+                        if (touchDragActiveRef.current) return;
+                        setLightboxPhotoIndex(index);
+                        setShowModalLightbox(true);
+                      }}
                       style={{
                         position: "relative",
                         width: "80px",
@@ -9582,8 +9601,9 @@ function ManualEntryModal({
                         transform: isDragged ? "scale(1.06)" : "none",
                         transition: "transform 0.15s, border 0.15s, opacity 0.15s",
                         userSelect: "none",
-                        touchAction: "none", // Disable browser scroll during long-press drag
-                        pointerEvents: isDragged ? "none" : "auto"
+                        WebkitUserSelect: "none",
+                        WebkitTouchCallout: "none",
+                        touchAction: "none" // Disable browser scroll during long-press drag
                       }}
                     >
                       {/* Cover Badge for first photo (index 0) */}
@@ -9611,12 +9631,16 @@ function ManualEntryModal({
                       <img 
                         src={url} 
                         alt={`Receipt ${index + 1}`} 
-                        onClick={() => {
-                          if (touchDragActiveRef.current) return;
-                          setLightboxPhotoIndex(index);
-                          setShowModalLightbox(true);
-                        }}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                        style={{ 
+                          width: "100%", 
+                          height: "100%", 
+                          objectFit: "cover", 
+                          cursor: "pointer",
+                          pointerEvents: "none", // Prevent native iOS image long-press menus
+                          WebkitTouchCallout: "none",
+                          userSelect: "none",
+                          WebkitUserSelect: "none"
+                        }} 
                       />
 
                       {/* Rearrange Drag Handle for desktop */}
