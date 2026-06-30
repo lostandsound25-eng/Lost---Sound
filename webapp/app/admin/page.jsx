@@ -44,33 +44,55 @@ export default function AdminPortal() {
 
   // Load Auth Session and listen for password recovery events
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && session.user?.email === 'lostandsound25@gmail.com') {
-        setSession(session);
-        setView('dashboard');
-        loadGalleryStats();
-      } else {
-        setView('login');
-      }
+    if (!supabase) {
+      setAuthError("Supabase client not initialized. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in webapp/.env.local and restart your Next.js development server (e.g. stop it with Ctrl+C and run npm run dev again).");
       setLoading(false);
-    });
+      return;
+    }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        setView('reset_password');
-      } else if (session && session.user?.email === 'lostandsound25@gmail.com') {
-        setView('dashboard');
-        loadGalleryStats();
-      } else {
-        setView('login');
-      }
-    });
+    try {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user?.email === 'lostandsound25@gmail.com') {
+          setSession(session);
+          setView('dashboard');
+          loadGalleryStats().catch(err => {
+            console.error("loadGalleryStats failed:", err);
+          });
+        } else {
+          setView('login');
+        }
+        setLoading(false);
+      }).catch(err => {
+        console.error("getSession failed:", err);
+        setAuthError("Failed to fetch auth session: " + (err.message || err));
+        setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        setSession(session);
+        
+        if (event === 'PASSWORD_RECOVERY') {
+          setView('reset_password');
+        } else if (session && session.user?.email === 'lostandsound25@gmail.com') {
+          setView('dashboard');
+          loadGalleryStats().catch(err => {
+            console.error("loadGalleryStats onAuthStateChange failed:", err);
+          });
+        } else {
+          setView('login');
+        }
+      });
+
+      return () => {
+        if (subscription) subscription.unsubscribe();
+      };
+    } catch (err) {
+      console.error("Auth init crash:", err);
+      setAuthError("Auth initialization crash: " + (err.message || err));
+      setLoading(false);
+    }
   }, []);
 
   // Fetch upload statistics & existing list
@@ -320,8 +342,13 @@ export default function AdminPortal() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9F6ED' }}>
-        <p style={{ color: 'var(--color-purple)', fontWeight: 800 }}>Loading Portal Security...</p>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9F6ED', padding: '24px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--color-purple)', fontWeight: 800, fontSize: '1.2rem', marginBottom: '8px' }}>Loading Portal Security...</p>
+        {authError && (
+          <div style={{ maxWidth: '500px', padding: '16px', backgroundColor: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: '16px', color: '#DC2626', fontSize: '0.9rem', fontWeight: 600, marginTop: '16px', lineHeight: 1.5 }}>
+            {authError}
+          </div>
+        )}
       </div>
     );
   }
