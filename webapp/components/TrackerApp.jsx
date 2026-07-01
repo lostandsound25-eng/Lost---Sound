@@ -1052,7 +1052,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [localCurrencyInput, setLocalCurrencyInput] = useState("");
 
   // Offline background queue state
-  const [syncQueue, setSyncQueue] = useState([]);
+  const [syncQueue, setSyncQueue] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    if (isDemo || !tripId) return [];
+    try {
+      const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
+      return savedQueue ? JSON.parse(savedQueue) : [];
+    } catch { return []; }
+  });
 
   useEffect(() => {
     setNameInput(trip.name);
@@ -1628,13 +1635,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   useEffect(() => {
     if (!isDemo && tripId) {
-      const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
-      if (savedQueue) {
-        const parsed = JSON.parse(savedQueue);
-        setSyncQueue(parsed);
-        if (parsed.length > 0 && navigator.onLine) {
-          processSyncQueue(parsed);
-        }
+      if (syncQueue.length > 0 && navigator.onLine) {
+        processSyncQueue(syncQueue);
       }
     }
   }, [tripId, isDemo]);
@@ -2041,7 +2043,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         photoUrlsFull: [],
         deletedAt: e.deleted_at || null
       }));
-      const merged = getMergedExpenses(mappedExpenses, syncQueueRef.current || []);
+      const latestQueue = (() => {
+        try {
+          const saved = localStorage.getItem(`sync_queue_${tripId}`);
+          return saved ? JSON.parse(saved) : (syncQueueRef.current || []);
+        } catch {
+          return syncQueueRef.current || [];
+        }
+      })();
+      const merged = getMergedExpenses(mappedExpenses, latestQueue);
       setExpenses(merged);
 
       safeSetLocalStorage(`tracker_trip_${tripId}`, JSON.stringify(newTrip));
