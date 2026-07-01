@@ -3612,258 +3612,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px", animation: "fadeInUp 0.25s ease-out" }}>
-        <div style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
-          gap: "10px",
-          padding: "20px 24px",
-          borderRadius: "24px",
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.45))",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          border: "1.5px solid rgba(133, 58, 81, 0.15)",
-          animation: "categoryGlowShift 10s infinite ease-in-out",
-          marginBottom: "4px"
-        }}>
-          <style>{`
-            @keyframes categoryGlowShift {
-              0% {
-                box-shadow: 0 0 16px rgba(133, 58, 81, 0.25), 0 8px 32px rgba(133, 58, 81, 0.03);
-                border-color: rgba(133, 58, 81, 0.2);
-              }
-              25% {
-                box-shadow: 0 0 16px rgba(245, 158, 11, 0.25), 0 8px 32px rgba(245, 158, 11, 0.03);
-                border-color: rgba(245, 158, 11, 0.2);
-              }
-              50% {
-                box-shadow: 0 0 16px rgba(59, 130, 246, 0.25), 0 8px 32px rgba(59, 130, 246, 0.03);
-                border-color: rgba(59, 130, 246, 0.2);
-              }
-              75% {
-                box-shadow: 0 0 16px rgba(16, 185, 129, 0.25), 0 8px 32px rgba(16, 185, 129, 0.03);
-                border-color: rgba(16, 185, 129, 0.2);
-              }
-              100% {
-                box-shadow: 0 0 16px rgba(133, 58, 81, 0.25), 0 8px 32px rgba(133, 58, 81, 0.03);
-                border-color: rgba(133, 58, 81, 0.2);
-              }
-            }
-          `}</style>
-
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "44px",
-            height: "44px",
-            borderRadius: "16px",
-            backgroundColor: "rgba(245, 158, 11, 0.12)",
-            border: "1px solid rgba(245, 158, 11, 0.25)",
-            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.06)",
-            fontSize: "1.4rem",
-            flexShrink: 0
-          }}>
-            💡
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-            <h2 style={{
-              fontSize: "1.35rem",
-              fontWeight: 900,
-              color: "var(--color-purple)",
-              margin: 0,
-              letterSpacing: "-0.4px",
-              lineHeight: "1.2"
-            }}>
-              Insights
-            </h2>
-            <span style={{
-              fontSize: "0.72rem",
-              color: "#6B7280",
-              fontWeight: 500,
-              letterSpacing: "0.1px"
-            }}>
-              Analyzing your spending and stats in real time
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
-            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Date Filter</span>
-            {(insightsStartDate || insightsEndDate) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setInsightsStartDate(null);
-                  setInsightsEndDate(null);
-                  setShowInsightsCalendar(false);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--color-orange)",
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  padding: "2px 6px"
-                }}
-              >
-                Clear Filter
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            data-insights-calendar-toggle="true"
-            onClick={() => setShowInsightsCalendar(!showInsightsCalendar)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "100%",
-              padding: "12px 16px",
-              backgroundColor: "white",
-              borderRadius: "16px",
-              border: "1.5px solid #E5E7EB",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
-              fontSize: "0.85rem",
-              fontWeight: 700,
-              color: "#374151",
-              cursor: "pointer",
-              outline: "none"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span>📅</span>
-              <span>{dateFilterLabel}</span>
-            </div>
-            <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>{showInsightsCalendar ? "▲" : "▼"}</span>
-          </button>
-
-          {/* Quick presets row */}
-          <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px", scrollbarWidth: "none" }} className="no-scrollbar">
-            {[
-              { key: "7d", label: "Last 7 Days" },
-              { key: "30d", label: "Last 30 Days" },
-              { key: "month", label: "This Month" },
-              { key: "all", label: "All Time" }
-            ].map((preset) => {
-              let isActive = false;
-              const todayStr = new Date().toLocaleDateString('en-CA');
-              if (preset.key === "7d") {
-                const past = new Date();
-                past.setDate(past.getDate() - 7);
-                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
-              } else if (preset.key === "30d") {
-                const past = new Date();
-                past.setDate(past.getDate() - 30);
-                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
-              } else if (preset.key === "month") {
-                const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
-                const end = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA');
-                isActive = insightsStartDate === start && insightsEndDate === end;
-              } else if (preset.key === "all") {
-                isActive = !insightsStartDate && !insightsEndDate;
-              }
-
-              return (
-                <button
-                  key={preset.key}
-                  type="button"
-                  onClick={() => handleQuickFilter(preset.key)}
-                  style={{
-                    flexShrink: 0,
-                    padding: "6px 10px",
-                    borderRadius: "10px",
-                    border: isActive ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.08)",
-                    backgroundColor: isActive ? "rgba(133, 58, 81, 0.05)" : "white",
-                    color: isActive ? "var(--color-purple)" : "#6B7280",
-                    fontSize: "0.72rem",
-                    fontWeight: isActive ? 800 : 600,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease"
-                  }}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {showInsightsCalendar && (
-            <div
-              ref={insightsCalendarRef}
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                marginTop: "8px",
-                backgroundColor: "white",
-                borderRadius: "20px",
-                border: "1.5px solid rgba(133, 58, 81, 0.12)",
-                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08)",
-                padding: "16px",
-                zIndex: 10,
-                animation: "fadeInUp 0.15s ease-out"
-              }}
-            >
-              {renderInsightsCalendarGrid()}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
-            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Spend</span>
-            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", marginTop: "4px", marginBottom: "2px" }}>
-              {formatMoney(filteredExpensesTotal, trip.homeCurrency)}
-            </h3>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {filteredDaysActive} active days</span>
-          </div>
-
-          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
-            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Daily Average</span>
-            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-orange)", marginTop: "4px", marginBottom: "2px" }}>
-              {formatMoney(filteredExpensesTotal / filteredDaysActive, trip.homeCurrency)}
-            </h3>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>per day average</span>
-          </div>
-
-          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
-            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Top Category</span>
-            <h4 style={{ fontSize: "1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
-              {topCategory && topCategory.total > 0 ? (
-                <>
-                  <span>{CATEGORY_EMOJIS[topCategory.cat]}</span>
-                  <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                    {topCategory.cat === "Accommodation" ? "Stay" : topCategory.cat === "Transportation" ? "Transit" : topCategory.cat === "Food & Drink" ? "Food" : "Other"}
-                  </span>
-                </>
-              ) : "-"}
-            </h4>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
-              {topCategory && topCategory.total > 0 ? formatMoney(topCategory.total, trip.homeCurrency) : ""}
-            </span>
-          </div>
-
-          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
-            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Peak Day</span>
-            <h4 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-              {maxDayStr}
-            </h4>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
-              {maxDayAmt > 0 ? formatMoney(maxDayAmt, trip.homeCurrency) : "-"}
-            </span>
-          </div>
-        </div>
-
-        {/* Worth It Highlights Memories card */}
+        {/* Worth It Highlights Memories card placed right at the top! */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
             <h4 style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--color-purple)", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
@@ -4039,6 +3788,180 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </div>
           )}
         </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Date Filter</span>
+            {(insightsStartDate || insightsEndDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInsightsStartDate(null);
+                  setInsightsEndDate(null);
+                  setShowInsightsCalendar(false);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-orange)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: "2px 6px"
+                }}
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            data-insights-calendar-toggle="true"
+            onClick={() => setShowInsightsCalendar(!showInsightsCalendar)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              padding: "12px 16px",
+              backgroundColor: "white",
+              borderRadius: "16px",
+              border: "1.5px solid #E5E7EB",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              color: "#374151",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>📅</span>
+              <span>{dateFilterLabel}</span>
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>{showInsightsCalendar ? "▲" : "▼"}</span>
+          </button>
+
+          {/* Quick presets row */}
+          <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px", scrollbarWidth: "none" }} className="no-scrollbar">
+            {[
+              { key: "7d", label: "Last 7 Days" },
+              { key: "30d", label: "Last 30 Days" },
+              { key: "month", label: "This Month" },
+              { key: "all", label: "All Time" }
+            ].map((preset) => {
+              let isActive = false;
+              const todayStr = new Date().toLocaleDateString('en-CA');
+              if (preset.key === "7d") {
+                const past = new Date();
+                past.setDate(past.getDate() - 7);
+                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
+              } else if (preset.key === "30d") {
+                const past = new Date();
+                past.setDate(past.getDate() - 30);
+                isActive = insightsStartDate === past.toLocaleDateString('en-CA') && insightsEndDate === todayStr;
+              } else if (preset.key === "month") {
+                const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+                const end = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA');
+                isActive = insightsStartDate === start && insightsEndDate === end;
+              } else if (preset.key === "all") {
+                isActive = !insightsStartDate && !insightsEndDate;
+              }
+
+              return (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => handleQuickFilter(preset.key)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 10px",
+                    borderRadius: "10px",
+                    border: isActive ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.08)",
+                    backgroundColor: isActive ? "rgba(133, 58, 81, 0.05)" : "white",
+                    color: isActive ? "var(--color-purple)" : "#6B7280",
+                    fontSize: "0.72rem",
+                    fontWeight: isActive ? 800 : 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {showInsightsCalendar && (
+            <div
+              ref={insightsCalendarRef}
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: "8px",
+                backgroundColor: "white",
+                borderRadius: "20px",
+                border: "1.5px solid rgba(133, 58, 81, 0.12)",
+                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08)",
+                padding: "16px",
+                zIndex: 10,
+                animation: "fadeInUp 0.15s ease-out"
+              }}
+            >
+              {renderInsightsCalendarGrid()}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Spend</span>
+            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", marginTop: "4px", marginBottom: "2px" }}>
+              {formatMoney(filteredExpensesTotal, trip.homeCurrency)}
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {filteredDaysActive} active days</span>
+          </div>
+
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Daily Average</span>
+            <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-orange)", marginTop: "4px", marginBottom: "2px" }}>
+              {formatMoney(filteredExpensesTotal / filteredDaysActive, trip.homeCurrency)}
+            </h3>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>per day average</span>
+          </div>
+
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Top Category</span>
+            <h4 style={{ fontSize: "1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+              {topCategory && topCategory.total > 0 ? (
+                <>
+                  <span>{CATEGORY_EMOJIS[topCategory.cat]}</span>
+                  <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                    {topCategory.cat === "Accommodation" ? "Stay" : topCategory.cat === "Transportation" ? "Transit" : topCategory.cat === "Food & Drink" ? "Food" : "Other"}
+                  </span>
+                </>
+              ) : "-"}
+            </h4>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+              {topCategory && topCategory.total > 0 ? formatMoney(topCategory.total, trip.homeCurrency) : ""}
+            </span>
+          </div>
+
+          <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
+            <span style={{ fontSize: "0.72rem", color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Peak Day</span>
+            <h4 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#374151", marginTop: "4px", marginBottom: "2px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+              {maxDayStr}
+            </h4>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+              {maxDayAmt > 0 ? formatMoney(maxDayAmt, trip.homeCurrency) : "-"}
+            </span>
+          </div>
+        </div>
+
+
 
         {/* Category Breakdown list */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
@@ -6025,8 +5948,37 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   marginBottom: "16px",
                   gap: "6px",
                   flexWrap: "nowrap",
-                  width: "100%"
+                  width: "100%",
+                  position: "relative"
                 }}>
+                  {/* Center Insights Badge when active */}
+                  {logView === "insights" && (
+                    <div style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "50%",
+                      transform: "translate(-50%, -50%)",
+                      fontSize: "0.82rem",
+                      fontWeight: 900,
+                      color: "var(--color-purple)",
+                      fontFamily: "var(--font-heading)",
+                      backgroundColor: "rgba(255, 255, 255, 0.75)",
+                      border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                      borderRadius: "20px",
+                      padding: "4px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      boxShadow: "0 0 12px rgba(133, 58, 81, 0.12)",
+                      animation: "categoryGlowShift 10s infinite ease-in-out",
+                      zIndex: 2,
+                      pointerEvents: "none",
+                      whiteSpace: "nowrap"
+                    }}>
+                      <span>💡</span>
+                      <span>Insights</span>
+                    </div>
+                  )}
                   {/* Left Controls Wrapper (Tab selector, search, show future, history view mode) */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "nowrap", flexShrink: 1, minWidth: 0 }}>
                     {/* Segmented View Toggles */}
@@ -7429,6 +7381,29 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           background-color: #FFFDF5 !important;
           border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
           animation: goldGlowPulse 4s infinite ease-in-out !important;
+        }
+
+        @keyframes categoryGlowShift {
+          0% {
+            box-shadow: 0 0 12px rgba(133, 58, 81, 0.2), 0 4px 16px rgba(133, 58, 81, 0.02);
+            border-color: rgba(133, 58, 81, 0.18);
+          }
+          25% {
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.2), 0 4px 16px rgba(245, 158, 11, 0.02);
+            border-color: rgba(245, 158, 11, 0.18);
+          }
+          50% {
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.2), 0 4px 16px rgba(59, 130, 246, 0.02);
+            border-color: rgba(59, 130, 246, 0.18);
+          }
+          75% {
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.2), 0 4px 16px rgba(16, 185, 129, 0.02);
+            border-color: rgba(16, 185, 129, 0.18);
+          }
+          100% {
+            box-shadow: 0 0 12px rgba(133, 58, 81, 0.2), 0 4px 16px rgba(133, 58, 81, 0.02);
+            border-color: rgba(133, 58, 81, 0.18);
+          }
         }
 
         @keyframes toastFadeIn {
