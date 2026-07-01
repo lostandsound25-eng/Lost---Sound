@@ -8775,7 +8775,7 @@ function ManualEntryModal({
         img.onload = () => {
           // --- 1. Create Tiny Thumbnail ---
           const canvasThumb = document.createElement("canvas");
-          const THUMB_MAX_WIDTH = 150;
+          const THUMB_MAX_WIDTH = 400;
           let thumbWidth = img.width;
           let thumbHeight = img.height;
           if (thumbWidth > THUMB_MAX_WIDTH) {
@@ -8786,7 +8786,7 @@ function ManualEntryModal({
           canvasThumb.height = thumbHeight;
           const ctxThumb = canvasThumb.getContext("2d");
           ctxThumb.drawImage(img, 0, 0, thumbWidth, thumbHeight);
-          const thumbBase64 = canvasThumb.toDataURL("image/jpeg", 0.55);
+          const thumbBase64 = canvasThumb.toDataURL("image/jpeg", 0.75);
 
           // --- 2. Create Full Resolution ---
           const canvasFull = document.createElement("canvas");
