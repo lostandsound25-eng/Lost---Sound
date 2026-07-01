@@ -62,6 +62,15 @@ const parseCurrentLocation = (currentLocationVal) => {
   return { location: currentLocationVal, date: "" };
 };
 
+const appendCacheBuster = (url) => {
+  if (!url) return "";
+  if (typeof url !== "string") return url;
+  if (url.includes("supabase.co/storage") && !url.includes("?v=")) {
+    return `${url}?v=2`;
+  }
+  return url;
+};
+
 const getMergedExpenses = (cloudExpenses, queue) => {
   if (!queue || queue.length === 0) return cloudExpenses;
   
@@ -128,7 +137,12 @@ const getMergedExpenses = (cloudExpenses, queue) => {
   });
 
   // 4. Sort chronologically (most recent first)
-  return merged.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const sorted = merged.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  return sorted.map(e => ({
+    ...e,
+    photoUrl: appendCacheBuster(e.photoUrl),
+    photoUrls: Array.isArray(e.photoUrls) ? e.photoUrls.map(appendCacheBuster) : []
+  }));
 };
 
 const COUNTRY_CURRENCY_MAP = {
@@ -1694,8 +1708,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               hasPhoto: newRow.has_photo || false,
-              photoUrl: newRow.photo_url || "",
-              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
+              photoUrl: appendCacheBuster(newRow.photo_url || ""),
+              photoUrls: Array.isArray(newRow.photo_urls) 
+                ? newRow.photo_urls.map(appendCacheBuster) 
+                : (newRow.photo_url ? [appendCacheBuster(newRow.photo_url)] : []),
               photoUrlsFull: newRow.photo_urls_full || [],
               deletedAt: newRow.deleted_at || null
             };
@@ -1716,8 +1732,10 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               establishment: newRow.establishment || newRow.location || "",
               tags: newRow.tags || [],
               hasPhoto: newRow.has_photo || false,
-              photoUrl: newRow.photo_url || "",
-              photoUrls: newRow.photo_urls || (newRow.photo_url ? [newRow.photo_url] : []),
+              photoUrl: appendCacheBuster(newRow.photo_url || ""),
+              photoUrls: Array.isArray(newRow.photo_urls) 
+                ? newRow.photo_urls.map(appendCacheBuster) 
+                : (newRow.photo_url ? [appendCacheBuster(newRow.photo_url)] : []),
               photoUrlsFull: newRow.photo_urls_full || [],
               deletedAt: newRow.deleted_at || null
             };
