@@ -4850,14 +4850,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           setEditingItineraryCell(null);
                         }}
                         onCancel={() => setEditingItineraryCell(null)}
+                        isTextArea={true}
                         style={{
                           flex: 1,
-                          padding: "2px 6px",
-                          fontSize: "0.8rem",
+                          padding: "6px 8px",
+                          fontSize: "16px",
                           borderRadius: "6px",
                           border: "1.5px solid var(--color-orange)",
                           outline: "none",
-                          backgroundColor: "#FFFDF9"
+                          backgroundColor: "#FFFDF9",
+                          minHeight: "80px"
                         }}
                       />
                     ) : (
@@ -4896,9 +4898,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             borderBottom: "1px dashed rgba(0,0,0,0.1)",
                             cursor: "pointer",
                             padding: "2px 0",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap"
+                            overflow: "visible",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word"
                           }}
                         >
                           {plannedNotes || "Add plans/todo notes..."}
@@ -5198,7 +5200,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   style={{
                     flex: 1,
                     padding: "6px 10px",
-                    fontSize: "0.8rem",
+                    fontSize: "16px",
                     borderRadius: "8px",
                     border: "1px solid rgba(133, 58, 81, 0.15)",
                     outline: "none",
@@ -5207,21 +5209,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 />
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "0.85rem" }}>📝</span>
-                <input
-                  type="text"
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
+                <span style={{ fontSize: "0.85rem", marginTop: "8px" }}>📝</span>
+                <textarea
                   placeholder="Set notes/todos for selected..."
                   value={batchNotesInput}
                   onChange={(e) => setBatchNotesInput(e.target.value)}
+                  rows={2}
                   style={{
                     flex: 1,
-                    padding: "6px 10px",
-                    fontSize: "0.8rem",
+                    padding: "8px 10px",
+                    fontSize: "16px",
                     borderRadius: "8px",
                     border: "1px solid rgba(133, 58, 81, 0.15)",
                     outline: "none",
-                    backgroundColor: "#F9F6ED"
+                    backgroundColor: "#F9F6ED",
+                    resize: "vertical",
+                    fontFamily: "inherit"
                   }}
                 />
               </div>
@@ -5961,94 +5965,16 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               <>
                 <div style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "16px",
-                  gap: "6px",
-                  flexWrap: "nowrap",
+                  justifyContent: "space-between",
                   width: "100%",
+                  gap: "10px",
+                  marginBottom: "16px",
                   position: "relative"
                 }}>
-                  {/* Center Insights Badge when active */}
-                  {logView === "insights" && (
-                    <div style={{
-                      position: "absolute",
-                      left: "50%",
-                      top: "50%",
-                      transform: "translate(-50%, -50%)",
-                      fontSize: "0.82rem",
-                      fontWeight: 900,
-                      color: "var(--color-purple)",
-                      fontFamily: "var(--font-heading)",
-                      backgroundColor: "rgba(255, 255, 255, 0.75)",
-                      border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                      borderRadius: "20px",
-                      padding: "4px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      boxShadow: "0 0 12px rgba(133, 58, 81, 0.12)",
-                      animation: "categoryGlowShift 10s infinite ease-in-out",
-                      zIndex: 2,
-                      pointerEvents: "none",
-                      whiteSpace: "nowrap"
-                    }}>
-                      <span>💡</span>
-                      <span>Insights</span>
-                    </div>
-                  )}
-                  {/* Left Controls Wrapper (Tab selector, search, show future, history view mode) */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "nowrap", flexShrink: 1, minWidth: 0 }}>
-                    {/* Segmented View Toggles */}
-                    <div style={{
-                      display: "flex",
-                      backgroundColor: "rgba(133, 58, 81, 0.05)",
-                      padding: "3px",
-                      borderRadius: "8px",
-                      gap: "2px",
-                      alignItems: "center",
-                      flexShrink: 0
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => setLogView("recent")}
-                        style={{
-                          fontSize: "0.82rem",
-                          fontWeight: logView === "recent" ? 700 : 500,
-                          color: logView === "recent" ? "var(--color-purple)" : "#6B7280",
-                          backgroundColor: logView === "recent" ? "white" : "transparent",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "5px 10px",
-                          cursor: "pointer",
-                          boxShadow: logView === "recent" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                          transition: "all 0.15s"
-                        }}
-                      >
-                        Log
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLogView("history")}
-                        style={{
-                          fontSize: "0.82rem",
-                          fontWeight: logView === "history" ? 700 : 500,
-                          color: logView === "history" ? "var(--color-purple)" : "#6B7280",
-                          backgroundColor: logView === "history" ? "white" : "transparent",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "5px 10px",
-                          cursor: "pointer",
-                          boxShadow: logView === "history" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-                          transition: "all 0.15s"
-                        }}
-                      >
-                        History
-                      </button>
-                    </div>
-
-                    {/* Standalone Floating Search Button */}
-                    {(logView === "recent" || logView === "history") && (
+                  {/* Left Side: Search (or spacer) */}
+                  <div style={{ width: "36px", display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
+                    {(logView === "recent" || logView === "history") ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -6071,29 +5997,108 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           justifyContent: "center",
                           boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
                           transition: "all 0.15s",
-                          outline: "none",
-                          flexShrink: 0
+                          outline: "none"
                         }}
                         title="Search expenses"
                       >
                         🔍
                       </button>
+                    ) : (
+                      <div style={{ width: "32px" }} />
                     )}
+                  </div>
 
-                    {/* Future Toggle Button floated to the right of Search */}
+                  {/* Center: Reorganized Segmented Navigation Control */}
+                  <div style={{
+                    display: "flex",
+                    backgroundColor: "rgba(133, 58, 81, 0.05)",
+                    padding: "3px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(133, 58, 81, 0.08)",
+                    alignItems: "center",
+                    gap: "2px",
+                    flex: 1,
+                    maxWidth: "280px"
+                  }}>
+                    {/* History (Left) */}
+                    <button
+                      type="button"
+                      onClick={() => setLogView("history")}
+                      style={{
+                        flex: 1,
+                        fontSize: "0.8rem",
+                        fontWeight: logView === "history" ? 750 : 500,
+                        color: logView === "history" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "history" ? "white" : "transparent",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "5px 8px",
+                        cursor: "pointer",
+                        boxShadow: logView === "history" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      History
+                    </button>
+
+                    {/* Log (Middle - distinct and slightly larger) */}
+                    <button
+                      type="button"
+                      onClick={() => setLogView("recent")}
+                      style={{
+                        flex: 1.2,
+                        fontSize: "0.85rem",
+                        fontWeight: logView === "recent" ? 850 : 600,
+                        color: logView === "recent" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "recent" ? "white" : "transparent",
+                        border: logView === "recent" ? "1.5px solid rgba(133, 58, 81, 0.15)" : "none",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        boxShadow: logView === "recent" ? "0 3px 8px rgba(133,58,81,0.1)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      Log
+                    </button>
+
+                    {/* Plan (Right) */}
+                    <button
+                      type="button"
+                      onClick={() => setLogView("plan")}
+                      style={{
+                        flex: 1,
+                        fontSize: "0.8rem",
+                        fontWeight: logView === "plan" ? 750 : 500,
+                        color: logView === "plan" ? "var(--color-purple)" : "#6B7280",
+                        backgroundColor: logView === "plan" ? "white" : "transparent",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "5px 8px",
+                        cursor: "pointer",
+                        boxShadow: logView === "plan" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s"
+                      }}
+                    >
+                      Plan
+                    </button>
+                  </div>
+
+                  {/* Right Side: Context Action Toggles */}
+                  <div style={{ width: "36px", display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
                     {logView === "recent" && hasFutureExpenses && (
                       <button
                         type="button"
                         onClick={() => setShowFuture(!showFuture)}
                         style={{
-                          fontSize: "0.68rem",
+                          fontSize: "0.6rem",
                           fontWeight: 800,
                           color: showFuture ? "white" : "#0284C7",
                           backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.08)",
                           border: showFuture ? "1px solid #0284C7" : "1px solid rgba(2, 132, 199, 0.25)",
                           borderRadius: "14px",
-                          padding: "0 10px",
-                          height: "32px",
+                          padding: "2px 6px",
+                          height: "28px",
                           cursor: "pointer",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
@@ -6101,17 +6106,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           alignItems: "center",
                           justifyContent: "center",
                           outline: "none",
-                          transition: "all 0.2s ease",
-                          boxShadow: showFuture ? "0 2px 6px rgba(2,130,199,0.2)" : "none",
-                          flexShrink: 0
+                          transition: "all 0.2s ease"
                         }}
                         title={showFuture ? "Hide future planned expenses" : "Show future planned expenses"}
                       >
-                        Future
+                        Fut.
                       </button>
                     )}
 
-                    {/* Compact View Toggle in History */}
                     {logView === "history" && (
                       <button
                         type="button"
@@ -6121,15 +6123,14 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           color: "#C2410C",
                           backgroundColor: "rgba(194, 65, 12, 0.05)",
                           border: "none",
-                          borderRadius: "20px",
+                          borderRadius: "50%",
                           width: "32px",
                           height: "32px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          transition: "all 0.15s",
-                          flexShrink: 0
+                          transition: "all 0.15s"
                         }}
                         title={historyViewMode === "cards" ? "Switch to Spreadsheet" : "Switch to Cards"}
                       >
@@ -6137,32 +6138,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       </button>
                     )}
                   </div>
-
-                  {/* Right Controls Wrapper (Standalone Plan Button) */}
-                  <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => setLogView(logView === "plan" ? "recent" : "plan")}
-                      style={{
-                        fontSize: "0.82rem",
-                        fontWeight: logView === "plan" ? 750 : 600,
-                        color: logView === "plan" ? "white" : "var(--color-purple)",
-                        backgroundColor: logView === "plan" ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                        border: logView === "plan" ? "none" : "1.5px solid rgba(133, 58, 81, 0.15)",
-                        borderRadius: "10px",
-                        padding: "6px 12px",
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                        boxShadow: logView === "plan" ? "0 4px 12px rgba(133, 58, 81, 0.18)" : "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      🗓️ Plan
-                    </button>
-                  </div>
                 </div>
+
+                {/* Center Insights Badge bumped down a line when active */}
+                {logView === "insights" && (
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginBottom: "12px",
+                    marginTop: "-4px"
+                  }}>
+                    <div style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 900,
+                      color: "var(--color-purple)",
+                      fontFamily: "var(--font-heading)",
+                      backgroundColor: "rgba(255, 255, 255, 0.85)",
+                      border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                      borderRadius: "20px",
+                      padding: "3px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      boxShadow: "0 0 12px rgba(133, 58, 81, 0.12)",
+                      animation: "categoryGlowShift 10s infinite ease-in-out",
+                      pointerEvents: "none",
+                      whiteSpace: "nowrap"
+                    }}>
+                      <span>💡</span>
+                      <span>Insights</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Slide-down Search Box */}
                 {showSearch && (logView === "recent" || logView === "history") && (
@@ -6198,7 +6205,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           borderRadius: "10px",
                           border: "1.5px solid #E5E7EB",
                           backgroundColor: "white",
-                          fontSize: "0.85rem",
+                          fontSize: "16px",
                           color: "#374151",
                           outline: "none",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.01)",
@@ -6259,7 +6266,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   <div>
                     {(() => {
                       if (logView === "insights") {
-                        return renderInsights();
+                        return (
+                          <div style={{
+                            border: "1.5px solid rgba(14, 165, 233, 0.22)",
+                            boxShadow: "0 8px 32px rgba(14, 165, 233, 0.08), 0 0 20px rgba(14, 165, 233, 0.12)",
+                            borderRadius: "24px",
+                            padding: "16px",
+                            backgroundColor: "rgba(255, 255, 255, 0.65)",
+                            marginTop: "8px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "16px"
+                          }}>
+                            {renderInsights()}
+                          </div>
+                        );
                       }
                       if (logView === "plan") {
                         return renderPlanner();
@@ -7469,8 +7490,38 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   );
 }
 
-function ItineraryCellInput({ initialValue, onSave, onCancel, style }) {
+function ItineraryCellInput({ initialValue, onSave, onCancel, style, isTextArea }) {
   const [val, setVal] = useState(initialValue || "");
+  const baseStyle = {
+    ...style,
+    fontSize: "16px" // Force 16px to prevent iOS auto-zoom
+  };
+
+  if (isTextArea) {
+    return (
+      <textarea
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={() => onSave(val)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSave(val);
+          } else if (e.key === "Escape") {
+            onCancel();
+          }
+        }}
+        autoFocus
+        rows={3}
+        style={{
+          ...baseStyle,
+          resize: "vertical",
+          minHeight: "80px",
+          fontFamily: "inherit"
+        }}
+      />
+    );
+  }
 
   return (
     <input
@@ -7486,7 +7537,7 @@ function ItineraryCellInput({ initialValue, onSave, onCancel, style }) {
         }
       }}
       autoFocus
-      style={style}
+      style={baseStyle}
     />
   );
 }
@@ -8023,6 +8074,13 @@ function ManualEntryModal({
       setIsMounting(false);
     }, 300);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    // Autofocus the title input on mount to let user type right away
+    if (titleInputRef.current) {
+      titleInputRef.current.focus();
+    }
   }, []);
 
   useEffect(() => {
@@ -9082,7 +9140,7 @@ function ManualEntryModal({
                   flex: 1,
                   border: "none",
                   background: "transparent",
-                  fontSize: "15px",
+                  fontSize: "16px",
                   outline: "none",
                   width: "100%",
                   color: "#111827",
@@ -9197,7 +9255,7 @@ function ManualEntryModal({
                     borderRadius: "12px",
                     border: "1.5px solid rgba(133, 58, 81, 0.15)",
                     backgroundColor: "#F9F6ED",
-                    fontSize: "15px",
+                    fontSize: "16px",
                     outline: "none"
                   }}
                 />
@@ -9339,11 +9397,9 @@ function ManualEntryModal({
                           if (currency !== trip.homeCurrency) {
                             setCurrency(trip.homeCurrency);
                             safeSetLocalStorage("tracker_last_used_currency", trip.homeCurrency);
-                            setTimeout(() => {
-                              if (totalInputRef.current) {
-                                totalInputRef.current.focus();
-                              }
-                            }, 50);
+                            if (totalInputRef.current) {
+                              totalInputRef.current.focus();
+                            }
                           }
                         }}
                         style={{
@@ -9370,11 +9426,9 @@ function ManualEntryModal({
                           if (val !== trip.homeCurrency) {
                             safeSetLocalStorage("tracker_last_used_non_home_currency", val);
                           }
-                          setTimeout(() => {
-                            if (totalInputRef.current) {
-                              totalInputRef.current.focus();
-                            }
-                          }, 50);
+                          if (totalInputRef.current) {
+                            totalInputRef.current.focus();
+                          }
                         }}
                         rates={rates}
                         customCurrencies={customCurrencies}
@@ -9993,7 +10047,7 @@ function ManualEntryModal({
                       backgroundColor: "white",
                       borderRadius: "12px",
                       border: calendarTarget === "start" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                      fontSize: "0.8rem",
+                      fontSize: "16px",
                       fontWeight: 700,
                       color: "#374151",
                       outline: "none",
@@ -10033,7 +10087,7 @@ function ManualEntryModal({
                         backgroundColor: "white",
                         borderRadius: "12px",
                         border: calendarTarget === "end" ? "1.5px solid var(--color-purple)" : "1.5px solid rgba(133, 58, 81, 0.12)",
-                        fontSize: "0.8rem",
+                        fontSize: "16px",
                         fontWeight: 700,
                         color: "#374151",
                         outline: "none",
@@ -10089,7 +10143,7 @@ function ManualEntryModal({
                     backgroundColor: "white",
                     borderRadius: "12px",
                     border: "1.5px solid rgba(133, 58, 81, 0.12)",
-                    fontSize: "0.8rem",
+                    fontSize: "16px",
                     fontWeight: 700,
                     color: "var(--color-purple)",
                     outline: "none",
@@ -10445,9 +10499,9 @@ function ManualEntryModal({
                   borderRadius: "12px",
                   border: "1.5px solid rgba(133, 58, 81, 0.15)",
                   backgroundColor: "#F9F6ED",
-                  fontSize: "14px",
+                  fontSize: "16px",
                   outline: "none",
-                  resize: "none",
+                  resize: "vertical",
                   fontFamily: "inherit"
                 }}
               />
