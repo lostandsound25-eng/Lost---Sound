@@ -3449,100 +3449,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       return true;
     });
 
-    const getTravelHacks = () => {
-      const hacks = [];
 
-      // 1. Fee detection (Bank & ATM fees)
-      const hasFeeOrATM = filteredInsightsExpenses.some(e => {
-        const titleLower = (e.title || "").toLowerCase();
-        const notesLower = (e.notes || "").toLowerCase();
-        return titleLower.includes("fee") || titleLower.includes("atm") || titleLower.includes("bank") ||
-               notesLower.includes("fee") || notesLower.includes("atm") || notesLower.includes("bank") ||
-               (e.category === "Everything Else" && (titleLower.includes("cash") || notesLower.includes("cash")));
-      });
-      if (hasFeeOrATM) {
-        hacks.push({
-          icon: "💳",
-          title: "Avoid Bank & ATM Fees",
-          text: "Foreign exchange ATM and bank fees add up. Consider using a Wise, Revolut, or Charles Schwab debit card to withdraw cash fee-free overseas."
-        });
-      }
-
-      // 2. Local transport apps suggestions
-      const destLower = (trip.destination || "").toLowerCase();
-      const tripTitleLower = (trip.title || "").toLowerCase();
-      const isSEA = destLower.includes("indonesia") || destLower.includes("bali") ||
-                    destLower.includes("thailand") || destLower.includes("vietnam") ||
-                    tripTitleLower.includes("bali") || tripTitleLower.includes("thailand") || 
-                    tripTitleLower.includes("vietnam") || tripTitleLower.includes("indonesia");
-      
-      const hasTaxi = filteredInsightsExpenses.some(e => {
-        const titleLower = (e.title || "").toLowerCase();
-        return e.category === "Transportation" && (titleLower.includes("taxi") || titleLower.includes("cab"));
-      });
-
-      if (isSEA) {
-        if (hasTaxi) {
-          hacks.push({
-            icon: "🛵",
-            title: "Skip Street Taxis",
-            text: "Local street taxis can have high markups. Use ride-hailing apps like Grab or Gojek (Indonesia/Vietnam) or Bolt (Thailand) for transparent, 3x cheaper prices."
-          });
-        } else {
-          hacks.push({
-            icon: "🛵",
-            title: "Rent a Scooter Safely",
-            text: "Scooter rentals are the cheapest way to explore Southeast Asia ($5-7/day). Always wear a helmet and carry an International Driving Permit (IDP) to avoid local fines."
-          });
-        }
-      }
-
-      // 3. Worth It Ratio check
-      const worthItCount = filteredInsightsExpenses.filter(e => e.worthIt).length;
-      if (filteredInsightsExpenses.length > 5) {
-        const worthItPct = (worthItCount / filteredInsightsExpenses.length) * 100;
-        if (worthItPct >= 50) {
-          hacks.push({
-            icon: "✨",
-            title: "High 'Worth It' Spend",
-            text: `Awesome! ${worthItPct.toFixed(0)}% of your expenses are flagged as 'Worth It'. You are investing in high-value memories and experiences rather than impulse buys.`
-          });
-        } else {
-          hacks.push({
-            icon: "💡",
-            title: "Optimize 'Worth It' Value",
-            text: `Only ${(worthItCount / filteredInsightsExpenses.length * 100).toFixed(0)}% of your expenses are flagged as 'Worth It'. Consider shifting budget away from impulse buys toward memorable experiences.`
-          });
-        }
-      }
-
-      // 4. Tap water tip
-      if (isSEA) {
-        hacks.push({
-          icon: "💧",
-          title: "Avoid Tap Water",
-          text: "Never drink tap water in Southeast Asia. Carry a reusable filtration bottle or buy cheap gallon refills at your hotel to stay healthy and save on plastic."
-        });
-      } else {
-        hacks.push({
-          icon: "💧",
-          title: "Free Water Refills",
-          text: "Use apps like RefillMyBottle or Tap to locate free clean drinking water points nearby and save $2-3 daily on plastic water bottles."
-        });
-      }
-
-      if (hacks.length === 0) {
-        hacks.push({
-          icon: "🌍",
-          title: "Track Cash Immediately",
-          text: "Log cash expenses on the spot! It's easy to lose track of paper currency when traveling. Tap the mic to log instantly with voice."
-        });
-      }
-
-      return hacks.slice(0, 3); // Return up to 3 highly relevant hacks
-    };
-
-    const travelHacks = getTravelHacks();
 
     const handleQuickFilter = (type) => {
       const today = new Date();
@@ -4074,57 +3981,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           </div>
         </div>
 
-        {/* Dynamic Travel Hacks Section */}
-        <div style={{
-          background: "linear-gradient(135deg, rgba(14, 165, 233, 0.06), rgba(133, 58, 81, 0.06))",
-          padding: "18px 16px",
-          borderRadius: "20px",
-          border: "1.5px solid rgba(14, 165, 233, 0.2)",
-          boxShadow: "0 4px 20px rgba(14, 165, 233, 0.04)"
-        }}>
-          <h4 style={{ 
-            fontSize: "0.85rem", 
-            fontWeight: 800, 
-            color: "#0369A1", 
-            textTransform: "uppercase", 
-            letterSpacing: "0.5px", 
-            marginBottom: "14px", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "6px",
-            margin: 0
-          }}>
-            <span>💡 Smart Travel Hacks</span>
-          </h4>
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {travelHacks.map((hack, idx) => (
-              <div key={idx} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                <div style={{
-                  fontSize: "1.3rem",
-                  width: "36px",
-                  height: "36px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "white",
-                  borderRadius: "50%",
-                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
-                  flexShrink: 0
-                }}>
-                  {hack.icon}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                  <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#1E293B" }}>
-                    {hack.title}
-                  </span>
-                  <p style={{ fontSize: "0.78rem", color: "#475569", lineHeight: "1.35", margin: 0 }}>
-                    {hack.text}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+
 
 
 
@@ -6119,40 +5976,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   marginBottom: "16px",
                   position: "relative"
                 }}>
-                  {/* Left Side: Search (or spacer) */}
+                  {/* Left Side: Search */}
                   <div style={{ width: "36px", display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
-                    {(logView === "recent" || logView === "history") ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowSearch(!showSearch);
-                          if (showSearch) {
-                            setSearchQuery("");
-                          }
-                        }}
-                        style={{
-                          fontSize: "0.85rem",
-                          color: showSearch ? "white" : "var(--color-purple)",
-                          backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "32px",
-                          height: "32px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
-                          transition: "all 0.15s",
-                          outline: "none"
-                        }}
-                        title="Search expenses"
-                      >
-                        🔍
-                      </button>
-                    ) : (
-                      <div style={{ width: "32px" }} />
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSearch(!showSearch);
+                        if (showSearch) {
+                          setSearchQuery("");
+                        }
+                      }}
+                      style={{
+                        fontSize: "0.85rem",
+                        color: showSearch ? "white" : "var(--color-purple)",
+                        backgroundColor: showSearch ? "var(--color-purple)" : "rgba(133, 58, 81, 0.05)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "32px",
+                        height: "32px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: showSearch ? "0 2px 6px rgba(133,58,81,0.2)" : "none",
+                        transition: "all 0.15s",
+                        outline: "none"
+                      }}
+                      title="Search expenses"
+                    >
+                      🔍
+                    </button>
                   </div>
 
                   {/* Center: Reorganized Segmented Navigation Control */}
@@ -6246,37 +6099,42 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     fontSize: "0.78rem",
                     color: "#6B7280"
                   }}>
-                    {/* Left Side: Search query status or count */}
+                    {/* Left Side: Show Future toggle button in trademark blue style */}
                     <div>
-                      {searchQuery ? (
-                        <span>Found {filteredExpenses.length} results</span>
-                      ) : (
-                        <span style={{ fontWeight: 500 }}>
-                          {logView === "recent" ? "Recent Log" : "Older History"}
-                        </span>
-                      )}
+                      {hasFutureExpenses ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowFuture(!showFuture)}
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: showFuture ? "white" : "#0284C7",
+                            backgroundColor: showFuture ? "#0284C7" : "rgba(2, 132, 199, 0.05)",
+                            border: "1px solid rgba(2, 132, 199, 0.25)",
+                            borderRadius: "14px",
+                            padding: "3px 10px",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            boxShadow: showFuture ? "0 2px 8px rgba(2, 132, 199, 0.25)" : "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            outline: "none"
+                          }}
+                        >
+                          Show Future
+                        </button>
+                      ) : searchQuery ? (
+                        <span style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>Found {filteredExpenses.length} results</span>
+                      ) : null}
                     </div>
 
-                    {/* Right Side: Toggles (Show Future, Spreadsheet mode) */}
+                    {/* Right Side: View Mode Toggles & Search status */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      {hasFutureExpenses && (
-                        <label style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", userSelect: "none" }}>
-                          <input
-                            type="checkbox"
-                            checked={showFuture}
-                            onChange={(e) => setShowFuture(e.target.checked)}
-                            style={{
-                              accentColor: "var(--color-purple)",
-                              cursor: "pointer",
-                              width: "14px",
-                              height: "14px",
-                              margin: 0
-                            }}
-                          />
-                          <span style={{ fontWeight: showFuture ? 600 : 500 }}>Show Future</span>
-                        </label>
+                      {hasFutureExpenses && searchQuery && (
+                        <span style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>Found {filteredExpenses.length} results</span>
                       )}
-
                       {logView === "history" && (
                         <button
                           type="button"
@@ -6302,7 +6160,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 )}
 
                 {/* Slide-down Search Box */}
-                {showSearch && (logView === "recent" || logView === "history") && (
+                {showSearch && (
                   <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -6408,32 +6266,31 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                             flexDirection: "column",
                             gap: "16px"
                           }}>
-                            {/* Centered Insights Header Badge inside the wrapped panel */}
+                            {/* Sleek, premium centered Insights Title */}
                             <div style={{
                               display: "flex",
-                              justifyContent: "center",
-                              marginBottom: "-4px"
+                              flexDirection: "column",
+                              alignItems: "center",
+                              marginTop: "4px",
+                              marginBottom: "2px",
+                              gap: "4px"
                             }}>
-                              <div style={{
-                                fontSize: "0.78rem",
-                                fontWeight: 900,
-                                color: "var(--color-purple)",
-                                fontFamily: "var(--font-heading)",
-                                backgroundColor: "rgba(255, 255, 255, 0.85)",
-                                border: "1.5px solid rgba(133, 58, 81, 0.15)",
-                                borderRadius: "20px",
-                                padding: "3px 10px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                boxShadow: "0 0 12px rgba(133, 58, 81, 0.12)",
-                                animation: "categoryGlowShift 10s infinite ease-in-out",
-                                pointerEvents: "none",
-                                whiteSpace: "nowrap"
+                              <span style={{
+                                fontSize: "0.85rem",
+                                fontWeight: 800,
+                                letterSpacing: "1.5px",
+                                textTransform: "uppercase",
+                                color: "#0F172A",
+                                fontFamily: "var(--font-heading)"
                               }}>
-                                <span>💡</span>
-                                <span>Insights</span>
-                              </div>
+                                Trip Insights
+                              </span>
+                              <div style={{
+                                width: "24px",
+                                height: "2.5px",
+                                borderRadius: "2px",
+                                background: "linear-gradient(90deg, #0EA5E9, #853A51)"
+                              }} />
                             </div>
                             {renderInsights()}
                           </div>
