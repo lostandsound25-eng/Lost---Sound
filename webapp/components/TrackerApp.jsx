@@ -1087,6 +1087,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const latestTranscriptRef = useRef("");
   const hasParsedRef = useRef(false);
   const voiceTimeoutRef = useRef(null);
+  const isSavingLocaleRef = useRef(false);
 
   const handleVoiceParse = async (text) => {
     if (!text.trim()) return;
@@ -2135,6 +2136,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     }
     performCloudAction("update_itinerary", payload);
   };
+
+  const saveLocaleAndSyncItinerary = async (loc) => {
+    if (isSavingLocaleRef.current) return;
+    isSavingLocaleRef.current = true;
+    setIsEditingLocale(false);
+    try {
+      await updateLocation(loc.trim());
+    } finally {
+      isSavingLocaleRef.current = false;
+    }
+  };
+
   const updateItineraryLocation = async (dateKey, locationText) => {
     const oldItinerary = trip.itinerary || {};
     const existing = oldItinerary[dateKey];
