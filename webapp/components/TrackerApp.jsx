@@ -6327,67 +6327,67 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                               const dayLocation = getResolvedDayLocation(todayStr);
                               
                               {/* Today placeholder banner in History (no notes sub-row, resides in header) */}
-                             {!olderGroupsArray.some(g => g.dateKey === todayStr) && (
-                               <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "16px", marginBottom: "8px", alignSelf: "flex-start" }}>
-                                 {/* Today Location Pill */}
-                                 <div style={{
-                                   fontSize: "0.8rem",
-                                   fontWeight: 800,
-                                   color: "var(--color-purple)",
-                                   backgroundColor: "rgba(133, 58, 81, 0.06)",
-                                   padding: "6px 12px",
-                                   borderRadius: "8px",
-                                   display: "inline-flex",
-                                   alignItems: "center",
-                                   gap: "6px",
-                                   textTransform: "uppercase",
-                                   letterSpacing: "0.5px"
-                                 }}>
-                                   <span>Today</span>
-                                   <span 
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       setEditingItineraryDate(todayStr);
-                                       setItineraryInput(dayLocation || "");
-                                     }}
-                                     style={{ 
-                                       color: dayLocation ? "var(--color-orange)" : "#9CA3AF", 
-                                       display: "inline-flex", 
-                                       alignItems: "center", 
-                                       gap: "2px",
-                                       cursor: "pointer",
-                                       textTransform: "none"
-                                     }}
-                                   >
-                                     {editingItineraryDate === todayStr ? (
-                                       <ItineraryCellInput
-                                         initialValue={itineraryInput}
-                                         onSave={(val) => {
-                                           updateItineraryLocation(todayStr, val);
-                                           setEditingItineraryDate(null);
-                                         }}
-                                         onCancel={() => setEditingItineraryDate(null)}
-                                         style={{
-                                           fontSize: "0.8rem",
-                                           fontWeight: 800,
-                                           color: "var(--color-orange)",
-                                           border: "none",
-                                           borderBottom: "1px solid var(--color-orange)",
-                                           outline: "none",
-                                           width: "85px",
-                                           background: "transparent",
-                                           padding: 0
-                                         }}
-                                       />
-                                     ) : (
-                                       <span title="Click to edit destination">
-                                         📍 {dayLocation || "Add destination"}
-                                       </span>
-                                     )}
-                                   </span>
-                                 </div>
-                               </div>
-                             )}
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "16px", marginBottom: "8px", alignSelf: "flex-start" }}>
+                                  {/* Today Location Pill */}
+                                  <div style={{
+                                    fontSize: "0.8rem",
+                                    fontWeight: 800,
+                                    color: "var(--color-purple)",
+                                    backgroundColor: "rgba(133, 58, 81, 0.06)",
+                                    padding: "6px 12px",
+                                    borderRadius: "8px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px"
+                                  }}>
+                                    <span>Today</span>
+                                    <span 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingItineraryDate(todayStr);
+                                        setItineraryInput(dayLocation || "");
+                                      }}
+                                      style={{ 
+                                        color: dayLocation ? "var(--color-orange)" : "#9CA3AF", 
+                                        display: "inline-flex", 
+                                        alignItems: "center", 
+                                        gap: "2px",
+                                        cursor: "pointer",
+                                        textTransform: "none"
+                                      }}
+                                    >
+                                      {editingItineraryDate === todayStr ? (
+                                        <ItineraryCellInput
+                                          initialValue={itineraryInput}
+                                          onSave={(val) => {
+                                            updateItineraryLocation(todayStr, val);
+                                            setEditingItineraryDate(null);
+                                          }}
+                                          onCancel={() => setEditingItineraryDate(null)}
+                                          style={{
+                                            fontSize: "0.8rem",
+                                            fontWeight: 800,
+                                            color: "var(--color-orange)",
+                                            border: "none",
+                                            borderBottom: "1px solid var(--color-orange)",
+                                            outline: "none",
+                                            width: "85px",
+                                            background: "transparent",
+                                            padding: 0
+                                          }}
+                                        />
+                                      ) : (
+                                        <span title="Click to edit destination">
+                                          📍 {dayLocation || "Add destination"}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
                             })()}
 
                             {recentExpenses.length === 0 ? (
