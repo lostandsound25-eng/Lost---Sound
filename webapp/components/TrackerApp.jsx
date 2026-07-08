@@ -5753,34 +5753,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     {(() => {
                       const currentLoc = getResolvedDayLocation(new Date().toLocaleDateString('en-CA'));
                       if (currentLoc) {
-                        return (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                            <span>📍 {currentLoc}</span>
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm("Clear today's location?")) {
-                                  saveLocaleAndSyncItinerary("");
-                                }
-                              }}
-                              style={{
-                                color: "#EF4444",
-                                fontWeight: "bold",
-                                padding: "2px 6px",
-                                cursor: "pointer",
-                                fontSize: "0.85rem",
-                                borderRadius: "4px",
-                                backgroundColor: "rgba(239, 68, 68, 0.08)",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center"
-                              }}
-                              title="Clear location"
-                            >
-                              ✕
-                            </span>
-                          </span>
-                        );
+                        return <span>📍 {currentLoc}</span>;
                       }
                       return (
                         <span style={{
@@ -5803,7 +5776,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     })()}
                   </div>
                 ) : (
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                     <input
                       type="text"
                       value={localeSearchQuery}
@@ -5819,15 +5792,40 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                       }}
                       onBlur={() => saveLocaleAndSyncItinerary(localeSearchQuery)}
                       style={{
-                        padding: "4px 8px",
+                        padding: "4px 24px 4px 8px",
                         fontSize: "0.82rem",
                         borderRadius: "6px",
                         border: "1.5px solid var(--color-purple)",
                         outline: "none",
                         backgroundColor: "#FFFDF9",
-                        width: "120px"
+                        width: "120px",
+                        boxSizing: "border-box"
                       }}
                     />
+                    {localeSearchQuery && (
+                      <span
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLocaleSearchQuery("");
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          color: "#9CA3AF",
+                          cursor: "pointer",
+                          fontSize: "0.78rem",
+                          fontWeight: "bold",
+                          padding: "2px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
+                        title="Clear location"
+                      >
+                        ✕
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -5861,49 +5859,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           }}
                         />
                       ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingItineraryCell({ date: todayStr, field: "notes" });
-                              setItineraryInput(plannedNotes);
-                            }}
-                            style={{
-                              fontSize: "0.75rem",
-                              color: plannedNotes ? "#4B5563" : "#9CA3AF",
-                              cursor: "pointer",
-                              borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                              fontStyle: plannedNotes ? "normal" : "italic"
-                            }}
-                          >
-                            {plannedNotes || "what's going on today?"}
-                          </span>
-                          {plannedNotes && (
-                            <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm("Clear planned notes?")) {
-                                  updateItineraryNotes(todayStr, "");
-                                }
-                              }}
-                              style={{
-                                color: "#EF4444",
-                                cursor: "pointer",
-                                fontSize: "0.75rem",
-                                fontWeight: "bold",
-                                padding: "1px 4px",
-                                borderRadius: "3px",
-                                backgroundColor: "rgba(239, 68, 68, 0.06)",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center"
-                              }}
-                              title="Clear notes"
-                            >
-                              ✕
-                            </span>
-                          )}
-                        </div>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItineraryCell({ date: todayStr, field: "notes" });
+                            setItineraryInput(plannedNotes);
+                          }}
+                          style={{
+                            fontSize: "0.75rem",
+                            color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                            cursor: "pointer",
+                            borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                            fontStyle: plannedNotes ? "normal" : "italic"
+                          }}
+                        >
+                          {plannedNotes || "what's going on today?"}
+                        </span>
                       )}
                     </div>
                   );
@@ -6578,35 +6549,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   }}
                                                 />
                                               ) : (
-                                                 <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                                   <span title="Click to edit destination">
-                                                     📍 {dayLocation || "Add destination"}
-                                                   </span>
-                                                   {dayLocation && (
-                                                     <span
-                                                       onClick={(e) => {
-                                                         e.stopPropagation();
-                                                         if (window.confirm("Clear location for this day?")) {
-                                                           updateItineraryLocation(dateKey, "");
-                                                         }
-                                                       }}
-                                                       style={{
-                                                         color: "#EF4444",
-                                                         cursor: "pointer",
-                                                         fontSize: "0.75rem",
-                                                         fontWeight: "bold",
-                                                         padding: "1px 4px",
-                                                         borderRadius: "3px",
-                                                         backgroundColor: "rgba(239, 68, 68, 0.08)",
-                                                         display: "inline-flex",
-                                                         alignItems: "center",
-                                                         justifyContent: "center"
-                                                       }}
-                                                       title="Clear location"
-                                                     >
-                                                       ✕
-                                                     </span>
-                                                   )}
+                                                 <span title="Click to edit destination">
+                                                   📍 {dayLocation || "Add destination"}
                                                  </span>
                                               )}
                                             </span>
@@ -6638,54 +6582,27 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   }}
                                                 />
                                               ) : (
-                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                   <span
-                                                     onClick={() => {
-                                                       setEditingItineraryCell({ date: dateKey, field: "notes" });
-                                                       setItineraryInput(plannedNotes);
-                                                     }}
-                                                     style={{
-                                                       fontSize: "0.75rem",
-                                                       color: plannedNotes ? "#4B5563" : "#9CA3AF",
-                                                       cursor: "pointer",
-                                                       borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                                                       fontStyle: plannedNotes ? "normal" : "italic",
-                                                       display: "inline-block",
-                                                       whiteSpace: "nowrap",
-                                                       overflow: "hidden",
-                                                       textOverflow: "ellipsis",
-                                                       maxWidth: "250px"
-                                                     }}
-                                                     title={plannedNotes}
-                                                   >
-                                                     {plannedNotes || "Add plans/todo notes..."}
-                                                   </span>
-                                                   {plannedNotes && (
-                                                     <span
-                                                       onClick={(e) => {
-                                                         e.stopPropagation();
-                                                         if (window.confirm("Clear planned notes for this day?")) {
-                                                           updateItineraryNotes(dateKey, "");
-                                                         }
-                                                       }}
-                                                       style={{
-                                                         color: "#EF4444",
-                                                         cursor: "pointer",
-                                                         fontSize: "0.72rem",
-                                                         fontWeight: "bold",
-                                                         padding: "1px 4px",
-                                                         borderRadius: "3px",
-                                                         backgroundColor: "rgba(239, 68, 68, 0.06)",
-                                                         display: "inline-flex",
-                                                         alignItems: "center",
-                                                         justifyContent: "center"
-                                                       }}
-                                                       title="Clear notes"
-                                                     >
-                                                       ✕
-                                                     </span>
-                                                   )}
-                                                 </div>
+                                                <span
+                                                  onClick={() => {
+                                                    setEditingItineraryCell({ date: dateKey, field: "notes" });
+                                                    setItineraryInput(plannedNotes);
+                                                  }}
+                                                  style={{
+                                                    fontSize: "0.75rem",
+                                                    color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                                                    cursor: "pointer",
+                                                    borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                                                    fontStyle: plannedNotes ? "normal" : "italic",
+                                                    display: "inline-block",
+                                                    whiteSpace: "nowrap",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    maxWidth: "250px"
+                                                  }}
+                                                  title={plannedNotes}
+                                                >
+                                                  {plannedNotes || "Add plans/todo notes..."}
+                                                </span>
                                               )}
                                             </div>
                                           )}
@@ -7011,35 +6928,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                               }}
                                             />
                                           ) : (
-                                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                              <span title="Click to edit destination">
-                                                📍 {group.location || "Add destination"}
-                                              </span>
-                                              {group.location && (
-                                                <span
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (window.confirm("Clear location for this day?")) {
-                                                      updateItineraryLocation(group.dateKey, "");
-                                                    }
-                                                  }}
-                                                  style={{
-                                                    color: "#EF4444",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.75rem",
-                                                    fontWeight: "bold",
-                                                    padding: "1px 4px",
-                                                    borderRadius: "3px",
-                                                    backgroundColor: "rgba(239, 68, 68, 0.08)",
-                                                    display: "inline-flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center"
-                                                  }}
-                                                  title="Clear location"
-                                                >
-                                                  ✕
-                                                </span>
-                                              )}
+                                            <span title="Click to edit destination">
+                                              📍 {group.location || "Add destination"}
                                             </span>
                                           )}
                                         </div>
@@ -7071,55 +6961,28 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                 }}
                                               />
                                             ) : (
-                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                                <span
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingItineraryCell({ date: group.dateKey, field: "notes" });
-                                                    setItineraryInput(trip.itinerary?.[group.dateKey]?.notes || "");
-                                                  }}
-                                                  style={{
-                                                    fontSize: "0.75rem",
-                                                    color: trip.itinerary?.[group.dateKey]?.notes ? "#4B5563" : "#9CA3AF",
-                                                    cursor: "pointer",
-                                                    borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                                                    fontStyle: trip.itinerary?.[group.dateKey]?.notes ? "normal" : "italic",
-                                                    display: "inline-block",
-                                                    whiteSpace: "nowrap",
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    maxWidth: "200px"
-                                                  }}
-                                                  title={trip.itinerary?.[group.dateKey]?.notes || ""}
-                                                >
-                                                  {trip.itinerary?.[group.dateKey]?.notes || "Add plans/todo notes..."}
-                                                </span>
-                                                {trip.itinerary?.[group.dateKey]?.notes && (
-                                                  <span
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (window.confirm("Clear planned notes for this day?")) {
-                                                        updateItineraryNotes(group.dateKey, "");
-                                                      }
-                                                    }}
-                                                    style={{
-                                                      color: "#EF4444",
-                                                      cursor: "pointer",
-                                                      fontSize: "0.72rem",
-                                                      fontWeight: "bold",
-                                                      padding: "1px 4px",
-                                                      borderRadius: "3px",
-                                                      backgroundColor: "rgba(239, 68, 68, 0.06)",
-                                                      display: "inline-flex",
-                                                      alignItems: "center",
-                                                      justifyContent: "center"
-                                                    }}
-                                                    title="Clear notes"
-                                                  >
-                                                    ✕
-                                                  </span>
-                                                )}
-                                              </div>
+                                              <span
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingItineraryCell({ date: group.dateKey, field: "notes" });
+                                                  setItineraryInput(trip.itinerary?.[group.dateKey]?.notes || "");
+                                                }}
+                                                style={{
+                                                  fontSize: "0.75rem",
+                                                  color: trip.itinerary?.[group.dateKey]?.notes ? "#4B5563" : "#9CA3AF",
+                                                  cursor: "pointer",
+                                                  borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                                                  fontStyle: trip.itinerary?.[group.dateKey]?.notes ? "normal" : "italic",
+                                                  display: "inline-block",
+                                                  whiteSpace: "nowrap",
+                                                  overflow: "hidden",
+                                                  textOverflow: "ellipsis",
+                                                  maxWidth: "200px"
+                                                }}
+                                                title={trip.itinerary?.[group.dateKey]?.notes || ""}
+                                              >
+                                                {trip.itinerary?.[group.dateKey]?.notes || "Add plans/todo notes..."}
+                                              </span>
                                             )}
                                           </div>
                                         )}
@@ -8131,46 +7994,107 @@ function ItineraryCellInput({ initialValue, onSave, onCancel, style, isTextArea 
 
   if (isTextArea) {
     return (
-      <textarea
+      <div style={{ position: "relative", display: "inline-flex", width: "100%" }}>
+        <textarea
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={() => onSave(val)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSave(val);
+            } else if (e.key === "Escape") {
+              onCancel();
+            }
+          }}
+          autoFocus
+          rows={3}
+          style={{
+            ...baseStyle,
+            width: "100%",
+            paddingRight: "28px",
+            boxSizing: "border-box",
+            resize: "vertical",
+            minHeight: "80px",
+            fontFamily: "inherit"
+          }}
+        />
+        {val && (
+          <span
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setVal("");
+            }}
+            style={{
+              position: "absolute",
+              right: "8px",
+              top: "8px",
+              color: "#9CA3AF",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              fontWeight: "bold",
+              padding: "4px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            title="Clear text"
+          >
+            ✕
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative", display: "inline-flex", width: "100%", alignItems: "center" }}>
+      <input
+        type="text"
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onBlur={() => onSave(val)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
+          if (e.key === "Enter") {
             onSave(val);
           } else if (e.key === "Escape") {
             onCancel();
           }
         }}
         autoFocus
-        rows={3}
         style={{
           ...baseStyle,
-          resize: "vertical",
-          minHeight: "80px",
-          fontFamily: "inherit"
+          width: "100%",
+          paddingRight: "28px",
+          boxSizing: "border-box"
         }}
       />
-    );
-  }
-
-  return (
-    <input
-      type="text"
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onBlur={() => onSave(val)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          onSave(val);
-        } else if (e.key === "Escape") {
-          onCancel();
-        }
-      }}
-      autoFocus
-      style={baseStyle}
-    />
+      {val && (
+        <span
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setVal("");
+          }}
+          style={{
+            position: "absolute",
+            right: "8px",
+            color: "#9CA3AF",
+            cursor: "pointer",
+            fontSize: "0.85rem",
+            fontWeight: "bold",
+            padding: "4px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          title="Clear text"
+        >
+          ✕
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -10366,7 +10290,7 @@ function ManualEntryModal({
             position: "relative"
           }}>
             {/* When? Column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px", position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "18px" }}>
                 <label style={{
                   fontSize: "0.72rem",
@@ -10567,6 +10491,115 @@ function ManualEntryModal({
                 </div>
                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#4B5563" }}>Multi-Day</span>
               </div>
+
+              {/* Collapsible Date Picker (Floating BELOW date inputs) */}
+              {isDateExpanded && (
+                <div
+                  ref={calendarContainerRef}
+                  style={{
+                    position: "absolute",
+                    top: "100%", // Float below When? Column!
+                    left: 0,
+                    width: spreadExpense ? "100%" : "calc(200% + 10px)", // dynamically span the full width
+                    marginTop: "8px",
+                    padding: "10px 10px",
+                    backgroundColor: "#F9F6ED",
+                    borderRadius: "16px",
+                    border: "1.5px solid rgba(133, 58, 81, 0.18)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(0, 0, 0, 0.05)",
+                    zIndex: 400,
+                    animation: "fadeInUp 0.2s ease-out"
+                  }}
+                >
+                  {/* Dynamic Range Card (rendered ABOVE the calendar) */}
+                  {(() => {
+                    const start = new Date(spreadStart + "T00:00:00");
+                    const end = new Date(spreadEnd + "T00:00:00");
+
+                    if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
+                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                      const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+                      const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+
+                      return (
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "6px 8px",
+                          backgroundColor: "rgba(232, 107, 50, 0.05)",
+                          borderRadius: "12px",
+                          border: "1.5px solid rgba(232, 107, 50, 0.15)",
+                          marginBottom: "2px"
+                        }}>
+                          <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
+                            📅 {formattedStart} – {formattedEnd}
+                          </span>
+                          <span style={{
+                            fontSize: "0.68rem",
+                            fontWeight: 750,
+                            backgroundColor: "rgba(232, 107, 50, 0.12)",
+                            color: "#C2410C",
+                            padding: "1px 6px",
+                            borderRadius: "20px"
+                          }}>
+                            {days} Days
+                          </span>
+                        </div>
+                      );
+                    } else {
+                      // Single date selection card
+                      const d = new Date(expenseDate + "T00:00:00");
+                      const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+                      return (
+                        <div style={{
+                          padding: "6px 8px",
+                          backgroundColor: "rgba(133, 58, 81, 0.04)",
+                          borderRadius: "10px",
+                          border: "1px solid rgba(133, 58, 81, 0.08)",
+                          fontSize: "0.74rem",
+                          fontWeight: 750,
+                          color: "var(--color-purple)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "2px"
+                        }}>
+                          <span>Logging on {formattedDate}</span>
+                          <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Tap day to change</span>
+                        </div>
+                      );
+                    }
+                  })()}
+
+                  {/* Render Custom Calendar Grid */}
+                  {renderCalendarGrid()}
+
+                  {/* OK button to verify date range */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid rgba(133, 58, 81, 0.1)", paddingTop: "6px", marginTop: "2px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsDateExpanded(false)}
+                      style={{
+                        backgroundColor: "var(--color-purple)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "5px 14px",
+                        fontSize: "0.76rem",
+                        fontWeight: 750,
+                        cursor: "pointer",
+                        outline: "none"
+                      }}
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Worth It Column */}
@@ -10613,114 +10646,6 @@ function ManualEntryModal({
               </button>
             </div>
 
-            {/* Collapsible Date Picker (Floating BELOW) */}
-            {isDateExpanded && (
-              <div
-                ref={calendarContainerRef}
-                style={{
-                  position: "absolute",
-                  top: "100%", // Float below!
-                  left: 0,
-                  right: 0,
-                  marginTop: "8px",
-                  padding: "10px 10px",
-                  backgroundColor: "#F9F6ED",
-                  borderRadius: "16px",
-                  border: "1.5px solid rgba(133, 58, 81, 0.18)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  boxShadow: "0 10px 25px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(0, 0, 0, 0.05)",
-                  zIndex: 400,
-                  animation: "fadeInUp 0.2s ease-out"
-                }}
-              >
-                {/* Dynamic Range Card (rendered ABOVE the calendar) */}
-                {(() => {
-                  const start = new Date(spreadStart + "T00:00:00");
-                  const end = new Date(spreadEnd + "T00:00:00");
-
-                  if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
-                    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                    const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-                    const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
-
-                    return (
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "6px 8px",
-                        backgroundColor: "rgba(232, 107, 50, 0.05)",
-                        borderRadius: "12px",
-                        border: "1.5px solid rgba(232, 107, 50, 0.15)",
-                        marginBottom: "2px"
-                      }}>
-                        <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
-                          📅 {formattedStart} – {formattedEnd}
-                        </span>
-                        <span style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 750,
-                          backgroundColor: "rgba(232, 107, 50, 0.12)",
-                          color: "#C2410C",
-                          padding: "1px 6px",
-                          borderRadius: "20px"
-                        }}>
-                          {days} Days
-                        </span>
-                      </div>
-                    );
-                  } else {
-                    // Single date selection card
-                    const d = new Date(expenseDate + "T00:00:00");
-                    const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
-                    return (
-                      <div style={{
-                        padding: "6px 8px",
-                        backgroundColor: "rgba(133, 58, 81, 0.04)",
-                        borderRadius: "10px",
-                        border: "1px solid rgba(133, 58, 81, 0.08)",
-                        fontSize: "0.74rem",
-                        fontWeight: 750,
-                        color: "var(--color-purple)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "2px"
-                      }}>
-                        <span>Logging on {formattedDate}</span>
-                        <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Tap day to change</span>
-                      </div>
-                    );
-                  }
-                })()}
-
-                {/* Render Custom Calendar Grid */}
-                {renderCalendarGrid()}
-
-                {/* OK button to verify date range */}
-                <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid rgba(133, 58, 81, 0.1)", paddingTop: "6px", marginTop: "2px" }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsDateExpanded(false)}
-                    style={{
-                      backgroundColor: "var(--color-purple)",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "5px 14px",
-                      fontSize: "0.76rem",
-                      fontWeight: 750,
-                      cursor: "pointer",
-                      outline: "none"
-                    }}
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Notes Input at the bottom */}
