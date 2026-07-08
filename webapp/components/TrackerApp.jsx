@@ -1089,6 +1089,44 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const voiceTimeoutRef = useRef(null);
   const isSavingLocaleRef = useRef(false);
 
+  // Global Lightbox state
+  const [globalLightbox, setGlobalLightbox] = useState({
+    isOpen: false,
+    photos: [],
+    index: 0
+  });
+  const [lightboxScale, setLightboxScale] = useState(1);
+  const [lightboxPan, setLightboxPan] = useState({ x: 0, y: 0 });
+  const [lightboxDragStart, setLightboxDragStart] = useState(null);
+
+  const handleLightboxStartDrag = (e) => {
+    if (lightboxScale <= 1) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setLightboxDragStart({ x: clientX - lightboxPan.x, y: clientY - lightboxPan.y });
+  };
+
+  const handleLightboxDrag = (e) => {
+    if (!lightboxDragStart || lightboxScale <= 1) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setLightboxPan({
+      x: clientX - lightboxDragStart.x,
+      y: clientY - lightboxDragStart.y
+    });
+  };
+
+  const handleLightboxEndDrag = () => {
+    setLightboxDragStart(null);
+  };
+
+  // Reset zoom whenever lightbox photo index or openness changes
+  useEffect(() => {
+    setLightboxScale(1);
+    setLightboxPan({ x: 0, y: 0 });
+    setLightboxDragStart(null);
+  }, [globalLightbox.isOpen, globalLightbox.index]);
+
   const handleVoiceParse = async (text) => {
     if (!text.trim()) return;
     setIsVoiceParsing(true);
@@ -3732,7 +3770,17 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   >
                     {/* Photo Box */}
                     {hasPhoto ? (
-                      <div style={{ width: "100%", height: "100px", position: "relative", backgroundColor: "#F3F4F6" }}>
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setGlobalLightbox({
+                            isOpen: true,
+                            photos: photos,
+                            index: 0
+                          });
+                        }}
+                        style={{ width: "100%", height: "100px", position: "relative", backgroundColor: "#F3F4F6", cursor: "zoom-in" }}
+                      >
                         <img
                           src={photos[0]}
                           alt={exp.title || exp.category}
@@ -5705,7 +5753,34 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     {(() => {
                       const currentLoc = getResolvedDayLocation(new Date().toLocaleDateString('en-CA'));
                       if (currentLoc) {
-                        return <span>📍 {currentLoc}</span>;
+                        return (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <span>📍 {currentLoc}</span>
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("Clear today's location?")) {
+                                  saveLocaleAndSyncItinerary("");
+                                }
+                              }}
+                              style={{
+                                color: "#EF4444",
+                                fontWeight: "bold",
+                                padding: "2px 6px",
+                                cursor: "pointer",
+                                fontSize: "0.85rem",
+                                borderRadius: "4px",
+                                backgroundColor: "rgba(239, 68, 68, 0.08)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center"
+                              }}
+                              title="Clear location"
+                            >
+                              ✕
+                            </span>
+                          </span>
+                        );
                       }
                       return (
                         <span style={{
@@ -5786,22 +5861,49 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                           }}
                         />
                       ) : (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItineraryCell({ date: todayStr, field: "notes" });
-                            setItineraryInput(plannedNotes);
-                          }}
-                          style={{
-                            fontSize: "0.75rem",
-                            color: plannedNotes ? "#4B5563" : "#9CA3AF",
-                            cursor: "pointer",
-                            borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                            fontStyle: plannedNotes ? "normal" : "italic"
-                          }}
-                        >
-                          {plannedNotes || "what's going on today?"}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingItineraryCell({ date: todayStr, field: "notes" });
+                              setItineraryInput(plannedNotes);
+                            }}
+                            style={{
+                              fontSize: "0.75rem",
+                              color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                              cursor: "pointer",
+                              borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                              fontStyle: plannedNotes ? "normal" : "italic"
+                            }}
+                          >
+                            {plannedNotes || "what's going on today?"}
+                          </span>
+                          {plannedNotes && (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("Clear planned notes?")) {
+                                  updateItineraryNotes(todayStr, "");
+                                }
+                              }}
+                              style={{
+                                color: "#EF4444",
+                                cursor: "pointer",
+                                fontSize: "0.75rem",
+                                fontWeight: "bold",
+                                padding: "1px 4px",
+                                borderRadius: "3px",
+                                backgroundColor: "rgba(239, 68, 68, 0.06)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center"
+                              }}
+                              title="Clear notes"
+                            >
+                              ✕
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -6476,9 +6578,36 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   }}
                                                 />
                                               ) : (
-                                                <span title="Click to edit destination">
-                                                  📍 {dayLocation || "Add destination"}
-                                                </span>
+                                                 <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                                   <span title="Click to edit destination">
+                                                     📍 {dayLocation || "Add destination"}
+                                                   </span>
+                                                   {dayLocation && (
+                                                     <span
+                                                       onClick={(e) => {
+                                                         e.stopPropagation();
+                                                         if (window.confirm("Clear location for this day?")) {
+                                                           updateItineraryLocation(dateKey, "");
+                                                         }
+                                                       }}
+                                                       style={{
+                                                         color: "#EF4444",
+                                                         cursor: "pointer",
+                                                         fontSize: "0.75rem",
+                                                         fontWeight: "bold",
+                                                         padding: "1px 4px",
+                                                         borderRadius: "3px",
+                                                         backgroundColor: "rgba(239, 68, 68, 0.08)",
+                                                         display: "inline-flex",
+                                                         alignItems: "center",
+                                                         justifyContent: "center"
+                                                       }}
+                                                       title="Clear location"
+                                                     >
+                                                       ✕
+                                                     </span>
+                                                   )}
+                                                 </span>
                                               )}
                                             </span>
                                           </div>
@@ -6509,22 +6638,54 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                   }}
                                                 />
                                               ) : (
-                                                <span
-                                                  onClick={() => {
-                                                    setEditingItineraryCell({ date: dateKey, field: "notes" });
-                                                    setItineraryInput(plannedNotes);
-                                                  }}
-                                                  style={{
-                                                    fontSize: "0.75rem",
-                                                    color: plannedNotes ? "#4B5563" : "#9CA3AF",
-                                                    cursor: "pointer",
-                                                    borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                                                    fontStyle: plannedNotes ? "normal" : "italic",
-                                                    display: "inline-block"
-                                                  }}
-                                                >
-                                                  {plannedNotes || "Add plans/todo notes..."}
-                                                </span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                   <span
+                                                     onClick={() => {
+                                                       setEditingItineraryCell({ date: dateKey, field: "notes" });
+                                                       setItineraryInput(plannedNotes);
+                                                     }}
+                                                     style={{
+                                                       fontSize: "0.75rem",
+                                                       color: plannedNotes ? "#4B5563" : "#9CA3AF",
+                                                       cursor: "pointer",
+                                                       borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                                                       fontStyle: plannedNotes ? "normal" : "italic",
+                                                       display: "inline-block",
+                                                       whiteSpace: "nowrap",
+                                                       overflow: "hidden",
+                                                       textOverflow: "ellipsis",
+                                                       maxWidth: "250px"
+                                                     }}
+                                                     title={plannedNotes}
+                                                   >
+                                                     {plannedNotes || "Add plans/todo notes..."}
+                                                   </span>
+                                                   {plannedNotes && (
+                                                     <span
+                                                       onClick={(e) => {
+                                                         e.stopPropagation();
+                                                         if (window.confirm("Clear planned notes for this day?")) {
+                                                           updateItineraryNotes(dateKey, "");
+                                                         }
+                                                       }}
+                                                       style={{
+                                                         color: "#EF4444",
+                                                         cursor: "pointer",
+                                                         fontSize: "0.72rem",
+                                                         fontWeight: "bold",
+                                                         padding: "1px 4px",
+                                                         borderRadius: "3px",
+                                                         backgroundColor: "rgba(239, 68, 68, 0.06)",
+                                                         display: "inline-flex",
+                                                         alignItems: "center",
+                                                         justifyContent: "center"
+                                                       }}
+                                                       title="Clear notes"
+                                                     >
+                                                       ✕
+                                                     </span>
+                                                   )}
+                                                 </div>
                                               )}
                                             </div>
                                           )}
@@ -6542,6 +6703,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         homeCurrency={trip.homeCurrency}
                                         rates={rates}
                                         trip={trip}
+                                        setGlobalLightbox={setGlobalLightbox}
                                       />
                                     </div>
                                   );
@@ -6849,8 +7011,35 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                               }}
                                             />
                                           ) : (
-                                            <span title="Click to edit destination">
-                                              📍 {group.location || "Add destination"}
+                                            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                              <span title="Click to edit destination">
+                                                📍 {group.location || "Add destination"}
+                                              </span>
+                                              {group.location && (
+                                                <span
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (window.confirm("Clear location for this day?")) {
+                                                      updateItineraryLocation(group.dateKey, "");
+                                                    }
+                                                  }}
+                                                  style={{
+                                                    color: "#EF4444",
+                                                    cursor: "pointer",
+                                                    fontSize: "0.75rem",
+                                                    fontWeight: "bold",
+                                                    padding: "1px 4px",
+                                                    borderRadius: "3px",
+                                                    backgroundColor: "rgba(239, 68, 68, 0.08)",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center"
+                                                  }}
+                                                  title="Clear location"
+                                                >
+                                                  ✕
+                                                </span>
+                                              )}
                                             </span>
                                           )}
                                         </div>
@@ -6882,22 +7071,55 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                 }}
                                               />
                                             ) : (
-                                              <span
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setEditingItineraryCell({ date: group.dateKey, field: "notes" });
-                                                  setItineraryInput(trip.itinerary?.[group.dateKey]?.notes || "");
-                                                }}
-                                                style={{
-                                                  fontSize: "0.75rem",
-                                                  color: trip.itinerary?.[group.dateKey]?.notes ? "#4B5563" : "#9CA3AF",
-                                                  cursor: "pointer",
-                                                  borderBottom: "1px dashed rgba(0,0,0,0.1)",
-                                                  fontStyle: trip.itinerary?.[group.dateKey]?.notes ? "normal" : "italic"
-                                                }}
-                                              >
-                                                {trip.itinerary?.[group.dateKey]?.notes || "Add plans/todo notes..."}
-                                              </span>
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                <span
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingItineraryCell({ date: group.dateKey, field: "notes" });
+                                                    setItineraryInput(trip.itinerary?.[group.dateKey]?.notes || "");
+                                                  }}
+                                                  style={{
+                                                    fontSize: "0.75rem",
+                                                    color: trip.itinerary?.[group.dateKey]?.notes ? "#4B5563" : "#9CA3AF",
+                                                    cursor: "pointer",
+                                                    borderBottom: "1px dashed rgba(0,0,0,0.1)",
+                                                    fontStyle: trip.itinerary?.[group.dateKey]?.notes ? "normal" : "italic",
+                                                    display: "inline-block",
+                                                    whiteSpace: "nowrap",
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    maxWidth: "200px"
+                                                  }}
+                                                  title={trip.itinerary?.[group.dateKey]?.notes || ""}
+                                                >
+                                                  {trip.itinerary?.[group.dateKey]?.notes || "Add plans/todo notes..."}
+                                                </span>
+                                                {trip.itinerary?.[group.dateKey]?.notes && (
+                                                  <span
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (window.confirm("Clear planned notes for this day?")) {
+                                                        updateItineraryNotes(group.dateKey, "");
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      color: "#EF4444",
+                                                      cursor: "pointer",
+                                                      fontSize: "0.72rem",
+                                                      fontWeight: "bold",
+                                                      padding: "1px 4px",
+                                                      borderRadius: "3px",
+                                                      backgroundColor: "rgba(239, 68, 68, 0.06)",
+                                                      display: "inline-flex",
+                                                      alignItems: "center",
+                                                      justifyContent: "center"
+                                                    }}
+                                                    title="Clear notes"
+                                                  >
+                                                    ✕
+                                                  </span>
+                                                )}
+                                              </div>
                                             )}
                                           </div>
                                         )}
@@ -7003,6 +7225,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                       homeCurrency={trip.homeCurrency}
                                                       rates={rates}
                                                       trip={trip}
+                                                      setGlobalLightbox={setGlobalLightbox}
                                                     />
                                                   ))}
                                                 </div>
@@ -7274,6 +7497,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     homeCurrency={trip.homeCurrency}
                     rates={rates}
                     trip={trip}
+                    setGlobalLightbox={setGlobalLightbox}
                   />
                 ));
               })()}
@@ -7641,6 +7865,257 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           <span>{toastText}</span>
         </div>
       )}
+
+      {globalLightbox.isOpen && globalLightbox.photos && globalLightbox.photos[globalLightbox.index] && (
+        <div 
+          onClick={() => setGlobalLightbox({ isOpen: false, photos: [], index: 0 })}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.9)",
+            zIndex: 15000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backdropFilter: "blur(5px)",
+            padding: "20px",
+            userSelect: "none"
+          }}
+        >
+          {/* Zoom controls at the top */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: "20px",
+              display: "flex",
+              gap: "12px",
+              zIndex: 15100
+            }}
+          >
+            <button
+              onClick={() => {
+                setLightboxScale(prev => Math.max(1, prev - 0.25));
+                if (lightboxScale <= 1.25) setLightboxPan({ x: 0, y: 0 });
+              }}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                border: "none",
+                color: "white",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)"
+              }}
+              title="Zoom Out"
+            >
+              −
+            </button>
+            <span style={{ color: "white", fontSize: "0.85rem", alignSelf: "center", fontWeight: "bold", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>
+              {Math.round(lightboxScale * 100)}%
+            </span>
+            <button
+              onClick={() => setLightboxScale(prev => Math.min(4, prev + 0.25))}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                border: "none",
+                color: "white",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)"
+              }}
+              title="Zoom In"
+            >
+              ＋
+            </button>
+            {lightboxScale > 1 && (
+              <button
+                onClick={() => {
+                  setLightboxScale(1);
+                  setLightboxPan({ x: 0, y: 0 });
+                }}
+                style={{
+                  padding: "0 12px",
+                  height: "36px",
+                  borderRadius: "18px",
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  border: "none",
+                  color: "white",
+                  fontSize: "0.8rem",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backdropFilter: "blur(4px)"
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={() => setGlobalLightbox({ isOpen: false, photos: [], index: 0 })}
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              border: "none",
+              color: "white",
+              fontSize: "1.25rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 15200
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Image Container with Drag support */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={handleLightboxStartDrag}
+            onMouseMove={handleLightboxDrag}
+            onMouseUp={handleLightboxEndDrag}
+            onMouseLeave={handleLightboxEndDrag}
+            onTouchStart={handleLightboxStartDrag}
+            onTouchMove={handleLightboxDrag}
+            onTouchEnd={handleLightboxEndDrag}
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              cursor: lightboxScale > 1 ? (lightboxDragStart ? "grabbing" : "grab") : "default"
+            }}
+          >
+            <img 
+              src={globalLightbox.photos[globalLightbox.index]} 
+              alt="Zoomable memory" 
+              draggable={false}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "85vh",
+                objectFit: "contain",
+                transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxScale})`,
+                transition: lightboxDragStart ? "none" : "transform 0.15s ease-out",
+                borderRadius: "8px",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+              }}
+            />
+          </div>
+
+          {/* Left Arrow */}
+          {globalLightbox.photos.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxScale(1);
+                setLightboxPan({ x: 0, y: 0 });
+                setGlobalLightbox(prev => ({
+                  ...prev,
+                  index: (prev.index - 1 + prev.photos.length) % prev.photos.length
+                }));
+              }}
+              style={{
+                position: "absolute",
+                left: "20px",
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                border: "none",
+                color: "white",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                zIndex: 15200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              ‹
+            </button>
+          )}
+
+          {/* Right Arrow */}
+          {globalLightbox.photos.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxScale(1);
+                setLightboxPan({ x: 0, y: 0 });
+                setGlobalLightbox(prev => ({
+                  ...prev,
+                  index: (prev.index + 1) % prev.photos.length
+                }));
+              }}
+              style={{
+                position: "absolute",
+                right: "20px",
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                border: "none",
+                color: "white",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                zIndex: 15200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              ›
+            </button>
+          )}
+
+          {/* Counter indicator */}
+          {globalLightbox.photos.length > 1 && (
+            <div style={{
+              position: "absolute",
+              bottom: "20px",
+              color: "white",
+              fontSize: "0.85rem",
+              fontWeight: "bold",
+              backgroundColor: "rgba(0,0,0,0.6)",
+              padding: "4px 12px",
+              borderRadius: "12px",
+              zIndex: 15200
+            }}>
+              {globalLightbox.index + 1} / {globalLightbox.photos.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   ) : (
     <div style={{ minHeight: "100vh", background: "#F9F6ED" }} />
@@ -7707,14 +8182,13 @@ function ExpenseCard({
   convertCurrency,
   homeCurrency,
   rates,
-  trip
+  trip,
+  setGlobalLightbox
 }) {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [offsetX, setOffsetX] = useState(0);
   const [isSwipedOpen, setIsSwipedOpen] = useState(false);
-  const [showLightbox, setShowLightbox] = useState(false);
-  const [listPhotoIndex, setListPhotoIndex] = useState(0);
   const [fetchedPhotos, setFetchedPhotos] = useState(null);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
 
@@ -7722,7 +8196,7 @@ function ExpenseCard({
     e.stopPropagation();
     if (loadingPhotos) return;
     if (fetchedPhotos) {
-      setShowLightbox(true);
+      setGlobalLightbox({ isOpen: true, photos: fetchedPhotos, index: 0 });
       return;
     }
     setLoadingPhotos(true);
@@ -7736,8 +8210,7 @@ function ExpenseCard({
         const fullUrls = data.photo_urls_full || [];
         const urls = fullUrls.length > 0 ? fullUrls : (data.photo_urls || (data.photo_url ? [data.photo_url] : []));
         setFetchedPhotos(urls);
-        setListPhotoIndex(0);
-        setShowLightbox(true);
+        setGlobalLightbox({ isOpen: true, photos: urls, index: 0 });
       } else {
         throw error || new Error("No data returned");
       }
@@ -7939,10 +8412,15 @@ function ExpenseCard({
                 fontSize: "0.78rem",
                 color: "#4B5563",
                 marginTop: "2px",
-                whiteSpace: "pre-line",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "block",
                 lineHeight: "1.3",
                 opacity: 0.85
-              }}>
+              }}
+              title={expense.notes}
+              >
                 {expense.notes}
               </span>
             )}
@@ -8025,142 +8503,6 @@ function ExpenseCard({
           </div>
         </div>
       </div>
-
-      {showLightbox && (() => {
-        const displayPhotoUrls = fetchedPhotos || [];
-        if (displayPhotoUrls.length === 0 || !displayPhotoUrls[listPhotoIndex]) return null;
-        return (
-          <div 
-            onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.85)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backdropFilter: "blur(5px)",
-              padding: "20px"
-            }}
-          >
-            <img 
-              src={displayPhotoUrls[listPhotoIndex]} 
-              alt="Full receipt" 
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "80vh",
-                objectFit: "contain",
-                borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
-              }} 
-            />
-
-            {/* Left Navigation Arrow */}
-            {displayPhotoUrls.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setListPhotoIndex(prev => (prev - 1 + displayPhotoUrls.length) % displayPhotoUrls.length);
-                }}
-                style={{
-                  position: "absolute",
-                  left: "20px",
-                  background: "rgba(255,255,255,0.2)",
-                  border: "none",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "50px",
-                  height: "50px",
-                  fontSize: "2rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  outline: "none"
-                }}
-              >
-                ‹
-              </button>
-            )}
-
-            {/* Right Navigation Arrow */}
-            {displayPhotoUrls.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setListPhotoIndex(prev => (prev + 1) % displayPhotoUrls.length);
-                }}
-                style={{
-                  position: "absolute",
-                  right: "20px",
-                  background: "rgba(255,255,255,0.2)",
-                  border: "none",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "50px",
-                  height: "50px",
-                  fontSize: "2rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  outline: "none"
-                }}
-              >
-                ›
-              </button>
-            )}
-
-            {/* Image Indicator counter */}
-            {displayPhotoUrls.length > 1 && (
-              <div style={{
-                position: "absolute",
-                bottom: "20px",
-                color: "white",
-                fontSize: "0.9rem",
-                fontWeight: 700,
-                backgroundColor: "rgba(0,0,0,0.5)",
-                padding: "4px 12px",
-                borderRadius: "20px"
-              }}>
-                {listPhotoIndex + 1} / {displayPhotoUrls.length}
-              </div>
-            )}
-
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
-              style={{
-                position: "absolute",
-                top: "20px",
-                right: "20px",
-                background: "rgba(255,255,255,0.2)",
-                border: "none",
-                color: "white",
-                borderRadius: "50%",
-                width: "40px",
-                height: "40px",
-                fontSize: "20px",
-                cursor: "pointer",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        );
-      })()}
     </div>
   );
 }
@@ -9760,8 +10102,11 @@ function ManualEntryModal({
                       onContextMenu={(e) => e.preventDefault()} // Disable native long-press menu
                       onClick={() => {
                         if (touchDragActiveRef.current) return;
-                        setLightboxPhotoIndex(index);
-                        setShowModalLightbox(true);
+                        setGlobalLightbox({
+                          isOpen: true,
+                          photos: photoUrlsFull && photoUrlsFull.length > 0 ? photoUrlsFull : photoUrls,
+                          index: index
+                        });
                       }}
                       style={{
                         position: "relative",
@@ -9906,138 +10251,6 @@ function ManualEntryModal({
                 </button>
               </div>
             )}
-
-            {showModalLightbox && photoUrls && photoUrls[lightboxPhotoIndex] && (
-              <div 
-                onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
-                style={{
-                  position: "fixed",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(0,0,0,0.85)",
-                  zIndex: 9999,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backdropFilter: "blur(5px)",
-                  padding: "20px"
-                }}
-              >
-                <img 
-                  src={(photoUrlsFull && photoUrlsFull[lightboxPhotoIndex]) || photoUrls[lightboxPhotoIndex]} 
-                  alt="Full receipt" 
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "80vh",
-                    objectFit: "contain",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
-                  }} 
-                />
-
-                {/* Left Navigation Arrow */}
-                {photoUrls.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLightboxPhotoIndex(prev => (prev - 1 + photoUrls.length) % photoUrls.length);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: "20px",
-                      background: "rgba(255,255,255,0.2)",
-                      border: "none",
-                      color: "white",
-                      borderRadius: "50%",
-                      width: "50px",
-                      height: "50px",
-                      fontSize: "2rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      outline: "none"
-                    }}
-                  >
-                    ‹
-                  </button>
-                )}
-
-                {/* Right Navigation Arrow */}
-                {photoUrls.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLightboxPhotoIndex(prev => (prev + 1) % photoUrls.length);
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: "20px",
-                      background: "rgba(255,255,255,0.2)",
-                      border: "none",
-                      color: "white",
-                      borderRadius: "50%",
-                      width: "50px",
-                      height: "50px",
-                      fontSize: "2rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      outline: "none"
-                    }}
-                  >
-                    ›
-                  </button>
-                )}
-
-                {/* Image Indicator counter */}
-                {photoUrls.length > 1 && (
-                  <div style={{
-                    position: "absolute",
-                    bottom: "20px",
-                    color: "white",
-                    fontSize: "0.9rem",
-                    fontWeight: 700,
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    padding: "4px 12px",
-                    borderRadius: "20px"
-                  }}>
-                    {lightboxPhotoIndex + 1} / {photoUrls.length}
-                  </div>
-                )}
-
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setShowModalLightbox(false); }}
-                  style={{
-                    position: "absolute",
-                    top: "20px",
-                    right: "20px",
-                    background: "rgba(255,255,255,0.2)",
-                    border: "none",
-                    color: "white",
-                    borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
-                    fontSize: "20px",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
           </div>
 
           {isGroup && (
@@ -10145,10 +10358,10 @@ function ManualEntryModal({
             </div>
           </div>
 
-          {/* 2. Side-by-Side Row: When? and Worth it */}
+          {/* 2. Side-by-Side/Stacked Row: When? and Worth it */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: spreadExpense ? "1fr" : "1fr 1fr",
             gap: "10px",
             position: "relative"
           }}>
@@ -10400,16 +10613,16 @@ function ManualEntryModal({
               </button>
             </div>
 
-            {/* Collapsible Date Picker (Floating ABOVE) */}
+            {/* Collapsible Date Picker (Floating BELOW) */}
             {isDateExpanded && (
               <div
                 ref={calendarContainerRef}
                 style={{
                   position: "absolute",
-                  bottom: "100%", // Float above!
+                  top: "100%", // Float below!
                   left: 0,
                   right: 0,
-                  marginBottom: "8px",
+                  marginTop: "8px",
                   padding: "10px 10px",
                   backgroundColor: "#F9F6ED",
                   borderRadius: "16px",
@@ -10417,7 +10630,7 @@ function ManualEntryModal({
                   display: "flex",
                   flexDirection: "column",
                   gap: "6px",
-                  boxShadow: "0 -8px 24px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(0, 0, 0, 0.05)",
+                  boxShadow: "0 10px 25px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(0, 0, 0, 0.05)",
                   zIndex: 400,
                   animation: "fadeInUp 0.2s ease-out"
                 }}
