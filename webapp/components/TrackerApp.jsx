@@ -1121,8 +1121,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const touchStartDistanceRef = useRef(0);
   const touchStartScaleRef = useRef(1);
   const lastTapRef = useRef(0);
+  const lightboxImageRef = useRef(null);
+  const currentScaleRef = useRef(1);
+  const currentPanRef = useRef({ x: 0, y: 0 });
+
+  const updateLightboxImageTransform = (scale, pan) => {
+    if (lightboxImageRef.current) {
+      lightboxImageRef.current.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
+    }
+  };
 
   const handleLightboxStartDrag = (e) => {
+    // Sync current values to refs for calculations
+    currentScaleRef.current = lightboxScale;
+    currentPanRef.current = lightboxPan;
+
     if (e.touches && e.touches.length === 2) {
       // Start two-finger pinch zoom
       const dist = Math.hypot(
@@ -1132,6 +1145,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       touchStartDistanceRef.current = dist;
       touchStartScaleRef.current = lightboxScale;
       setLightboxDragStart(null);
+      if (lightboxImageRef.current) {
+        lightboxImageRef.current.style.transition = "none";
+      }
       return;
     }
 
@@ -1139,6 +1155,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     setLightboxDragStart({ x: clientX - lightboxPan.x, y: clientY - lightboxPan.y });
+    if (lightboxImageRef.current) {
+      lightboxImageRef.current.style.transition = "none";
+    }
   };
 
   const handleLightboxDrag = (e) => {
@@ -1151,25 +1170,39 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
       );
       const ratio = dist / touchStartDistanceRef.current;
       const newScale = Math.min(4, Math.max(1, touchStartScaleRef.current * ratio));
-      setLightboxScale(newScale);
+      
+      currentScaleRef.current = newScale;
       if (newScale <= 1) {
-        setLightboxPan({ x: 0, y: 0 });
+        currentPanRef.current = { x: 0, y: 0 };
       }
+
+      updateLightboxImageTransform(currentScaleRef.current, currentPanRef.current);
       return;
     }
 
     if (!lightboxDragStart || lightboxScale <= 1) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    setLightboxPan({
+    
+    currentPanRef.current = {
       x: clientX - lightboxDragStart.x,
       y: clientY - lightboxDragStart.y
-    });
+    };
+
+    updateLightboxImageTransform(currentScaleRef.current, currentPanRef.current);
   };
 
   const handleLightboxEndDrag = () => {
     setLightboxDragStart(null);
     touchStartDistanceRef.current = 0;
+
+    // Apply hardware-accelerated state update at gesture completion to sync React state
+    setLightboxScale(currentScaleRef.current);
+    setLightboxPan(currentPanRef.current);
+
+    if (lightboxImageRef.current) {
+      lightboxImageRef.current.style.transition = "transform 0.15s ease-out";
+    }
   };
 
   const handleLightboxDoubleTap = (e) => {
@@ -1179,11 +1212,15 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
       e.preventDefault();
       if (lightboxScale > 1) {
-        setLightboxScale(1);
-        setLightboxPan({ x: 0, y: 0 });
+        currentScaleRef.current = 1;
+        currentPanRef.current = { x: 0, y: 0 };
       } else {
-        setLightboxScale(2.5);
+        currentScaleRef.current = 2.5;
+        currentPanRef.current = { x: 0, y: 0 };
       }
+      setLightboxScale(currentScaleRef.current);
+      setLightboxPan(currentPanRef.current);
+      updateLightboxImageTransform(currentScaleRef.current, currentPanRef.current);
     }
     lastTapRef.current = now;
   };
@@ -1193,6 +1230,9 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
     setLightboxScale(1);
     setLightboxPan({ x: 0, y: 0 });
     setLightboxDragStart(null);
+    currentScaleRef.current = 1;
+    currentPanRef.current = { x: 0, y: 0 };
+    updateLightboxImageTransform(1, { x: 0, y: 0 });
   }, [globalLightbox.isOpen, globalLightbox.index]);
 
   const handleVoiceParse = async (text) => {
@@ -7867,6 +7907,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             }}
           >
             <img 
+              ref={lightboxImageRef}
               src={globalLightbox.photos[globalLightbox.index]} 
               alt="Zoomable memory" 
               draggable={false}
