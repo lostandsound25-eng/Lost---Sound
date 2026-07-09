@@ -1,0 +1,9 @@
+{
+  "appId": "com.lostandsoundtravel.app",
+  "appName": "Lost & Sound",
+  "webDir": "out",
+  "server": {
+    "url": "https://lostandsoundtravel.com",
+    "cleartext": true
+  }
+}
