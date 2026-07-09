@@ -349,6 +349,25 @@ const formatMoneyAbbrev = (amount, currency) => {
   return symbol.length > 1 ? `${symbol}${formattedVal}` : `${symbol}${formattedVal}`;
 };
 
+const formatLocalCurrency = (amount, currency) => {
+  const absVal = Math.abs(amount);
+  let formattedVal = "";
+  if (absVal >= 1000000) {
+    const abbreviated = (amount / 1000000).toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+    formattedVal = `${abbreviated}M`;
+  } else {
+    formattedVal = amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  return symbol.length > 1 ? `${formattedVal} ${symbol}` : `${symbol}${formattedVal}`;
+};
+
 const convertCurrency = (amount, fromCurrency, toCurrency, rates) => {
   return (amount * (rates[fromCurrency] || 1)) / (rates[toCurrency] || 1);
 };
@@ -1099,7 +1118,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   const [lightboxPan, setLightboxPan] = useState({ x: 0, y: 0 });
   const [lightboxDragStart, setLightboxDragStart] = useState(null);
 
+  const touchStartDistanceRef = useRef(0);
+  const touchStartScaleRef = useRef(1);
+  const lastTapRef = useRef(0);
+
   const handleLightboxStartDrag = (e) => {
+    if (e.touches && e.touches.length === 2) {
+      // Start two-finger pinch zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchStartDistanceRef.current = dist;
+      touchStartScaleRef.current = lightboxScale;
+      setLightboxDragStart(null);
+      return;
+    }
+
     if (lightboxScale <= 1) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1107,6 +1142,22 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
   };
 
   const handleLightboxDrag = (e) => {
+    if (e.touches && e.touches.length === 2 && touchStartDistanceRef.current > 0) {
+      // Two-finger pinch zoom active
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / touchStartDistanceRef.current;
+      const newScale = Math.min(4, Math.max(1, touchStartScaleRef.current * ratio));
+      setLightboxScale(newScale);
+      if (newScale <= 1) {
+        setLightboxPan({ x: 0, y: 0 });
+      }
+      return;
+    }
+
     if (!lightboxDragStart || lightboxScale <= 1) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1118,6 +1169,23 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
 
   const handleLightboxEndDrag = () => {
     setLightboxDragStart(null);
+    touchStartDistanceRef.current = 0;
+  };
+
+  const handleLightboxDoubleTap = (e) => {
+    if (!e.touches) return;
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      e.preventDefault();
+      if (lightboxScale > 1) {
+        setLightboxScale(1);
+        setLightboxPan({ x: 0, y: 0 });
+      } else {
+        setLightboxScale(2.5);
+      }
+    }
+    lastTapRef.current = now;
   };
 
   // Reset zoom whenever lightbox photo index or openness changes
@@ -7256,6 +7324,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
           onVoiceStart={startVoiceListening}
           expenses={expenses}
           onRefreshRates={() => fetchLatestRates(true)}
+          setGlobalLightbox={setGlobalLightbox}
         />
       )}
 
@@ -7749,92 +7818,6 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             userSelect: "none"
           }}
         >
-          {/* Zoom controls at the top */}
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              top: "20px",
-              display: "flex",
-              gap: "12px",
-              zIndex: 15100
-            }}
-          >
-            <button
-              onClick={() => {
-                setLightboxScale(prev => Math.max(1, prev - 0.25));
-                if (lightboxScale <= 1.25) setLightboxPan({ x: 0, y: 0 });
-              }}
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                border: "none",
-                color: "white",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(4px)"
-              }}
-              title="Zoom Out"
-            >
-              −
-            </button>
-            <span style={{ color: "white", fontSize: "0.85rem", alignSelf: "center", fontWeight: "bold", textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>
-              {Math.round(lightboxScale * 100)}%
-            </span>
-            <button
-              onClick={() => setLightboxScale(prev => Math.min(4, prev + 0.25))}
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                border: "none",
-                color: "white",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(4px)"
-              }}
-              title="Zoom In"
-            >
-              ＋
-            </button>
-            {lightboxScale > 1 && (
-              <button
-                onClick={() => {
-                  setLightboxScale(1);
-                  setLightboxPan({ x: 0, y: 0 });
-                }}
-                style={{
-                  padding: "0 12px",
-                  height: "36px",
-                  borderRadius: "18px",
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
-                  border: "none",
-                  color: "white",
-                  fontSize: "0.8rem",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backdropFilter: "blur(4px)"
-                }}
-              >
-                Reset
-              </button>
-            )}
-          </div>
-
           {/* Close button */}
           <button
             onClick={() => setGlobalLightbox({ isOpen: false, photos: [], index: 0 })}
@@ -7859,14 +7842,18 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             ✕
           </button>
 
-          {/* Image Container with Drag support */}
+          {/* Image Container with Drag and Gesture zoom support */}
           <div
             onClick={(e) => e.stopPropagation()}
             onMouseDown={handleLightboxStartDrag}
             onMouseMove={handleLightboxDrag}
             onMouseUp={handleLightboxEndDrag}
             onMouseLeave={handleLightboxEndDrag}
-            onTouchStart={handleLightboxStartDrag}
+            onTouchStart={(e) => {
+              handleLightboxStartDrag(e);
+              handleLightboxDoubleTap(e);
+            }}
+            onMouseMove={handleLightboxDrag} // mouse support
             onTouchMove={handleLightboxDrag}
             onTouchEnd={handleLightboxEndDrag}
             style={{
@@ -8383,7 +8370,7 @@ function ExpenseCard({
             }}>{formatMoney(convertedAmount, homeCurrency)}</div>
             {expense.currency !== homeCurrency && (
               <div style={{ fontSize: "0.78rem", color: "#9CA3AF" }}>
-                {expense.amount.toFixed(2)} {expense.currency}
+                {formatLocalCurrency(expense.amount, expense.currency)}
               </div>
             )}
             {(() => {
@@ -8442,7 +8429,8 @@ function ManualEntryModal({
   onAddCustomCurrency,
   onVoiceStart,
   expenses = [],
-  onRefreshRates
+  onRefreshRates,
+  setGlobalLightbox
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;
@@ -9671,6 +9659,15 @@ function ManualEntryModal({
                   type="text"
                   value={establishment}
                   onChange={(e) => setEstablishment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (totalInputRef.current) {
+                        totalInputRef.current.focus();
+                        totalInputRef.current.select();
+                      }
+                    }
+                  }}
                   placeholder="e.g. Common Ground Cafe, Siargao"
                   autoFocus
                   style={{
@@ -10326,15 +10323,13 @@ function ManualEntryModal({
                   {/* Start Date Text Input */}
                   <input
                     type="text"
+                    readOnly={true}
                     data-date-input="true"
                     value={startInputText}
-                    onChange={(e) => setStartInputText(e.target.value)}
-                    onBlur={handleStartTextBlur}
-                    onFocus={() => {
+                    onClick={() => {
                       setCalendarTarget("start");
                       setIsDateExpanded(true);
                     }}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleStartTextBlur(); }}
                     placeholder="Start"
                     style={{
                       flex: 1,
@@ -10349,7 +10344,8 @@ function ManualEntryModal({
                       textAlign: "center",
                       height: "40px",
                       minWidth: 0,
-                      boxSizing: "border-box"
+                      boxSizing: "border-box",
+                      cursor: "pointer"
                     }}
                   />
 
@@ -10366,15 +10362,13 @@ function ManualEntryModal({
                   }}>
                     <input
                       type="text"
+                      readOnly={true}
                       data-date-input="true"
                       value={endInputText}
-                      onChange={(e) => setEndInputText(e.target.value)}
-                      onBlur={handleEndTextBlur}
-                      onFocus={() => {
+                      onClick={() => {
                         setCalendarTarget("end");
                         setIsDateExpanded(true);
                       }}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleEndTextBlur(); }}
                       placeholder="End"
                       style={{
                         width: "100%",
@@ -10388,7 +10382,8 @@ function ManualEntryModal({
                         padding: "6px 20px 6px 4px",
                         textAlign: "center",
                         height: "40px",
-                        boxSizing: "border-box"
+                        boxSizing: "border-box",
+                        cursor: "pointer"
                       }}
                     />
                     {/* Clear Range Button (X) */}
@@ -10422,15 +10417,13 @@ function ManualEntryModal({
               ) : (
                 <input
                   type="text"
+                  readOnly={true}
                   data-date-input="true"
                   value={singleInputText}
-                  onChange={(e) => setSingleInputText(e.target.value)}
-                  onBlur={handleSingleTextBlur}
-                  onFocus={() => {
+                  onClick={() => {
                     setCalendarTarget("start");
                     setIsDateExpanded(true);
                   }}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSingleTextBlur(); }}
                   placeholder="Date"
                   style={{
                     width: "100%",
@@ -10444,7 +10437,8 @@ function ManualEntryModal({
                     padding: "6px 12px",
                     textAlign: "center",
                     height: "40px",
-                    boxSizing: "border-box"
+                    boxSizing: "border-box",
+                    cursor: "pointer"
                   }}
                 />
               )}
