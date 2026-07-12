@@ -10,8 +10,11 @@ ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  display_name TEXT
+  display_name TEXT,
+  home_currency TEXT DEFAULT 'USD'
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS home_currency TEXT DEFAULT 'USD';
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
