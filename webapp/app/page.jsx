@@ -43,48 +43,108 @@ export default function Home() {
 
       <StorySection isExcerpt={true} />
 
-      <section style={{ backgroundColor: 'var(--color-golden)', borderRadius: '80px 80px 0 0', padding: '120px 0' }}>
-        <div className="container">
-          <div className="text-center mb-5">
-            <h2 style={{ fontSize: '3.5rem' }}>Where to next?</h2>
-            <p style={{ fontSize: '1.2rem', fontWeight: 500 }}>Tried, tested, and perfectly paced routes.</p>
-          </div>
+      <section style={{ backgroundColor: 'var(--color-purple)', color: 'white', borderRadius: '80px 80px 0 0', padding: '120px 24px', overflow: 'hidden' }}>
+        <div className="container" style={{ display: 'flex', flexDirection: 'row', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
+          
+          {/* Left Column: Copy */}
+          <div style={{ flex: '1 1 400px', minWidth: '320px' }}>
+            <span style={{
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              fontSize: '0.9rem',
+              fontWeight: 800,
+              color: 'var(--color-golden)',
+              display: 'block',
+              marginBottom: '10px'
+            }}>
+              Now Live in Beta
+            </span>
+            <h2 style={{ fontSize: '3.5rem', color: 'white', margin: '0 0 20px 0', lineHeight: '1.1' }}>
+              Lost & Sound Tracks
+            </h2>
+            <p style={{ fontSize: '1.25rem', fontWeight: 650, color: 'rgba(255,255,255,0.9)', marginBottom: '30px', lineHeight: '1.4' }}>
+              Remember where you went, stay on track of what you spent. A companion app to journal your travel experiences.
+            </p>
 
-          <div className="cards-grid">
-            <div className="card">
-              <div className="card-img-container">
-                <img src="/assets/hj-cottonwood.jpg" alt="Vegas to Denver Road Trip" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.5rem' }}>📸</span>
+                <div>
+                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Journal Your Travel Stories</h4>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Log local destinations, snap photos, write logs, and organize your trip chronologically in a collaborative feed.
+                  </p>
+                </div>
               </div>
-              <div className="card-content">
-                <h3>Vegas to Denver</h3>
-                <p>7 Days of red rocks, national parks, and epic mountain passes.</p>
+
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.5rem' }}>💸</span>
+                <div>
+                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Real-Time Expense Tracking</h4>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Track multi-currency transactions, split costs with partners in real-time, and analyze spending by category.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.5rem' }}>🌍</span>
+                <div>
+                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Public Discover Feed</h4>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Make your tracks public so others can inspect route prices instantly converted to their preferred viewer currency.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="card">
-              <div className="card-img-container">
-                <img src="/assets/ireland.png" alt="Ireland North Coast" />
-              </div>
-              <div className="card-content">
-                <h3>Ireland's North Coast</h3>
-                <p>7 Days along the Wild Atlantic Way and the Giant's Causeway.</p>
-              </div>
-            </div>
+            <Link href="/tracker" className="btn btn-primary" style={{
+              backgroundColor: 'var(--color-golden)',
+              color: 'var(--color-purple)',
+              padding: '16px 36px',
+              fontSize: '1.1rem',
+              fontWeight: 800,
+              borderRadius: '30px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: 'none',
+              boxShadow: '0 10px 25px rgba(232, 180, 100, 0.25)',
+              textDecoration: 'none'
+            }}>
+              🚀 Try Tracks Companion App
+            </Link>
+          </div>
 
-            <div className="card">
-              <div className="card-img-container">
-                <img src="/assets/rice-terraces.jpg" alt="Thailand Adventure" />
-              </div>
-              <div className="card-content">
-                <h3>Thailand Immersive</h3>
-                <p>3 Weeks from Bangkok's energy to the tranquil islands of the South.</p>
-              </div>
+          {/* Right Column: Screenshot/Mockup */}
+          <div style={{
+            flex: '1 1 350px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative'
+          }}>
+            <div style={{
+              position: 'relative',
+              borderRadius: '32px',
+              overflow: 'hidden',
+              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
+              border: '6px solid rgba(255, 255, 255, 0.1)',
+              maxWidth: '100%'
+            }}>
+              <img
+                src="/assets/app_mockup.png"
+                alt="Lost & Sound Tracks App Mockup"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  transform: 'scale(1.01)'
+                }}
+              />
             </div>
           </div>
 
-          <div className="text-center" style={{ marginTop: '60px' }}>
-            <Link href="/gallery" className="btn btn-outline" style={{ background: 'white' }}>View Gallery</Link>
-          </div>
         </div>
       </section>
 

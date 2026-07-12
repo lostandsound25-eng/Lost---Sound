@@ -8,10 +8,14 @@ export default function TrackerLandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // Auth States
+  // Auth Mode State
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+
+  // Input States
   const [email, setEmail] = useState('');
-  const [sendingMagicLink, setSendingMagicLink] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [invitedTripName, setInvitedTripName] = useState('');
 
@@ -151,27 +155,68 @@ export default function TrackerLandingPage() {
     }
   };
 
-  const handleSendMagicLink = async (e) => {
-    e.preventDefault();
-    if (!email || !supabase) return;
-    setSendingMagicLink(true);
+  const handleAppleSignIn = async () => {
+    if (!supabase) return;
     setErrorMsg('');
     try {
-      const cleanEmail = email.trim().toLowerCase();
       const redirectToUrl = window.location.origin + window.location.pathname;
-      const { error } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
         options: {
-          emailRedirectTo: redirectToUrl
+          redirectTo: redirectToUrl
         }
       });
       if (error) throw error;
-      setMagicLinkSent(true);
     } catch (err) {
-      console.error("Magic link send error:", err);
-      setErrorMsg("Failed to send magic link. Please check your email and try again.");
+      console.error("Apple sign in error:", err);
+      setErrorMsg("Apple sign in failed. Please try again.");
+    }
+  };
+
+  const handleEmailPasswordAuth = async (e) => {
+    e.preventDefault();
+    if (!email || !password || !supabase) return;
+    setAuthLoading(true);
+    setErrorMsg('');
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      if (authMode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
+        });
+        if (error) throw error;
+        if (data?.session) {
+          setIsLoggedIn(true);
+          await handleRedirectAfterLogin(data.session.user);
+        }
+      } else {
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: {
+              full_name: displayName.trim() || undefined
+            }
+          }
+        });
+        if (error) throw error;
+
+        if (data?.session) {
+          setIsLoggedIn(true);
+          await handleRedirectAfterLogin(data.session.user);
+        } else {
+          // Signup succeeded, but email confirmation is active
+          alert("Sign up successful! Please check your email inbox to confirm your account and log in.");
+          setAuthMode('login');
+        }
+      }
+    } catch (err) {
+      console.error("Email/Password Auth error:", err);
+      setErrorMsg(err.message || "Failed to authenticate. Please check your credentials.");
     } finally {
-      setSendingMagicLink(false);
+      setAuthLoading(false);
     }
   };
 
@@ -189,7 +234,7 @@ export default function TrackerLandingPage() {
         backgroundColor: '#F9F6ED'
       }}>
         <div style={{
-          color: '#853A51', // var(--color-purple)
+          color: '#853A51',
           fontWeight: 700,
           fontSize: '1.1rem',
           fontFamily: 'system-ui, sans-serif'
@@ -206,38 +251,52 @@ export default function TrackerLandingPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px 16px'
+      padding: '32px 16px',
+      boxSizing: 'border-box'
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '420px',
+        maxWidth: '430px',
         backgroundColor: 'white',
-        borderRadius: '28px',
-        padding: '40px 28px',
-        boxShadow: '0 10px 30px rgba(133, 58, 81, 0.04)',
+        borderRadius: '32px',
+        padding: '48px 32px',
+        boxShadow: '0 12px 40px rgba(133, 58, 81, 0.05)',
         border: '1px solid rgba(133, 58, 81, 0.08)',
         textAlign: 'center',
         boxSizing: 'border-box'
       }}>
-        {/* Header Logo & Branding */}
-        <div style={{ marginBottom: '32px' }}>
-          <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '8px' }}>✈️</span>
+        {/* Branding & Logo */}
+        <div style={{ marginBottom: '36px' }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            backgroundColor: '#853A51',
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            boxShadow: '0 8px 20px rgba(133, 58, 81, 0.15)'
+          }}>
+            <span style={{ fontSize: '2rem' }}>✈️</span>
+          </div>
           <h1 style={{
-            fontSize: '1.8rem',
+            fontSize: '1.9rem',
             fontWeight: 900,
             color: '#853A51',
             margin: 0,
-            letterSpacing: '-0.5px'
-          }}>LOST & SOUND</h1>
+            letterSpacing: '-0.5px',
+            textTransform: 'uppercase'
+          }}>Tracks</h1>
           <p style={{
             fontSize: '0.88rem',
             color: '#6B7280',
-            marginTop: '4px',
+            marginTop: '6px',
             fontWeight: 500
-          }}>Travel Expense Tracker</p>
+          }}>Lost & Sound Travel Companion</p>
         </div>
 
-        {/* Invited Collaboration Welcome Banner */}
+        {/* Invitation Welcome Banner */}
         {invitedTripName && (
           <div style={{
             backgroundColor: 'rgba(133, 58, 81, 0.04)',
@@ -267,104 +326,117 @@ export default function TrackerLandingPage() {
           </div>
         )}
 
-        {/* Google Sign-in Option */}
-        <button
-          onClick={handleGoogleSignIn}
-          style={{
-            width: '100%',
-            height: '48px',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid #E5E7EB',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            cursor: 'pointer',
-            fontSize: '0.92rem',
-            fontWeight: 700,
-            color: '#374151',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F9FAFB';
-            e.currentTarget.style.borderColor = '#D1D5DB';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-            e.currentTarget.style.borderColor = '#E5E7EB';
-          }}
-        >
-          {/* Inline Google G SVG Icon */}
-          <svg width="18" height="18" viewBox="0 0 18 18">
-            <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.24h2.9c1.69-1.55 2.69-3.85 2.69-6.57z"/>
-            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.23l-2.9-2.24c-.8.54-1.84.87-3.06.87-2.35 0-4.34-1.59-5.05-3.73H.95v2.3C2.43 15.89 5.5 18 9 18z"/>
-            <path fill="#FBBC05" d="M3.95 10.67a5.4 5.4 0 0 1 0-3.34V5.03H.95a9 9 0 0 0 0 7.94l3-2.3z"/>
-            <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4A9 9 0 0 0 .95 5.03l3 2.3C4.66 5.17 6.65 3.58 9 3.58z"/>
-          </svg>
-          Sign in with Google
-        </button>
+        {/* SSO Social Login Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Apple Sign-in */}
+          <button
+            onClick={handleAppleSignIn}
+            style={{
+              width: '100%',
+              height: '48px',
+              backgroundColor: '#000000',
+              border: 'none',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              color: '#ffffff',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1a1a1a'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
+          >
+            {/* Apple Logo SVG */}
+            <svg width="15" height="18" viewBox="0 0 15 18" fill="white">
+              <path d="M12.03 9c.02-2.13 1.74-3.15 1.82-3.2A6.87 6.87 0 0 0 8.42 3.1c-2.27-.23-4.43 1.33-5.58 1.33-1.15 0-2.92-1.3-4.83-1.26A7.19 7.19 0 0 0 .52 7.7C-1.8 11.7.35 17.58 2.58 20.8c1.1 1.57 2.37 3.32 4.07 3.26 1.63-.07 2.25-1.06 4.22-1.06 1.96 0 2.53 1.06 4.24 1.02 1.74-.03 2.87-1.6 3.96-3.18a13.9 13.9 0 0 0 1.8-3.7c-.08-.04-2.15-.82-2.17-3.2M10.15 1.98C11.1.83 11.73.18 11.75 0a7.04 7.04 0 0 0-4.66 2.4c-.82.95-1.53 1.95-1.55 2.1 0 .04.2.06.27.06.66 0 2.94-.8 4.34-2.58" transform="translate(-1, -3) scale(0.95)" />
+            </svg>
+            Continue with Apple
+          </button>
+
+          {/* Google Sign-in */}
+          <button
+            onClick={handleGoogleSignIn}
+            style={{
+              width: '100%',
+              height: '48px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #E5E7EB',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+              fontSize: '0.92rem',
+              fontWeight: 700,
+              color: '#374151',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F9FAFB';
+              e.currentTarget.style.borderColor = '#D1D5DB';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#ffffff';
+              e.currentTarget.style.borderColor = '#E5E7EB';
+            }}
+          >
+            {/* Google Logo SVG */}
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.24h2.9c1.69-1.55 2.69-3.85 2.69-6.57z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.23l-2.9-2.24c-.8.54-1.84.87-3.06.87-2.35 0-4.34-1.59-5.05-3.73H.95v2.3C2.43 15.89 5.5 18 9 18z"/>
+              <path fill="#FBBC05" d="M3.95 10.67a5.4 5.4 0 0 1 0-3.34V5.03H.95a9 9 0 0 0 0 7.94l3-2.3z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4A9 9 0 0 0 .95 5.03l3 2.3C4.66 5.17 6.65 3.58 9 3.58z"/>
+            </svg>
+            Continue with Google
+          </button>
+        </div>
 
         {/* Divider */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          margin: '24px 0',
+          margin: '28px 0',
           color: '#D1D5DB'
         }}>
           <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
           <span style={{
-            padding: '0 12px',
-            fontSize: '0.78rem',
+            padding: '0 16px',
+            fontSize: '0.75rem',
             color: '#9CA3AF',
-            fontWeight: 600,
-            textTransform: 'uppercase'
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
           }}>or</span>
           <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
         </div>
 
-        {/* Magic Link Form */}
-        {magicLinkSent ? (
-          <div style={{
-            backgroundColor: 'rgba(52, 168, 83, 0.05)',
-            border: '1px solid rgba(52, 168, 83, 0.15)',
-            borderRadius: '16px',
-            padding: '20px 16px',
-            marginBottom: '16px'
-          }}>
-            <span style={{ fontSize: '1.8rem', display: 'block', marginBottom: '8px' }}>✉️</span>
-            <h4 style={{ margin: '0 0 6px 0', color: '#15803d', fontSize: '0.95rem', fontWeight: 800 }}>
-              Check your email!
-            </h4>
-            <p style={{
-              margin: 0,
-              fontSize: '0.8rem',
-              color: '#166534',
-              lineHeight: '1.5'
-            }}>
-              We sent a magic sign-in link to <strong>{email}</strong>.<br />
-              Open the email on your device and click the link to sign in.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSendMagicLink}>
+        {/* Email & Password Authentication Form */}
+        <form onSubmit={handleEmailPasswordAuth}>
+          {authMode === 'signup' && (
             <div style={{ textAlign: 'left', marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 color: '#4B5563',
-                marginBottom: '6px'
+                marginBottom: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px'
               }}>
-                Email Address
+                Display Name
               </label>
               <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Harry"
                 style={{
                   width: '100%',
                   height: '46px',
@@ -378,58 +450,164 @@ export default function TrackerLandingPage() {
                 }}
               />
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={sendingMagicLink}
+          <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: '#4B5563',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px'
+            }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               style={{
                 width: '100%',
                 height: '46px',
-                backgroundColor: '#853A51', // var(--color-purple)
-                color: 'white',
-                border: 'none',
+                padding: '0 16px',
                 borderRadius: '12px',
-                fontSize: '0.92rem',
-                fontWeight: 750,
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)'
+                border: '1.5px solid #E5E7EB',
+                fontSize: '0.9rem',
+                outline: 'none',
+                color: '#1F2937',
+                boxSizing: 'border-box'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
-            >
-              {sendingMagicLink ? 'Sending Link...' : 'Email me a Magic Link'}
-            </button>
-          </form>
-        )}
+            />
+          </div>
+
+          <div style={{ textAlign: 'left', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: '#4B5563',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px'
+              }}>
+                Password
+              </label>
+            </div>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              style={{
+                width: '100%',
+                height: '46px',
+                padding: '0 16px',
+                borderRadius: '12px',
+                border: '1.5px solid #E5E7EB',
+                fontSize: '0.9rem',
+                outline: 'none',
+                color: '#1F2937',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={authLoading}
+            style={{
+              width: '100%',
+              height: '48px',
+              backgroundColor: '#853A51',
+              color: 'white',
+              border: 'none',
+              borderRadius: '14px',
+              fontSize: '0.95rem',
+              fontWeight: 750,
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              boxShadow: '0 6px 16px rgba(133, 58, 81, 0.15)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
+          >
+            {authLoading 
+              ? (authMode === 'login' ? 'Signing In...' : 'Creating Account...') 
+              : (authMode === 'login' ? 'Sign In' : 'Create Account')
+            }
+          </button>
+        </form>
+
+        {/* Toggle Mode Link */}
+        <div style={{ marginTop: '24px' }}>
+          {authMode === 'login' ? (
+            <p style={{ fontSize: '0.85rem', color: '#6B7280', margin: 0 }}>
+              New to Tracks?{' '}
+              <span
+                onClick={() => {
+                  setAuthMode('signup');
+                  setErrorMsg('');
+                }}
+                style={{ color: '#853A51', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Create an account
+              </span>
+            </p>
+          ) : (
+            <p style={{ fontSize: '0.85rem', color: '#6B7280', margin: 0 }}>
+              Already have an account?{' '}
+              <span
+                onClick={() => {
+                  setAuthMode('login');
+                  setErrorMsg('');
+                }}
+                style={{ color: '#853A51', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Sign in here
+              </span>
+            </p>
+          )}
+        </div>
 
         {/* Error Message */}
         {errorMsg && (
-          <p style={{
-            color: '#EF4444',
-            fontSize: '0.82rem',
-            fontWeight: 500,
-            marginTop: '16px',
-            lineHeight: 1.4
-          }}>{errorMsg}</p>
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.05)',
+            border: '1.5px solid rgba(239, 68, 68, 0.15)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginTop: '20px'
+          }}>
+            <p style={{
+              color: '#EF4444',
+              fontSize: '0.82rem',
+              fontWeight: 650,
+              margin: 0,
+              lineHeight: 1.4
+            }}>{errorMsg}</p>
+          </div>
         )}
 
-        {/* Demo Mode Action */}
-        <div style={{ marginTop: '32px', borderTop: '1px solid #F3F4F6', paddingTop: '24px' }}>
+        {/* Demo Mode Action Footer */}
+        <div style={{ marginTop: '36px', borderTop: '1px solid #F3F4F6', paddingTop: '28px' }}>
           <p style={{
             fontSize: '0.82rem',
             color: '#6B7280',
-            margin: '0 0 12px 0'
+            margin: '0 0 14px 0'
           }}>
-            Just looking around?
+            Just exploring the features?
           </p>
           <button
             onClick={() => setIsDemoMode(true)}
             style={{
               background: 'none',
-              border: '1px solid rgba(133, 58, 81, 0.25)',
+              border: '1.5px solid rgba(133, 58, 81, 0.25)',
               borderRadius: '12px',
-              padding: '10px 20px',
+              padding: '10px 24px',
               fontSize: '0.85rem',
               fontWeight: 700,
               color: '#853A51',

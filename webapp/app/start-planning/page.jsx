@@ -134,6 +134,62 @@ export default function StartPlanning() {
           ))}
         </div>
 
+        <section style={{ 
+          marginTop: '100px', 
+          background: 'linear-gradient(135deg, var(--color-purple) 0%, #4c1f2e 100%)', 
+          borderRadius: '40px', 
+          padding: '80px 40px', 
+          color: 'white',
+          textAlign: 'center',
+          boxShadow: '0 20px 50px rgba(133, 58, 81, 0.15)',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <span style={{
+            textTransform: 'uppercase',
+            letterSpacing: '1.5px',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: 'var(--color-golden)',
+            display: 'block',
+            marginBottom: '10px'
+          }}>
+            Free Companion Tool
+          </span>
+          <h2 style={{ marginBottom: '1.5rem', fontSize: '2.5rem', fontFamily: 'var(--font-heading)', color: 'white' }}>
+            Map & Sync Your Travel Budgets
+          </h2>
+          <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.9, maxWidth: '650px', margin: '0 auto 2.5rem', lineHeight: '1.7' }}>
+            Before booking a call, try our free companion app **Lost & Sound Tracks**. Log multi-currency expenses, split costs with travel partners in real-time, upload photos, and keep your route expenses organized.
+          </p>
+          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/tracker" className="btn" style={{ 
+              display: 'inline-block', 
+              fontSize: '1.1rem', 
+              padding: '16px 32px', 
+              backgroundColor: 'var(--color-golden)',
+              color: 'var(--color-purple)',
+              fontWeight: 800,
+              borderRadius: '30px',
+              textDecoration: 'none'
+            }}>
+              🚀 Try Tracks Free
+            </Link>
+            <Link href="/travel-tricks" className="btn" style={{ 
+              display: 'inline-block', 
+              fontSize: '1.1rem', 
+              padding: '16px 32px', 
+              backgroundColor: 'transparent',
+              color: 'white',
+              border: '2px solid rgba(255, 255, 255, 0.4)',
+              fontWeight: 700,
+              borderRadius: '30px',
+              textDecoration: 'none'
+            }}>
+              📖 Read Travel Tricks
+            </Link>
+          </div>
+        </section>
+
         <section style={{ marginTop: '100px', backgroundColor: 'var(--color-cream)', borderRadius: '40px', padding: '80px 40px', textAlign: 'center' }}>
           <h2 style={{ marginBottom: '1.5rem', fontSize: '2.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>Not sure where to start?</h2>
           <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.8, maxWidth: '600px', margin: '0 auto 2.5rem' }}>

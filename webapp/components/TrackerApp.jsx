@@ -572,7 +572,7 @@ const hasBase64Photos = (payload) => {
 };
 
 
-export default function TrackerApp({ tripId = null, isDemo = false }) {
+export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly = false }) {
   // Lazy initializers: read localStorage synchronously on first render
   // so cached data is available on frame 1 — eliminates the $0.00 flicker on refresh
   const [expenses, setExpenses] = useState(() => {
@@ -5456,6 +5456,24 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
         overflow: "hidden"
       }}
     >
+      {isReadOnly && (
+        <div style={{
+          backgroundColor: "rgba(133, 58, 81, 0.05)",
+          color: "var(--color-purple)",
+          padding: "8px 24px",
+          fontSize: "0.8rem",
+          fontWeight: 700,
+          borderBottom: "1.5px solid rgba(133, 58, 81, 0.12)",
+          textAlign: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px"
+        }}>
+          👁️ Read-Only Discover View
+        </div>
+      )}
+
       {syncError && (
         <div style={{
           backgroundColor: "#FEF2F2",
@@ -5509,7 +5527,21 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
             </button>
 
             {/* Actions and Settings on the right */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {isReadOnly ? (
+              <span style={{
+                fontSize: "0.68rem",
+                fontWeight: 750,
+                color: "#6B7280",
+                backgroundColor: "rgba(107, 114, 128, 0.08)",
+                padding: "4px 10px",
+                borderRadius: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
+              }}>
+                👁️ Discover Mode
+              </span>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               {/* Trash Bin Button */}
               <button
                 type="button"
@@ -5647,7 +5679,8 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                 </>
               )}
           </div>
-        </div>
+        )}
+      </div>
 
           {/* Row 2: Editable Trip Title */}
           <div style={{
@@ -5678,7 +5711,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
               />
             ) : (
               <div 
-                onClick={() => setIsEditingName(true)}
+                onClick={() => !isReadOnly && setIsEditingName(true)}
                 style={{
                   fontSize: dynamicFontSize,
                   fontWeight: 800,
@@ -5688,7 +5721,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                   wordBreak: "break-word",
                   lineHeight: "1.2",
                   width: "100%",
-                  cursor: "pointer"
+                  cursor: isReadOnly ? "default" : "pointer"
                 }} 
                 title={trip.name}
               >
@@ -6729,6 +6762,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                         rates={rates}
                                         trip={trip}
                                         setGlobalLightbox={setGlobalLightbox}
+                                        isReadOnly={isReadOnly}
                                       />
                                     </div>
                                   );
@@ -7197,6 +7231,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                                                       rates={rates}
                                                       trip={trip}
                                                       setGlobalLightbox={setGlobalLightbox}
+                                         isReadOnly={isReadOnly}
                                                     />
                                                   ))}
                                                 </div>
@@ -7470,6 +7505,7 @@ export default function TrackerApp({ tripId = null, isDemo = false }) {
                     rates={rates}
                     trip={trip}
                     setGlobalLightbox={setGlobalLightbox}
+                    isReadOnly={isReadOnly}
                   />
                 ));
               })()}
@@ -8135,7 +8171,8 @@ function ExpenseCard({
   homeCurrency,
   rates,
   trip,
-  setGlobalLightbox
+  setGlobalLightbox,
+  isReadOnly = false
 }) {
   const [startX, setStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -8205,42 +8242,45 @@ function ExpenseCard({
       }}
     >
       <div style={{ position: "relative" }}>
-        <div
-          onClick={() => {
-            if (window.confirm("Are you sure you want to delete this expense?")) {
-              const deleteEntire = expense.tags?.some(t => t.startsWith("spread-group-"));
-              const groupTag = expense.tags?.find(t => t.startsWith("spread-group-"));
-              onDelete(expense.id, deleteEntire, groupTag);
-            }
-          }}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: "70px",
-            backgroundColor: "#EF4444",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontWeight: 800,
-            fontSize: "0.85rem",
-            borderRadius: "0 16px 16px 0",
-            zIndex: 1
-          }}
-        >
-          Delete
-        </div>
+        {!isReadOnly && (
+          <div
+            onClick={() => {
+              if (window.confirm("Are you sure you want to delete this expense?")) {
+                const deleteEntire = expense.tags?.some(t => t.startsWith("spread-group-"));
+                const groupTag = expense.tags?.find(t => t.startsWith("spread-group-"));
+                onDelete(expense.id, deleteEntire, groupTag);
+              }
+            }}
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: "70px",
+              backgroundColor: "#EF4444",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontWeight: 800,
+              fontSize: "0.85rem",
+              borderRadius: "0 16px 16px 0",
+              zIndex: 1
+            }}
+          >
+            Delete
+          </div>
+        )}
 
         <div
           onTouchStart={(e) => {
+            if (isReadOnly) return;
             setStartX(e.touches[0].clientX);
             setIsDragging(true);
           }}
           onTouchMove={(e) => {
-            if (!isDragging) return;
+            if (isReadOnly || !isDragging) return;
             const diffX = e.touches[0].clientX - startX;
             if (diffX < 0 && diffX > -75) {
               setOffsetX(diffX);
@@ -8250,6 +8290,7 @@ function ExpenseCard({
             }
           }}
           onTouchEnd={() => {
+            if (isReadOnly) return;
             setIsDragging(false);
             if (offsetX < -40) {
               setOffsetX(-70);
@@ -8271,9 +8312,10 @@ function ExpenseCard({
             zIndex: 2,
             transform: `translateX(${offsetX}px)`,
             transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-            cursor: "pointer"
+            cursor: isReadOnly ? "default" : "pointer"
           }}
           onClick={() => {
+            if (isReadOnly) return;
             if (isSwipedOpen) {
               setOffsetX(0);
               setIsSwipedOpen(false);
@@ -10052,7 +10094,7 @@ function ManualEntryModal({
                     <div
                       key={index}
                       data-photo-index={index}
-                      draggable={true}
+                      draggable={!isTouchDevice}
                       onDragStart={(e) => handlePhotoDragStart(e, index)}
                       onDragOver={(e) => handlePhotoDragOver(e, index)}
                       onDrop={(e) => handlePhotoDrop(e, index)}
@@ -10078,13 +10120,14 @@ function ManualEntryModal({
                         overflow: "hidden",
                         border: isOver 
                           ? "2.5px solid var(--color-purple)" 
-                          : (isDragged ? "2px dashed var(--color-purple)" : "1px solid #E5E7EB"),
+                          : (isDragged ? "2px solid var(--color-purple)" : "1px solid #E5E7EB"),
                         boxShadow: isDragged 
-                          ? "0 8px 24px rgba(0,0,0,0.18)" 
+                          ? "0 12px 30px rgba(0,0,0,0.22)" 
                           : "0 2px 8px rgba(0,0,0,0.08)",
-                        opacity: isDragged ? 0.4 : 1,
-                        transform: isDragged ? "scale(1.06)" : "none",
-                        transition: "transform 0.15s, border 0.15s, opacity 0.15s",
+                        opacity: isDragged ? 0.95 : 1,
+                        transform: isDragged ? "scale(1.12)" : "none",
+                        zIndex: isDragged ? 10 : 1,
+                        transition: "transform 0.15s, border 0.15s, opacity 0.15s, box-shadow 0.15s",
                         userSelect: "none",
                         WebkitUserSelect: "none",
                         WebkitTouchCallout: "none",

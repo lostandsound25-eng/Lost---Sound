@@ -10,6 +10,7 @@ export default function TrackerTripPage({ params }) {
   // The auth check still runs in the background and will redirect if needed.
   const [isMounted, setIsMounted] = useState(false);
   const [authorized, setAuthorized] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -37,6 +38,15 @@ export default function TrackerTripPage({ params }) {
           window.location.href = '/tracker';
           return;
         }
+
+        const { data: memberData } = await supabase
+          .from('trip_members')
+          .select('role')
+          .eq('trip_id', tripId)
+          .or(`user_id.eq.${session.user.id},email.eq.${session.user.email}`)
+          .maybeSingle();
+
+        setIsReadOnly(!memberData);
 
         const { data, error } = await supabase
           .from('trips')
@@ -127,5 +137,5 @@ export default function TrackerTripPage({ params }) {
     );
   }
 
-  return <TrackerApp tripId={tripId} isDemo={false} />;
+  return <TrackerApp tripId={tripId} isDemo={false} isReadOnly={isReadOnly} />;
 }

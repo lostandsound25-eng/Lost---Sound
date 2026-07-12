@@ -12,6 +12,7 @@ export default function TripsDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTripName, setNewTripName] = useState("");
   const [homeCurrency, setHomeCurrency] = useState("USD");
+  const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
   const [rates, setRates] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -182,7 +183,8 @@ export default function TripsDashboard() {
           name: newTripName.trim(),
           home_currency: homeCurrency,
           local_currency: homeCurrency,
-          created_by: session.user.id
+          created_by: session.user.id,
+          is_public: isPublic
         })
         .select()
         .single();
@@ -283,29 +285,59 @@ export default function TripsDashboard() {
         </div>
 
         {session ? (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            style={{
-              backgroundColor: '#853A51',
-              color: 'white',
-              border: 'none',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontWeight: 750,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'background-color 0.2s',
-              marginBottom: '2px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
-          >
-            ✈️ + New Trip
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => window.location.href = '/tracker/discover'}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#853A51',
+                border: '1.5px solid rgba(133, 58, 81, 0.3)',
+                borderRadius: '20px',
+                padding: '7px 14px',
+                fontWeight: 750,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s',
+                marginBottom: '2px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(133, 58, 81, 0.04)';
+                e.currentTarget.style.borderColor = '#853A51';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.3)';
+              }}
+            >
+              🧭 Discover
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              style={{
+                backgroundColor: '#853A51',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontWeight: 750,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'background-color 0.2s',
+                marginBottom: '2px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
+            >
+              ✈️ + New Trip
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => window.location.href = '/tracker'}
@@ -465,6 +497,22 @@ export default function TripsDashboard() {
                           letterSpacing: '0.5px'
                         }}>
                           {trip.role}
+                        </span>
+
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 750,
+                          color: trip.is_public ? '#059669' : '#4B5563',
+                          backgroundColor: trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)',
+                          padding: '3px 8px',
+                          borderRadius: '8px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          {trip.is_public ? '🔓 Public' : '🔒 Private'}
                         </span>
                         
                         <span style={{ fontSize: '0.72rem', color: '#9CA3AF', fontWeight: 550 }}>
@@ -677,6 +725,23 @@ export default function TripsDashboard() {
                       style={{ fontSize: '0.92rem', fontWeight: 700, width: '100%', textAlign: 'left' }}
                     />
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <input
+                    type="checkbox"
+                    id="isPublic"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#853A51',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <label htmlFor="isPublic" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#4B5563', cursor: 'pointer' }}>
+                    🔓 Make this trip public on Discover feed
+                  </label>
                 </div>
               </div>
 
