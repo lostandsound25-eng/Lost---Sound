@@ -43,107 +43,160 @@ export default function Home() {
 
       <StorySection isExcerpt={true} />
 
-      <section style={{ backgroundColor: 'var(--color-purple)', color: 'white', borderRadius: '80px 80px 0 0', padding: '120px 24px', overflow: 'hidden' }}>
-        <div className="container" style={{ display: 'flex', flexDirection: 'row', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <section style={{ backgroundColor: 'var(--color-purple)', color: 'white', borderRadius: '80px 80px 0 0', padding: '100px 24px', overflow: 'hidden' }}>
+        <div className="container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
           
-          {/* Left Column: Copy */}
-          <div style={{ flex: '1 1 400px', minWidth: '320px' }}>
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '60px', maxWidth: '800px', margin: '0 auto 60px' }}>
             <span style={{
               textTransform: 'uppercase',
               letterSpacing: '2px',
-              fontSize: '0.9rem',
+              fontSize: '0.85rem',
               fontWeight: 800,
               color: 'var(--color-golden)',
               display: 'block',
               marginBottom: '10px'
             }}>
-              Now Live in Beta
+              Free Travel Companion App
             </span>
-            <h2 style={{ fontSize: '3.5rem', color: 'white', margin: '0 0 20px 0', lineHeight: '1.1' }}>
+            <h2 style={{ fontSize: '3rem', color: 'white', margin: '0 0 20px 0', fontFamily: 'var(--font-heading)' }}>
               Lost & Sound Tracks
             </h2>
-            <p style={{ fontSize: '1.25rem', fontWeight: 650, color: 'rgba(255,255,255,0.9)', marginBottom: '30px', lineHeight: '1.4' }}>
-              Remember where you went, stay on track of what you spent. A companion app to journal your travel experiences.
+            <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.9)', lineHeight: '1.6', margin: '0 0 16px' }}>
+              Unlike cumbersome, battery-draining trackers like Polarsteps, Tracks is designed to be lightweight, responsive, and acts as a beautiful memory bank of your trips. 
             </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.5rem' }}>📸</span>
-                <div>
-                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Journal Your Travel Stories</h4>
-                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Log local destinations, snap photos, write logs, and organize your trip chronologically in a collaborative feed.
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.5rem' }}>💸</span>
-                <div>
-                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Real-Time Expense Tracking</h4>
-                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Track multi-currency transactions, split costs with partners in real-time, and analyze spending by category.
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.5rem' }}>🌍</span>
-                <div>
-                  <h4 style={{ color: 'var(--color-golden)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 4px 0' }}>Public Discover Feed</h4>
-                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Make your tracks public so others can inspect route prices instantly converted to their preferred viewer currency.
-                  </p>
-                </div>
-              </div>
-            </div>
-
+            <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.75)', lineHeight: '1.6', margin: '0 0 30px' }}>
+              It is a completely free companion tool designed to make budgeting and journaling travel experiences easy, offline-first, and fun to look back on and share with friends and family.
+            </p>
             <Link href="/tracker" className="btn btn-primary" style={{
               backgroundColor: 'var(--color-golden)',
               color: 'var(--color-purple)',
-              padding: '16px 36px',
-              fontSize: '1.1rem',
+              padding: '14px 32px',
+              fontSize: '1rem',
               fontWeight: 800,
               borderRadius: '30px',
+              textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              border: 'none',
-              boxShadow: '0 10px 25px rgba(232, 180, 100, 0.25)',
-              textDecoration: 'none'
+              boxShadow: '0 10px 25px rgba(232, 180, 100, 0.2)'
             }}>
-              🚀 Try Tracks Companion App
+              🚀 Open Free Tracks App
             </Link>
           </div>
 
-          {/* Right Column: Screenshot Grid */}
-          <div style={{
-            flex: '1 1 400px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
+          {/* Feature Showcase Grid (2x2) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+            gap: '40px',
+            marginTop: '40px'
           }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-              maxWidth: '100%',
-              boxSizing: 'border-box'
+            
+            {/* Feature 1 */}
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+              borderRadius: '24px', 
+              padding: '30px', 
+              border: '1.5px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
             }}>
-              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
-                <img src="/assets/screenshot_dashboard.png" alt="Dashboard" style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
-                <img src="/assets/screenshot_log_expense.png" alt="Log Expense" style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
-                <img src="/assets/screenshot_plan.png" alt="Plan" style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
-                <img src="/assets/screenshot_history.png" alt="History Search" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                  <img src="/assets/screenshot_dashboard.png" alt="Dashboard" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Core Tagline</span>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
+                    Remember where you went. Stay on top of what you spent.
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Tracks serves as a beautiful memory bank. Log daily stats, currencies, and budgets manually without background processes draining your battery.
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Feature 2 */}
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+              borderRadius: '24px', 
+              padding: '30px', 
+              border: '1.5px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                  <img src="/assets/screenshot_log_expense.png" alt="Log Expense" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Quick Logging</span>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
+                    Lightning-fast expensing & "Worth it" flags.
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Log multi-currency details completely offline. Use our signature "Worth It" star to tag whenever a local deal, meal, or splurge was genuinely worth the money.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 3 */}
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+              borderRadius: '24px', 
+              padding: '30px', 
+              border: '1.5px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                  <img src="/assets/screenshot_plan.png" alt="Plan" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Itinerary planning</span>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
+                    Stay flexible by planning your forward-looking itinerary.
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Map out daily pacing, targets, and notes day-by-day without being locked into rigid planner schedules.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 4 */}
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+              borderRadius: '24px', 
+              padding: '30px', 
+              border: '1.5px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                  <img src="/assets/screenshot_history.png" alt="History" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Memory search</span>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
+                    Fast search & instant cost retrieval.
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
+                    Search past expenses to recall flight departure details, check lodging addresses, look up flight times, or share cost details.
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
