@@ -499,19 +499,48 @@ export default function TripsDashboard() {
                           {trip.role}
                         </span>
 
-                        <span style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 750,
-                          color: trip.is_public ? '#059669' : '#4B5563',
-                          backgroundColor: trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)',
-                          padding: '3px 8px',
-                          borderRadius: '8px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}>
+                        <span 
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const newPublicState = !trip.is_public;
+                            try {
+                              const { error } = await supabase
+                                .from('trips')
+                                .update({ is_public: newPublicState })
+                                .eq('id', trip.id);
+                              if (error) throw error;
+                              setTrips(prev => prev.map(t => t.id === trip.id ? { ...t, is_public: newPublicState } : t));
+                            } catch (err) {
+                              console.error("Failed to toggle visibility:", err);
+                              alert("Could not update trip visibility.");
+                            }
+                          }}
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 750,
+                            color: trip.is_public ? '#059669' : '#4B5563',
+                            backgroundColor: trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)',
+                            padding: '3px 8px',
+                            borderRadius: '8px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            cursor: 'pointer',
+                            border: '1px solid transparent',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = trip.is_public ? 'rgba(5, 150, 105, 0.3)' : 'rgba(75, 85, 99, 0.3)';
+                            e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.12)' : 'rgba(75, 85, 99, 0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'transparent';
+                            e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)';
+                          }}
+                          title="Click to toggle Public / Private"
+                        >
                           {trip.is_public ? '🔓 Public' : '🔒 Private'}
                         </span>
                         

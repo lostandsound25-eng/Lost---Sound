@@ -127,12 +127,19 @@ export default function DiscoverFeedPage() {
               .slice(0, 3)
               .map(entry => entry[0]);
 
+            const currencies = [...new Set(tripEntries.map(e => e.currency.toUpperCase()))];
+            if (trip.home_currency) {
+              currencies.push(trip.home_currency.toUpperCase());
+            }
+            const uniqueCurrencies = [...new Set(currencies)];
+
             return {
               ...trip,
               creatorName: profilesMap[trip.created_by] || "Guest Explorer",
               totalHomeCost,
               entriesCount: tripEntries.length,
-              topCategories
+              topCategories,
+              uniqueCurrencies
             };
           });
 
@@ -167,9 +174,52 @@ export default function DiscoverFeedPage() {
   };
 
   // Filter trips
-  const filteredTrips = trips.filter(trip => 
-    trip.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const KEYWORD_TO_CURRENCY = {
+    thailand: 'THB', thai: 'THB', bangkok: 'THB', phuket: 'THB',
+    philippines: 'PHP', filipino: 'PHP', manila: 'PHP', peso: 'PHP',
+    vietnam: 'VND', hanoi: 'VND', saigon: 'VND', dong: 'VND',
+    indonesia: 'IDR', bali: 'IDR', jakarta: 'IDR', rupiah: 'IDR',
+    malaysia: 'MYR', kuala: 'MYR', ringgit: 'MYR',
+    singapore: 'SGD',
+    japan: 'JPY', tokyo: 'JPY', kyoto: 'JPY', yen: 'JPY',
+    korea: 'KRW', seoul: 'KRW', won: 'KRW',
+    australia: 'AUD', sydney: 'AUD', melbourne: 'AUD',
+    newzealand: 'NZD', kiwi: 'NZD',
+    uk: 'GBP', london: 'GBP', britain: 'GBP', england: 'GBP', pound: 'GBP',
+    europe: 'EUR', euro: 'EUR', italy: 'EUR', france: 'EUR', germany: 'EUR', spain: 'EUR', greece: 'EUR', netherland: 'EUR', portugal: 'EUR', austria: 'EUR', ireland: 'EUR',
+    usa: 'USD', america: 'USD', states: 'USD', dollar: 'USD',
+    canada: 'CAD', toronto: 'CAD',
+    swiss: 'CHF', switzerland: 'CHF',
+    china: 'CNY', yuan: 'CNY',
+    hongkong: 'HKD'
+  };
+
+  const filteredTrips = trips.filter(trip => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    // 1. Matches trip name
+    if (trip.name.toLowerCase().includes(q)) return true;
+
+    // 2. Matches trip home currency code directly
+    if (trip.home_currency?.toLowerCase() === q) return true;
+
+    // 3. Matches creator name
+    if (trip.creatorName?.toLowerCase().includes(q)) return true;
+
+    // 4. Matches currency codes loaded in the trip based on country/region keywords
+    const matchedCurrency = KEYWORD_TO_CURRENCY[q] || Object.keys(KEYWORD_TO_CURRENCY).find(k => k.includes(q)) && KEYWORD_TO_CURRENCY[Object.keys(KEYWORD_TO_CURRENCY).find(k => k.includes(q))];
+    if (matchedCurrency && trip.uniqueCurrencies?.includes(matchedCurrency)) {
+      return true;
+    }
+
+    // 5. Check if search query matches any of the trip's unique currencies directly
+    if (trip.uniqueCurrencies?.some(c => c.toLowerCase() === q)) {
+      return true;
+    }
+
+    return false;
+  });
 
   return (
     <div style={{

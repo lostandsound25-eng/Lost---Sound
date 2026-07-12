@@ -2467,6 +2467,17 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     }
   };
 
+  const updateTripVisibility = async (isPublicVal) => {
+    setTrip((prev) => ({ ...prev, isPublic: isPublicVal }));
+    if (!isDemo && tripId && supabase) {
+      try {
+        await supabase.from("trips").update({ is_public: isPublicVal }).eq("id", tripId);
+      } catch (e) {
+        console.error("Failed to sync visibility to cloud:", e);
+      }
+    }
+  };
+
   const addCustomCurrency = (curr) => {
     setCustomCurrencies((prev) => {
       const merged = [...new Set([...prev, curr])];
@@ -7726,6 +7737,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           isHomeCurrencyLocked={isHomeCurrencyLocked}
           setIsHomeCurrencyLocked={setIsHomeCurrencyLocked}
           updateHomeCurrency={updateHomeCurrency}
+          updateTripVisibility={updateTripVisibility}
           showFuture={showFuture}
           setShowFuture={setShowFuture}
           expenses={expenses}
@@ -11765,6 +11777,7 @@ function SettingsModal({
   isHomeCurrencyLocked, 
   setIsHomeCurrencyLocked, 
   updateHomeCurrency,
+  updateTripVisibility,
   showFuture,
   setShowFuture,
   expenses,
@@ -11939,6 +11952,44 @@ function SettingsModal({
                 position: "absolute",
                 top: "2px",
                 left: showFuture ? "20px" : "2px",
+                width: "20px",
+                height: "20px",
+                borderRadius: "50%",
+                backgroundColor: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                transition: "left 0.2s"
+              }} />
+            </button>
+          </div>
+
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "white",
+            padding: "10px 14px",
+            borderRadius: "14px",
+            border: "1.5px solid rgba(133, 58, 81, 0.12)",
+            marginTop: "6px"
+          }}>
+            <span style={{ fontSize: "0.82rem", color: "#4B5563", fontWeight: 600 }}>Public Feed Search (Discoverable):</span>
+            <button
+              onClick={() => updateTripVisibility(!trip.isPublic)}
+              style={{
+                border: "none",
+                borderRadius: "20px",
+                width: "42px",
+                height: "24px",
+                backgroundColor: trip.isPublic ? "var(--color-orange)" : "#D1D5DB",
+                position: "relative",
+                cursor: "pointer",
+                transition: "background-color 0.2s"
+              }}
+            >
+              <div style={{
+                position: "absolute",
+                top: "2px",
+                left: trip.isPublic ? "20px" : "2px",
                 width: "20px",
                 height: "20px",
                 borderRadius: "50%",
