@@ -44,10 +44,10 @@ export default function Home() {
       <StorySection isExcerpt={true} />
 
       <section style={{ backgroundColor: 'var(--color-purple)', color: 'white', borderRadius: '80px 80px 0 0', padding: '100px 24px', overflow: 'hidden' }}>
-        <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div className="container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
           
           {/* Section Header */}
-          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '100px' }}>
             <span style={{
               textTransform: 'uppercase',
               letterSpacing: '2px',
@@ -59,7 +59,7 @@ export default function Home() {
             }}>
               Free Companion Tool
             </span>
-            <h2 style={{ fontSize: '3rem', color: 'white', margin: '0 0 20px', fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+            <h2 style={{ fontSize: '3.2rem', color: 'white', margin: '0 0 20px', fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
               Your Travel. Past, future and present - all in one place.
             </h2>
             <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 30px' }}>
@@ -82,38 +82,107 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Alternating Step-by-Step Feature Walkthrough */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '80px' }}>
+          {/* Interactive Walkthrough Layout */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '140px' }}>
             
             {/* Step 1: Dashboard */}
             <div style={{ 
               display: 'flex', 
               flexDirection: 'row', 
-              gap: '40px', 
+              gap: '60px', 
               alignItems: 'center', 
               flexWrap: 'wrap'
             }}>
-              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
+              {/* Left Column: Large Image with floating annotations */}
+              <div style={{ flex: '1 1 320px', display: 'flex', justifyContent: 'center', position: 'relative', padding: '20px' }}>
+                <div style={{ width: '320px', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '6px solid rgba(255,255,255,0.08)', position: 'relative' }}>
                   <img src="/assets/screenshot_dashboard.png" alt="Dashboard" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  
+                  {/* Circle Overlay: Daily average metrics */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '12%',
+                    left: '52%',
+                    width: '130px',
+                    height: '60px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '16px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(-4deg)'
+                  }} />
+                  
+                  {/* Circle Overlay: Category Breakdown grid */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '25%',
+                    left: '3%',
+                    width: '300px',
+                    height: '160px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '24px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(2deg)'
+                  }} />
+                </div>
+
+                {/* Floating Pointer Card 1 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-30px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '180px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>💵 Daily Target Sync</strong>
+                  Daily averages update live to let you know exactly what is left of your budget.
+                </div>
+
+                {/* Floating Pointer Card 2 */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '30px',
+                  left: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '200px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>🏠 Categorized Pacing</strong>
+                  Accommodation, transit, food, and miscellaneous costs calculated automatically.
                 </div>
               </div>
-              <div style={{ flex: '1 1 350px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>01 / Dashboard</span>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+
+              {/* Right Column: Descriptions */}
+              <div style={{ flex: '1 1 380px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>01 / Dashboard</span>
+                <h3 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
                   Remember where you went. Stay on top of what you spent.
                 </h3>
-                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 20px' }}>
                   Keep track of all travel elements in one place. Log locations, budgets, and notes without background process drain.
                 </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>📍</span> <strong>Daily pacing</strong>: Track spends at your active destination (e.g. Kuta).
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>🏠</span> <strong>Category breakdown</strong>: Accommodation, Transportation, and Food separated out.
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>💵</span> <strong>Daily averages</strong>: See how today's spending compares to your overall target.
                   </li>
                 </ul>
@@ -124,31 +193,100 @@ export default function Home() {
             <div style={{ 
               display: 'flex', 
               flexDirection: 'row-reverse', 
-              gap: '40px', 
+              gap: '60px', 
               alignItems: 'center', 
               flexWrap: 'wrap'
             }}>
-              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
+              {/* Right Column (Visual): Image with floating annotations */}
+              <div style={{ flex: '1 1 320px', display: 'flex', justifyContent: 'center', position: 'relative', padding: '20px' }}>
+                <div style={{ width: '320px', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '6px solid rgba(255,255,255,0.08)', position: 'relative' }}>
                   <img src="/assets/screenshot_log_expense.png" alt="Log Expense" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  
+                  {/* Circle Overlay: Conversion rates */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '37%',
+                    left: '6%',
+                    width: '280px',
+                    height: '70px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '16px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(-2deg)'
+                  }} />
+
+                  {/* Circle Overlay: Worth It star toggle */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '55%',
+                    left: '50%',
+                    width: '140px',
+                    height: '50px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '16px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(4deg)'
+                  }} />
+                </div>
+
+                {/* Floating Pointer Card 1 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '25%',
+                  left: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '190px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>🔄 Instant FX Math</strong>
+                  Type local currency (Rp 50,000) and watch it convert to USD ($2.76) in real-time.
+                </div>
+
+                {/* Floating Pointer Card 2 */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '40px',
+                  right: '-30px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '180px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>🌟 Was it "Worth It"?</strong>
+                  Tag items you love! Helps track value beyond raw cost matrices.
                 </div>
               </div>
-              <div style={{ flex: '1 1 350px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>02 / Log Expense</span>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
-                  Lightning-fast logging with "Worth It" toggles.
+
+              {/* Left Column (Copy) */}
+              <div style={{ flex: '1 1 380px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>02 / Log Expense</span>
+                <h3 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+                  Create new entries in 10s or less.
                 </h3>
-                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 20px' }}>
                   Enter local pricing completely offline. Tag your purchases dynamically with custom hashtags and worth-it indicators.
                 </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>🌟</span> <strong>"Worth it" check</strong>: Quickly mark when an experience or meal was genuinely worth the cost.
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>🔄</span> <strong>Auto conversion</strong>: Type 50,000 Rp and watch it convert to USD ($2.76) instantly.
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>#️⃣</span> <strong>Frequent hashtags</strong>: Tap quick tags (#coffee, #dinner, #snacks) to log instantly.
                   </li>
                 </ul>
@@ -159,31 +297,87 @@ export default function Home() {
             <div style={{ 
               display: 'flex', 
               flexDirection: 'row', 
-              gap: '40px', 
+              gap: '60px', 
               alignItems: 'center', 
               flexWrap: 'wrap'
             }}>
-              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
+              {/* Left Column (Visual): Image with floating annotations */}
+              <div style={{ flex: '1 1 320px', display: 'flex', justifyContent: 'center', position: 'relative', padding: '20px' }}>
+                <div style={{ width: '320px', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '6px solid rgba(255,255,255,0.08)', position: 'relative' }}>
                   <img src="/assets/screenshot_plan.png" alt="Plan" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  
+                  {/* Circle Overlay: Lombok chronological tracking */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '25%',
+                    left: '5%',
+                    width: '280px',
+                    height: '240px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '24px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(-1deg)'
+                  }} />
+                </div>
+
+                {/* Floating Pointer Card 1 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10%',
+                  right: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '190px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>📅 Flexible Timeline</strong>
+                  Check what has been spent on historical dates or estimate what is ahead.
+                </div>
+
+                {/* Floating Pointer Card 2 */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '20%',
+                  left: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '190px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>📝 Notes & Reminders</strong>
+                  Log specific addresses, checkout times, and sights right on your timeline.
                 </div>
               </div>
-              <div style={{ flex: '1 1 350px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>03 / Forward Planning</span>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+
+              {/* Right Column (Copy) */}
+              <div style={{ flex: '1 1 380px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>03 / Forward Planning</span>
+                <h3 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
                   Stay flexible by planning your forward-looking itinerary.
                 </h3>
-                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 20px' }}>
                   Map out your travel targets and pacing days in advance without rigid itinerary constraints.
                 </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>📅</span> <strong>Calendar timeline</strong>: Chronological view of where you are going (Lombok, Gili, Flores).
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>📝</span> <strong>Todo lists & notes</strong>: Attach custom reminders, sights, or todo checklists per day.
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>💰</span> <strong>Future estimations</strong>: Forecast spends to see total projected trip expenses.
                   </li>
                 </ul>
@@ -194,28 +388,84 @@ export default function Home() {
             <div style={{ 
               display: 'flex', 
               flexDirection: 'row-reverse', 
-              gap: '40px', 
+              gap: '60px', 
               alignItems: 'center', 
               flexWrap: 'wrap'
             }}>
-              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
+              {/* Right Column (Visual): Image with floating annotations */}
+              <div style={{ flex: '1 1 320px', display: 'flex', justifyContent: 'center', position: 'relative', padding: '20px' }}>
+                <div style={{ width: '320px', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', border: '6px solid rgba(255,255,255,0.08)', position: 'relative' }}>
                   <img src="/assets/screenshot_history.png" alt="History Search" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  
+                  {/* Circle Overlay: Search queries */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '51%',
+                    left: '5%',
+                    width: '290px',
+                    height: '60px',
+                    border: '3px dashed var(--color-orange)',
+                    borderRadius: '16px',
+                    pointerEvents: 'none',
+                    transform: 'rotate(2deg)'
+                  }} />
+                </div>
+
+                {/* Floating Pointer Card 1 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '30%',
+                  left: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '180px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>🔍 Search Filtering</strong>
+                  Find specific past transaction costs instantly by name or tag.
+                </div>
+
+                {/* Floating Pointer Card 2 */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '35%',
+                  right: '-40px',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.25)',
+                  width: '190px',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  zIndex: 2,
+                  border: '1.5px solid var(--color-orange)'
+                }}>
+                  <strong style={{ display: 'block', color: 'var(--color-orange)', marginBottom: '3px' }}>✈️ Dynamic Log Retrieval</strong>
+                  Recall addresses, flight times, and reference logs on demand.
                 </div>
               </div>
-              <div style={{ flex: '1 1 350px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>04 / History Search</span>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+
+              {/* Left Column (Copy) */}
+              <div style={{ flex: '1 1 380px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>04 / History Search</span>
+                <h3 style={{ fontSize: '2rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
                   Fast search & instant cost retrieval.
                 </h3>
-                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 20px' }}>
                   Query through past transactions easily to pull up travel details or share references with friends.
                 </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>🔍</span> <strong>Instant lookup</strong>: Search keywords like "Flight" to filter matches in milliseconds.
                   </li>
-                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
                     <span style={{ color: 'var(--color-golden)' }}>✈️</span> <strong>Historical details</strong>: Quickly recall flight numbers, checkin times, or stay addresses.
                   </li>
                   <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
