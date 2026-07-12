@@ -137,56 +137,67 @@ export default function StartPlanning() {
         <section style={{ 
           marginTop: '100px', 
           background: 'linear-gradient(135deg, var(--color-purple) 0%, #4c1f2e 100%)', 
-          borderRadius: '40px', 
-          padding: '80px 40px', 
+          borderRadius: '30px', 
+          padding: '40px', 
           color: 'white',
-          textAlign: 'center',
-          boxShadow: '0 20px 50px rgba(133, 58, 81, 0.15)',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
+          boxShadow: '0 15px 35px rgba(133, 58, 81, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '30px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          textAlign: 'left'
         }}>
-          <span style={{
-            textTransform: 'uppercase',
-            letterSpacing: '1.5px',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            color: 'var(--color-golden)',
-            display: 'block',
-            marginBottom: '10px'
-          }}>
-            Free Companion Tool
-          </span>
-          <h2 style={{ marginBottom: '1.5rem', fontSize: '2.5rem', fontFamily: 'var(--font-heading)', color: 'white' }}>
-            Map & Sync Your Travel Budgets
-          </h2>
-          <p style={{ fontSize: '1.2rem', marginBottom: '2.5rem', opacity: 0.9, maxWidth: '650px', margin: '0 auto 2.5rem', lineHeight: '1.7' }}>
-            Before booking a call, try our free companion app **Lost & Sound Tracks**. Log multi-currency expenses, split costs with travel partners in real-time, upload photos, and keep your route expenses organized.
-          </p>
-          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/tracker" className="btn" style={{ 
-              display: 'inline-block', 
-              fontSize: '1.1rem', 
-              padding: '16px 32px', 
-              backgroundColor: 'var(--color-golden)',
-              color: 'var(--color-purple)',
+          <div style={{ flex: '1 1 350px' }}>
+            <span style={{
+              textTransform: 'uppercase',
+              letterSpacing: '1.5px',
+              fontSize: '0.75rem',
               fontWeight: 800,
-              borderRadius: '30px',
-              textDecoration: 'none'
+              color: 'var(--color-golden)',
+              display: 'block',
+              marginBottom: '6px'
             }}>
-              🚀 Try Tracks Free
-            </Link>
-            <Link href="/travel-tricks" className="btn" style={{ 
-              display: 'inline-block', 
-              fontSize: '1.1rem', 
-              padding: '16px 32px', 
-              backgroundColor: 'transparent',
-              color: 'white',
-              border: '2px solid rgba(255, 255, 255, 0.4)',
-              fontWeight: 700,
-              borderRadius: '30px',
-              textDecoration: 'none'
-            }}>
-              📖 Read Travel Tricks
-            </Link>
+              Free Budget Companion App
+            </span>
+            <h2 style={{ fontSize: '2rem', fontFamily: 'var(--font-heading)', color: 'white', margin: '0 0 10px' }}>
+              Lost & Sound Tracks
+            </h2>
+            <p style={{ fontSize: '1rem', opacity: 0.9, lineHeight: '1.6', margin: '0 0 20px' }}>
+              Want to track your budget yourself? Try our free companion tool. Log multi-currency expenses, split costs with partners in real-time, and log travel stories completely free.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <Link href="/tracker" className="btn" style={{ 
+                display: 'inline-block', 
+                fontSize: '0.92rem', 
+                padding: '12px 24px', 
+                backgroundColor: 'var(--color-golden)',
+                color: 'var(--color-purple)',
+                fontWeight: 800,
+                borderRadius: '20px',
+                textDecoration: 'none'
+              }}>
+                🚀 Try Tracks Free
+              </Link>
+              <Link href="/travel-tricks" className="btn" style={{ 
+                display: 'inline-block', 
+                fontSize: '0.92rem', 
+                padding: '12px 24px', 
+                backgroundColor: 'transparent',
+                color: 'white',
+                border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                fontWeight: 700,
+                borderRadius: '20px',
+                textDecoration: 'none'
+              }}>
+                📖 Read Travel Tricks
+              </Link>
+            </div>
+          </div>
+          <div style={{ flex: '1 1 200px', display: 'flex', gap: '10px', justifyContent: 'center', overflow: 'hidden' }}>
+            <img src="/assets/screenshot_log_expense.png" alt="Log Expense Screen" style={{ height: '180px', borderRadius: '8px', boxShadow: '0 6px 15px rgba(0,0,0,0.25)' }} />
+            <img src="/assets/screenshot_dashboard.png" alt="Dashboard Screen" style={{ height: '180px', borderRadius: '8px', boxShadow: '0 6px 15px rgba(0,0,0,0.25)' }} />
           </div>
         </section>
 

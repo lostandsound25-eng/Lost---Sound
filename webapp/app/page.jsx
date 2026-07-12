@@ -116,32 +116,33 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Right Column: Screenshot/Mockup */}
+          {/* Right Column: Screenshot Grid */}
           <div style={{
-            flex: '1 1 350px',
+            flex: '1 1 400px',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             position: 'relative'
           }}>
             <div style={{
-              position: 'relative',
-              borderRadius: '32px',
-              overflow: 'hidden',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.3)',
-              border: '6px solid rgba(255, 255, 255, 0.1)',
-              maxWidth: '100%'
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
             }}>
-              <img
-                src="/assets/app_mockup.png"
-                alt="Lost & Sound Tracks App Mockup"
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block',
-                  transform: 'scale(1.01)'
-                }}
-              />
+              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
+                <img src="/assets/screenshot_dashboard.png" alt="Dashboard" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
+              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
+                <img src="/assets/screenshot_log_expense.png" alt="Log Expense" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
+              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
+                <img src="/assets/screenshot_plan.png" alt="Plan" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
+              <div style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.22)', border: '4px solid rgba(255, 255, 255, 0.08)' }}>
+                <img src="/assets/screenshot_history.png" alt="History Search" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
             </div>
           </div>
 
