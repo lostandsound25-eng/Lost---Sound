@@ -44,10 +44,10 @@ export default function Home() {
       <StorySection isExcerpt={true} />
 
       <section style={{ backgroundColor: 'var(--color-purple)', color: 'white', borderRadius: '80px 80px 0 0', padding: '100px 24px', overflow: 'hidden' }}>
-        <div className="container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
           
           {/* Section Header */}
-          <div style={{ textAlign: 'center', marginBottom: '60px', maxWidth: '800px', margin: '0 auto 60px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
             <span style={{
               textTransform: 'uppercase',
               letterSpacing: '2px',
@@ -55,24 +55,21 @@ export default function Home() {
               fontWeight: 800,
               color: 'var(--color-golden)',
               display: 'block',
-              marginBottom: '10px'
+              marginBottom: '12px'
             }}>
-              Free Travel Companion App
+              Free Companion Tool
             </span>
-            <h2 style={{ fontSize: '3rem', color: 'white', margin: '0 0 20px 0', fontFamily: 'var(--font-heading)' }}>
-              Lost & Sound Tracks
+            <h2 style={{ fontSize: '3rem', color: 'white', margin: '0 0 20px', fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+              Your Travel. Past, future and present - all in one place.
             </h2>
-            <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.9)', lineHeight: '1.6', margin: '0 0 16px' }}>
-              Unlike cumbersome, battery-draining trackers like Polarsteps, Tracks is designed to be lightweight, responsive, and acts as a beautiful memory bank of your trips. 
-            </p>
-            <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.75)', lineHeight: '1.6', margin: '0 0 30px' }}>
-              It is a completely free companion tool designed to make budgeting and journaling travel experiences easy, offline-first, and fun to look back on and share with friends and family.
+            <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 30px' }}>
+              Wherever your travels take you, turn your footprints into Tracks.
             </p>
             <Link href="/tracker" className="btn btn-primary" style={{
               backgroundColor: 'var(--color-golden)',
               color: 'var(--color-purple)',
-              padding: '14px 32px',
-              fontSize: '1rem',
+              padding: '16px 36px',
+              fontSize: '1.1rem',
               fontWeight: 800,
               borderRadius: '30px',
               textDecoration: 'none',
@@ -81,119 +78,150 @@ export default function Home() {
               gap: '8px',
               boxShadow: '0 10px 25px rgba(232, 180, 100, 0.2)'
             }}>
-              🚀 Open Free Tracks App
+              🚀 Start Travelin'
             </Link>
           </div>
 
-          {/* Feature Showcase Grid (2x2) */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
-            gap: '40px',
-            marginTop: '40px'
-          }}>
+          {/* Alternating Step-by-Step Feature Walkthrough */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '80px' }}>
             
-            {/* Feature 1 */}
+            {/* Step 1: Dashboard */}
             <div style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-              borderRadius: '24px', 
-              padding: '30px', 
-              border: '1.5px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px'
+              display: 'flex', 
+              flexDirection: 'row', 
+              gap: '40px', 
+              alignItems: 'center', 
+              flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
                   <img src="/assets/screenshot_dashboard.png" alt="Dashboard" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Core Tagline</span>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
-                    Remember where you went. Stay on top of what you spent.
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Tracks serves as a beautiful memory bank. Log daily stats, currencies, and budgets manually without background processes draining your battery.
-                  </p>
-                </div>
+              </div>
+              <div style={{ flex: '1 1 350px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>01 / Dashboard</span>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+                  Remember where you went. Stay on top of what you spent.
+                </h3>
+                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                  Keep track of all travel elements in one place. Log locations, budgets, and notes without background process drain.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>📍</span> <strong>Daily pacing</strong>: Track spends at your active destination (e.g. Kuta).
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>🏠</span> <strong>Category breakdown</strong>: Accommodation, Transportation, and Food separated out.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>💵</span> <strong>Daily averages</strong>: See how today's spending compares to your overall target.
+                  </li>
+                </ul>
               </div>
             </div>
 
-            {/* Feature 2 */}
+            {/* Step 2: Log Expense */}
             <div style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-              borderRadius: '24px', 
-              padding: '30px', 
-              border: '1.5px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px'
+              display: 'flex', 
+              flexDirection: 'row-reverse', 
+              gap: '40px', 
+              alignItems: 'center', 
+              flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
                   <img src="/assets/screenshot_log_expense.png" alt="Log Expense" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Quick Logging</span>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
-                    Lightning-fast expensing & "Worth it" flags.
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Log multi-currency details completely offline. Use our signature "Worth It" star to tag whenever a local deal, meal, or splurge was genuinely worth the money.
-                  </p>
-                </div>
+              </div>
+              <div style={{ flex: '1 1 350px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>02 / Log Expense</span>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+                  Lightning-fast logging with "Worth It" toggles.
+                </h3>
+                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                  Enter local pricing completely offline. Tag your purchases dynamically with custom hashtags and worth-it indicators.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>🌟</span> <strong>"Worth it" check</strong>: Quickly mark when an experience or meal was genuinely worth the cost.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>🔄</span> <strong>Auto conversion</strong>: Type 50,000 Rp and watch it convert to USD ($2.76) instantly.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>#️⃣</span> <strong>Frequent hashtags</strong>: Tap quick tags (#coffee, #dinner, #snacks) to log instantly.
+                  </li>
+                </ul>
               </div>
             </div>
 
-            {/* Feature 3 */}
+            {/* Step 3: Plan */}
             <div style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-              borderRadius: '24px', 
-              padding: '30px', 
-              border: '1.5px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px'
+              display: 'flex', 
+              flexDirection: 'row', 
+              gap: '40px', 
+              alignItems: 'center', 
+              flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
                   <img src="/assets/screenshot_plan.png" alt="Plan" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Itinerary planning</span>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
-                    Stay flexible by planning your forward-looking itinerary.
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Map out daily pacing, targets, and notes day-by-day without being locked into rigid planner schedules.
-                  </p>
-                </div>
+              </div>
+              <div style={{ flex: '1 1 350px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>03 / Forward Planning</span>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+                  Stay flexible by planning your forward-looking itinerary.
+                </h3>
+                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                  Map out your travel targets and pacing days in advance without rigid itinerary constraints.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>📅</span> <strong>Calendar timeline</strong>: Chronological view of where you are going (Lombok, Gili, Flores).
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>📝</span> <strong>Todo lists & notes</strong>: Attach custom reminders, sights, or todo checklists per day.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>💰</span> <strong>Future estimations</strong>: Forecast spends to see total projected trip expenses.
+                  </li>
+                </ul>
               </div>
             </div>
 
-            {/* Feature 4 */}
+            {/* Step 4: History Search */}
             <div style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-              borderRadius: '24px', 
-              padding: '30px', 
-              border: '1.5px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px'
+              display: 'flex', 
+              flexDirection: 'row-reverse', 
+              gap: '40px', 
+              alignItems: 'center', 
+              flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ width: '120px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '2.5px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-                  <img src="/assets/screenshot_history.png" alt="History" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              <div style={{ flex: '1 1 250px', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '250px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 15px 35px rgba(0,0,0,0.3)', border: '4px solid rgba(255,255,255,0.08)' }}>
+                  <img src="/assets/screenshot_history.png" alt="History Search" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>Memory search</span>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 850, color: 'white', margin: '6px 0 10px', lineHeight: '1.25' }}>
-                    Fast search & instant cost retrieval.
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5' }}>
-                    Search past expenses to recall flight departure details, check lodging addresses, look up flight times, or share cost details.
-                  </p>
-                </div>
+              </div>
+              <div style={{ flex: '1 1 350px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-golden)', textTransform: 'uppercase', letterSpacing: '1px' }}>04 / History Search</span>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'white', margin: '8px 0 16px', lineHeight: '1.2' }}>
+                  Fast search & instant cost retrieval.
+                </h3>
+                <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', margin: '0 0 20px' }}>
+                  Query through past transactions easily to pull up travel details or share references with friends.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>🔍</span> <strong>Instant lookup</strong>: Search keywords like "Flight" to filter matches in milliseconds.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>✈️</span> <strong>Historical details</strong>: Quickly recall flight numbers, checkin times, or stay addresses.
+                  </li>
+                  <li style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.92rem', color: 'rgba(255,255,255,0.9)' }}>
+                    <span style={{ color: 'var(--color-golden)' }}>📊</span> <strong>Spreadsheet view</strong>: Inspect full trip details or export transaction logs in one tap.
+                  </li>
+                </ul>
               </div>
             </div>
 
