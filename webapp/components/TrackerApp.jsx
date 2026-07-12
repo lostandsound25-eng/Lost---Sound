@@ -6708,7 +6708,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
                                             </span>
                                           </div>
                                           {/* Daily Notes sub-row (Only show for older days, not Today) */}
-                                          {label !== "Today" && (
+                                          {true && (
                                             <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "6px" }}>
                                               <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>📝</span>
                                               {editingItineraryCell?.date === dateKey && editingItineraryCell?.field === "notes" ? (
@@ -7411,6 +7411,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           expenses={expenses}
           onRefreshRates={() => fetchLatestRates(true)}
           setGlobalLightbox={setGlobalLightbox}
+          isTouchDevice={isTouchDevice}
         />
       )}
 
@@ -8525,7 +8526,8 @@ function ManualEntryModal({
   onVoiceStart,
   expenses = [],
   onRefreshRates,
-  setGlobalLightbox
+  setGlobalLightbox,
+  isTouchDevice
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;

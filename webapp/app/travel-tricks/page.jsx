@@ -133,7 +133,7 @@ export default function TravelTricks() {
               textDecoration: 'none',
               display: 'inline-block'
             }}>
-              🚀 Open Free Tracks App
+              🚀 Start Travelin'
             </Link>
             <Link href="/tracker/discover" style={{
               color: 'white',

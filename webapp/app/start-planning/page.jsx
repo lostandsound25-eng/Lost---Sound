@@ -178,7 +178,7 @@ export default function StartPlanning() {
                 borderRadius: '20px',
                 textDecoration: 'none'
               }}>
-                🚀 Try Tracks Free
+                🚀 Start Travelin'
               </Link>
               <Link href="/travel-tricks" className="btn" style={{ 
                 display: 'inline-block', 
