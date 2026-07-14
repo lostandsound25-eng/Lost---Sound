@@ -328,36 +328,6 @@ export default function TrackerLandingPage() {
 
         {/* SSO Social Login Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* Apple Sign-in */}
-          <button
-            onClick={handleAppleSignIn}
-            style={{
-              width: '100%',
-              height: '48px',
-              backgroundColor: '#000000',
-              border: 'none',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              cursor: 'pointer',
-              fontSize: '0.92rem',
-              fontWeight: 600,
-              color: '#ffffff',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1a1a1a'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
-          >
-            {/* Apple Logo SVG */}
-            <svg width="15" height="18" viewBox="0 0 15 18" fill="white">
-              <path d="M12.03 9c.02-2.13 1.74-3.15 1.82-3.2A6.87 6.87 0 0 0 8.42 3.1c-2.27-.23-4.43 1.33-5.58 1.33-1.15 0-2.92-1.3-4.83-1.26A7.19 7.19 0 0 0 .52 7.7C-1.8 11.7.35 17.58 2.58 20.8c1.1 1.57 2.37 3.32 4.07 3.26 1.63-.07 2.25-1.06 4.22-1.06 1.96 0 2.53 1.06 4.24 1.02 1.74-.03 2.87-1.6 3.96-3.18a13.9 13.9 0 0 0 1.8-3.7c-.08-.04-2.15-.82-2.17-3.2M10.15 1.98C11.1.83 11.73.18 11.75 0a7.04 7.04 0 0 0-4.66 2.4c-.82.95-1.53 1.95-1.55 2.1 0 .04.2.06.27.06.66 0 2.94-.8 4.34-2.58" transform="translate(-1, -3) scale(0.95)" />
-            </svg>
-            Continue with Apple
-          </button>
-
           {/* Google Sign-in */}
           <button
             onClick={handleGoogleSignIn}
