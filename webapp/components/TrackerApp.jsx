@@ -572,7 +572,7 @@ const hasBase64Photos = (payload) => {
 };
 
 
-export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly = false }) {
+export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly = false, externalTourStep = 0 }) {
   // Lazy initializers: read localStorage synchronously on first render
   // so cached data is available on frame 1 — eliminates the $0.00 flicker on refresh
   const [expenses, setExpenses] = useState(() => {
@@ -634,6 +634,35 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
   const [showFuture, setShowFuture] = useState(false);
   const [todaySectionExpanded, setTodaySectionExpanded] = useState(false);
   const [logView, setLogView] = useState("recent"); // 'recent', 'plan', or 'history'
+  const [demoTourStep, setDemoTourStep] = useState(isDemo ? 1 : 0);
+
+  const handleTourStepTransition = (stepNumber) => {
+    if (stepNumber === 1) {
+      setLogView("recent");
+      setActiveModal(null);
+    } else if (stepNumber === 2) {
+      setLogView("recent");
+      setEditingExpense(null);
+      setActiveModal("manual");
+    } else if (stepNumber === 3 || stepNumber === 4) {
+      setLogView("recent");
+      setEditingExpense(null);
+      setActiveModal("manual");
+    } else if (stepNumber === 5) {
+      setActiveModal(null);
+      setLogView("plan");
+    } else if (stepNumber === 6) {
+      setActiveModal(null);
+      setLogView("history");
+    }
+  };
+  
+  useEffect(() => {
+    if (isDemo && externalTourStep > 0) {
+      setDemoTourStep(externalTourStep);
+      handleTourStepTransition(externalTourStep);
+    }
+  }, [externalTourStep, isDemo]);
   const [prevViewBeforeInsights, setPrevViewBeforeInsights] = useState("recent");
   const [planMonth, setPlanMonth] = useState(new Date().getMonth());
   const [planYear, setPlanYear] = useState(new Date().getFullYear());
@@ -5453,10 +5482,10 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     <div 
       className="tracker-container"
       style={{
-        maxWidth: "480px",
+        maxWidth: isDemo ? "100%" : "480px",
         margin: "0 auto",
-        height: "100vh",
-        height: "100dvh",
+        height: isDemo ? "100%" : "100vh",
+        height: isDemo ? "100%" : "100dvh",
         backgroundColor: "#F9F6ED",
         position: "relative",
         fontFamily: "var(--font-body), system-ui, sans-serif",
@@ -5754,7 +5783,11 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
               justifyContent: "space-between",
               alignItems: "center",
               gap: "12px",
-              padding: "0 12px"
+              padding: isDemo && demoTourStep === 1 ? "8px 12px" : "0 12px",
+              borderRadius: "16px",
+              border: isDemo && demoTourStep === 1 ? "2.5px solid var(--color-orange)" : "2.5px solid transparent",
+              boxShadow: isDemo && demoTourStep === 1 ? "0 0 12px rgba(235, 94, 40, 0.25)" : "none",
+              transition: "all 0.3s ease"
             }}>
               {/* Today */}
               <div 
@@ -7354,13 +7387,16 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
             borderRadius: "50%",
             backgroundColor: "var(--color-orange)",
             color: "white",
-            border: "none",
-            boxShadow: "0 10px 30px rgba(232, 107, 50, 0.4)",
+            border: isDemo && demoTourStep === 2 ? "3px solid var(--color-golden)" : "none",
+            boxShadow: isDemo && demoTourStep === 2 
+              ? "0 0 0 6px var(--color-orange), 0 10px 30px rgba(232, 107, 50, 0.4)" 
+              : "0 10px 30px rgba(232, 107, 50, 0.4)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            transition: "all 0.15s ease"
+            transition: "all 0.15s ease",
+            animation: isDemo && demoTourStep === 2 ? "goldGlowPulse 1.5s infinite" : "none"
           }}
           onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
           onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
@@ -7412,6 +7448,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           onRefreshRates={() => fetchLatestRates(true)}
           setGlobalLightbox={setGlobalLightbox}
           isTouchDevice={isTouchDevice}
+          demoTourStep={demoTourStep}
         />
       )}
 
@@ -7757,6 +7794,106 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           homeCurrency={trip.homeCurrency}
           rates={rates}
         />
+      )}
+
+      {isDemo && demoTourStep > 0 && (
+        <div style={{
+          position: "absolute",
+          bottom: "105px",
+          left: "14px",
+          right: "14px",
+          backgroundColor: "#FFFDF9",
+          border: "2px solid var(--color-orange)",
+          borderRadius: "20px",
+          padding: "16px",
+          boxShadow: "0 12px 30px rgba(133,58,81,0.25)",
+          zIndex: 3000,
+          animation: "fadeInUp 0.3s ease-out",
+          fontFamily: "system-ui, sans-serif",
+          boxSizing: "border-box"
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--color-orange)", textTransform: "uppercase", letterSpacing: "1px" }}>
+              💡 Tour Step {demoTourStep} / 6
+            </span>
+            <button
+              onClick={() => setDemoTourStep(0)}
+              style={{ background: "none", border: "none", fontSize: "0.9rem", color: "#9CA3AF", cursor: "pointer", fontWeight: 700 }}
+            >
+              ✕ Skip
+            </button>
+          </div>
+
+          {/* Title */}
+          <p style={{ fontSize: "0.85rem", color: "var(--color-purple)", fontWeight: 800, margin: "0 0 4px" }}>
+            {demoTourStep === 1 && "Welcome & Live Pacing"}
+            {demoTourStep === 2 && "Lightning-Fast Logging"}
+            {demoTourStep === 3 && "Real-Time Auto FX conversion"}
+            {demoTourStep === 4 && "The Satisfaction 'Worth It' Star"}
+            {demoTourStep === 5 && "Forward Looking Timeline"}
+            {demoTourStep === 6 && "Sub-second Search History"}
+          </p>
+
+          {/* Description */}
+          <p style={{ fontSize: "0.8rem", color: "#4B5563", margin: "0 0 12px", lineHeight: "1.4", fontWeight: 500 }}>
+            {demoTourStep === 1 && "Tracks computes your daily pacing dynamically. Today you spent $20.69, which is under your overall target average of $119.29!"}
+            {demoTourStep === 2 && "Tapping the '+' button opens the entry panel to log a purchase in 10s or less. Go ahead, or tap Next to see it open!"}
+            {demoTourStep === 3 && "Type foreign currencies (like Indonesian Rupiah) directly. Tracks calculates conversion math instantly completely offline."}
+            {demoTourStep === 4 && "Check the star if a meal or ride was genuinely worth the cost. Helps analyze travel value beyond pure cost indexes."}
+            {demoTourStep === 5 && "Check out the Plan tab. Estimate future spends and outline your travel targets chronological days in advance."}
+            {demoTourStep === 6 && "Check out the History search. Instantly search flight numbers, checkin times, addresses, or refer costs to friends."}
+          </p>
+
+          {/* Buttons */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button
+              onClick={() => {
+                if (demoTourStep > 1) {
+                  const prev = demoTourStep - 1;
+                  setDemoTourStep(prev);
+                  handleTourStepTransition(prev);
+                }
+              }}
+              disabled={demoTourStep === 1}
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--color-purple)",
+                background: "none",
+                border: "none",
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: demoTourStep === 1 ? 0.3 : 1
+              }}
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => {
+                if (demoTourStep < 6) {
+                  const next = demoTourStep + 1;
+                  setDemoTourStep(next);
+                  handleTourStepTransition(next);
+                } else {
+                  setDemoTourStep(0); // Finished!
+                }
+              }}
+              style={{
+                backgroundColor: "var(--color-orange)",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                padding: "6px 14px",
+                fontSize: "0.78rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(235,94,40,0.2)"
+              }}
+            >
+              {demoTourStep === 6 ? "Finish Tour" : "Next Step →"}
+            </button>
+          </div>
+        </div>
       )}
       <style>{`
         @keyframes blueGlowPulse {
@@ -8527,7 +8664,8 @@ function ManualEntryModal({
   expenses = [],
   onRefreshRates,
   setGlobalLightbox,
-  isTouchDevice
+  isTouchDevice,
+  demoTourStep
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;
@@ -9895,7 +10033,9 @@ function ManualEntryModal({
                     backgroundColor: "#F9F6ED",
                     borderRadius: "16px",
                     padding: "8px 14px",
-                    border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                    border: demoTourStep === 3 ? "2.5px solid var(--color-orange)" : "1.5px solid rgba(133, 58, 81, 0.15)",
+                    boxShadow: demoTourStep === 3 ? "0 0 12px rgba(235, 94, 40, 0.25)" : "none",
+                    transition: "all 0.3s ease",
                     marginBottom: "0px"
                   }}>
                     <style>{`
@@ -10723,7 +10863,8 @@ function ManualEntryModal({
                   borderRadius: "14px",
                   height: "40px",
                   boxSizing: "border-box",
-                  border: worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)",
+                  border: demoTourStep === 4 ? "2.5px solid var(--color-orange)" : (worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)"),
+                  boxShadow: demoTourStep === 4 ? "0 0 12px rgba(235, 94, 40, 0.25)" : "none",
                   cursor: "pointer",
                   fontSize: "0.82rem",
                   fontWeight: 700,
