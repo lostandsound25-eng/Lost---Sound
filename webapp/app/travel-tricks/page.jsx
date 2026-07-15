@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import InteractiveDemo from '../../components/InteractiveDemo';
 
 export default function TravelTricks() {
   return (
@@ -79,72 +80,68 @@ export default function TravelTricks() {
           </div>
         </section>
 
-        {/* Content Section 4: Tracks Callout (Piece of the page) */}
+        {/* Content Section 4: Live Interactive Companion App Callout */}
         <section style={{
           backgroundColor: 'var(--color-purple)',
           color: 'white',
-          padding: '40px 30px',
-          borderRadius: '24px',
-          boxShadow: '0 12px 30px rgba(133, 58, 81, 0.1)',
+          padding: '40px 24px',
+          borderRadius: '30px',
+          boxShadow: '0 15px 35px rgba(133, 58, 81, 0.15)',
           marginTop: '60px'
         }}>
-          <span style={{
-            textTransform: 'uppercase',
-            letterSpacing: '1.5px',
-            fontSize: '0.8rem',
-            fontWeight: 800,
-            color: 'var(--color-golden)',
-            display: 'block',
-            marginBottom: '8px'
-          }}>
-            Free Travel Companion App
-          </span>
-          <h2 style={{ margin: '0 0 12px', fontSize: '2rem', color: 'white', fontFamily: 'var(--font-heading)' }}>
-            Budget & Log Your Travel Easily
-          </h2>
-          <p style={{ margin: '0 0 24px', fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', lineHeight: '1.6' }}>
-            We created a simple, free tool called <strong>Lost & Sound Tracks</strong> to help people track multi-currency expenses, split budgets, log locations, and save travel memories. It works completely offline and synchronizes when you get service.
-          </p>
-
-          {/* Screenshot Row */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            overflowX: 'auto', 
-            padding: '10px 4px', 
-            margin: '0 0 24px',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch'
-          }}>
-            <img src="/assets/screenshot_log_expense.png" alt="Log Expense Screenshot" style={{ height: '240px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', flexShrink: 0 }} />
-            <img src="/assets/screenshot_dashboard.png" alt="Dashboard Screenshot" style={{ height: '240px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', flexShrink: 0 }} />
-            <img src="/assets/screenshot_plan.png" alt="Plan Screenshot" style={{ height: '240px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', flexShrink: 0 }} />
-            <img src="/assets/screenshot_history.png" alt="History Search Screenshot" style={{ height: '240px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', flexShrink: 0 }} />
+          <div style={{ padding: '0 8px 30px' }}>
+            <span style={{
+              textTransform: 'uppercase',
+              letterSpacing: '1.5px',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              color: 'var(--color-golden)',
+              display: 'block',
+              marginBottom: '8px'
+            }}>
+              Free Travel Companion App
+            </span>
+            <h2 style={{ margin: '0 0 12px', fontSize: '2rem', color: 'white', fontFamily: 'var(--font-heading)' }}>
+              Lost & Sound Tracks
+            </h2>
+            <p style={{ margin: '0 0 24px', fontSize: '1rem', color: 'rgba(255, 255, 255, 0.85)', lineHeight: '1.6' }}>
+              We created a simple, free companion tool to help you track multi-currency expenses, plan future spending lists, and save visual travel memories. It works completely offline and synchronizes in the background. Play around in the live simulator below!
+            </p>
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+              <Link href="/tracker" style={{
+                backgroundColor: 'var(--color-golden)',
+                color: 'var(--color-purple)',
+                padding: '12px 24px',
+                fontSize: '0.92rem',
+                fontWeight: 800,
+                borderRadius: '20px',
+                textDecoration: 'none',
+                display: 'inline-block'
+              }}>
+                🚀 Start Travelin'
+              </Link>
+              <Link href="/tracker/discover" style={{
+                color: 'white',
+                padding: '12px 20px',
+                fontSize: '0.92rem',
+                fontWeight: 700,
+                textDecoration: 'underline',
+                display: 'inline-block'
+              }}>
+                🧭 Explore Public Feed
+              </Link>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-            <Link href="/tracker" className="btn" style={{
-              backgroundColor: 'var(--color-golden)',
-              color: 'var(--color-purple)',
-              padding: '14px 28px',
-              fontSize: '0.95rem',
-              fontWeight: 800,
-              borderRadius: '20px',
-              textDecoration: 'none',
-              display: 'inline-block'
-            }}>
-              🚀 Start Travelin'
-            </Link>
-            <Link href="/tracker/discover" style={{
-              color: 'white',
-              padding: '14px 20px',
-              fontSize: '0.95rem',
-              fontWeight: 700,
-              textDecoration: 'underline',
-              display: 'inline-block'
-            }}>
-              🧭 Explore Public Feed
-            </Link>
+          {/* Live Mobile Simulator integration */}
+          <div style={{ 
+            backgroundColor: '#1E1518', 
+            borderRadius: '24px', 
+            padding: '24px 16px',
+            border: '1.5px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.5)'
+          }}>
+            <InteractiveDemo />
           </div>
         </section>
 

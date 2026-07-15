@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import InteractiveDemo from '../../components/InteractiveDemo';
 
 export default function StartPlanning() {
   const services = [
@@ -11,7 +12,7 @@ export default function StartPlanning() {
         "45-minute 1-on-1 video call",
         "Route feasibility & pacing check",
         "Strategies to avoid travel burnout",
-        "Tips for traveling realistically as a couple",
+        "Couples travel compatibility checks",
         "Guidance on balancing cost vs experience",
         "Post-call strategy notes"
       ],
@@ -134,22 +135,17 @@ export default function StartPlanning() {
           ))}
         </div>
 
+        {/* Live Mobile Companion App Emulator Section */}
         <section style={{ 
           marginTop: '100px', 
           background: 'linear-gradient(135deg, var(--color-purple) 0%, #4c1f2e 100%)', 
           borderRadius: '30px', 
-          padding: '40px', 
+          padding: '40px 24px', 
           color: 'white',
           boxShadow: '0 15px 35px rgba(133, 58, 81, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '30px',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          textAlign: 'left'
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <div style={{ flex: '1 1 350px' }}>
+          <div style={{ padding: '0 8px 30px' }}>
             <span style={{
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
@@ -165,7 +161,7 @@ export default function StartPlanning() {
               Lost & Sound Tracks
             </h2>
             <p style={{ fontSize: '1rem', opacity: 0.9, lineHeight: '1.6', margin: '0 0 20px' }}>
-              Want to track your budget yourself? Try our free companion tool. Log multi-currency expenses, split costs with partners in real-time, and log travel stories completely free.
+              Want to track your budget yourself? Try our free companion tool. Log multi-currency expenses, split costs with partners in real-time, and log travel stories completely free. Play around in the live simulator below!
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <Link href="/tracker" className="btn" style={{ 
@@ -195,9 +191,16 @@ export default function StartPlanning() {
               </Link>
             </div>
           </div>
-          <div style={{ flex: '1 1 200px', display: 'flex', gap: '10px', justifyContent: 'center', overflow: 'hidden' }}>
-            <img src="/assets/screenshot_log_expense.png" alt="Log Expense Screen" style={{ height: '180px', borderRadius: '8px', boxShadow: '0 6px 15px rgba(0,0,0,0.25)' }} />
-            <img src="/assets/screenshot_dashboard.png" alt="Dashboard Screen" style={{ height: '180px', borderRadius: '8px', boxShadow: '0 6px 15px rgba(0,0,0,0.25)' }} />
+
+          {/* Interactive Simulator Box */}
+          <div style={{ 
+            backgroundColor: '#1E1518', 
+            borderRadius: '24px', 
+            padding: '24px 16px',
+            border: '1.5px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.5)'
+          }}>
+            <InteractiveDemo />
           </div>
         </section>
 
