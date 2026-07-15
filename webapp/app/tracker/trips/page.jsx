@@ -9,6 +9,8 @@ export default function TripsDashboard() {
   const [loading, setLoading] = useState(true);
   
   // Create trip form state
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [selectedTripIds, setSelectedTripIds] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTripName, setNewTripName] = useState("");
   const [homeCurrency, setHomeCurrency] = useState("USD");
@@ -256,6 +258,43 @@ export default function TripsDashboard() {
     }
   };
 
+  const handleDeleteLeaveSelectedTrips = async () => {
+    if (selectedTripIds.length === 0) return;
+    const count = selectedTripIds.length;
+    const msg = `Are you sure you want to delete/leave the ${count} selected trip(s)? This action cannot be undone.`;
+    if (!confirm(msg)) return;
+    
+    try {
+      setLoading(true);
+      const tripsToProcess = trips.filter(t => selectedTripIds.includes(t.id));
+      for (const trip of tripsToProcess) {
+        const isOwner = trip.role === 'owner';
+        if (isOwner) {
+          await supabase.from('trip_entries').delete().eq('trip_id', trip.id);
+          await supabase.from('trip_members').delete().eq('trip_id', trip.id);
+          await supabase.from('trips').delete().eq('id', trip.id);
+        } else {
+          await supabase
+            .from('trip_members')
+            .delete()
+            .eq('trip_id', trip.id)
+            .or(`user_id.eq.${session.user.id},email.eq.${session.user.email}`);
+        }
+        localStorage.removeItem(`tracker_trip_${trip.id}`);
+        localStorage.removeItem(`tracker_expenses_${trip.id}`);
+      }
+      setTrips(prev => prev.filter(t => !selectedTripIds.includes(t.id)));
+      setSelectedTripIds([]);
+      setIsBatchMode(false);
+      alert(`Successfully processed ${count} trip(s).`);
+    } catch (err) {
+      console.error("Batch operation failed:", err);
+      alert("Batch operation failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -352,29 +391,68 @@ export default function TripsDashboard() {
             >
               🧭 Discover
             </button>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                backgroundColor: '#853A51',
-                color: 'white',
-                border: 'none',
-                borderRadius: '20px',
-                padding: '8px 16px',
-                fontWeight: 750,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'background-color 0.2s',
-                marginBottom: '2px'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
-            >
-              ✈️ + New Trip
-            </button>
+            {trips.length > 0 && (
+              <button
+                onClick={() => {
+                  setIsBatchMode(!isBatchMode);
+                  setSelectedTripIds([]);
+                }}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: isBatchMode ? '#E86B32' : '#853A51',
+                  border: isBatchMode ? '1.5px solid #E86B32' : '1.5px solid rgba(133, 58, 81, 0.3)',
+                  borderRadius: '20px',
+                  padding: '7px 14px',
+                  fontWeight: 750,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.2s',
+                  marginBottom: '2px'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isBatchMode) {
+                    e.currentTarget.style.backgroundColor = 'rgba(133, 58, 81, 0.04)';
+                    e.currentTarget.style.borderColor = '#853A51';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isBatchMode) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.3)';
+                  }
+                }}
+              >
+                {isBatchMode ? '✕ Cancel' : '☑️ Select'}
+              </button>
+            )}
+            {!isBatchMode && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  backgroundColor: '#853A51',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '20px',
+                  padding: '8px 16px',
+                  fontWeight: 750,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(133, 58, 81, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'background-color 0.2s',
+                  marginBottom: '2px'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6e3043'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#853A51'}
+              >
+                ✈️ + New Trip
+              </button>
+            )}
           </div>
         ) : (
           <button
@@ -485,139 +563,176 @@ export default function TripsDashboard() {
             ) : (
               // Grid list of Trip Cards
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
-                {trips.map(trip => (
-                  <div
-                    key={trip.id}
-                    onClick={() => window.location.href = `/tracker/trip/${trip.id}`}
-                    style={{
-                      backgroundColor: 'white',
-                      borderRadius: '20px',
-                      padding: '20px',
-                      boxShadow: '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-                      border: '1.5px solid rgba(133, 58, 81, 0.08)',
-                      cursor: 'pointer',
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(133, 58, 81, 0.08), 0 10px 10px -5px rgba(133, 58, 81, 0.03)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(133, 58, 81, 0.08)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)';
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1, paddingRight: '12px' }}>
-                      <h4 style={{ 
-                        fontSize: '1.1rem', 
-                        fontWeight: 800, 
-                        color: '#1F2937', 
-                        margin: 0,
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap'
-                      }}>{trip.name}</h4>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 750,
-                          color: trip.role === 'owner' ? '#E86B32' : '#853A51',
-                          backgroundColor: trip.role === 'owner' ? 'rgba(232, 107, 50, 0.06)' : 'rgba(133, 58, 81, 0.06)',
-                          padding: '3px 8px',
-                          borderRadius: '8px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          {trip.role}
-                        </span>
+                {trips.map(trip => {
+                  const isSelected = selectedTripIds.includes(trip.id);
+                  return (
+                    <div
+                      key={trip.id}
+                      onClick={() => {
+                        if (isBatchMode) {
+                          setSelectedTripIds(prev => 
+                            prev.includes(trip.id) 
+                              ? prev.filter(id => id !== trip.id) 
+                              : [...prev, trip.id]
+                          );
+                        } else {
+                          window.location.href = `/tracker/trip/${trip.id}`;
+                        }
+                      }}
+                      style={{
+                        backgroundColor: isSelected ? 'rgba(232, 107, 50, 0.02)' : 'white',
+                        borderRadius: '20px',
+                        padding: '20px',
+                        boxShadow: '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                        border: isSelected 
+                          ? '1.5px solid #E86B32' 
+                          : '1.5px solid rgba(133, 58, 81, 0.08)',
+                        cursor: 'pointer',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = isSelected ? '#E86B32' : 'rgba(133, 58, 81, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(133, 58, 81, 0.08), 0 10px 10px -5px rgba(133, 58, 81, 0.03)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = isSelected ? '#E86B32' : 'rgba(133, 58, 81, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(133, 58, 81, 0.04), 0 8px 16px -6px rgba(133, 58, 81, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                        {isBatchMode && (
+                          <div style={{ marginRight: '14px', display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              readOnly
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                cursor: 'pointer',
+                                accentColor: '#E86B32'
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0, flex: 1, paddingRight: '12px' }}>
+                          <h4 style={{ 
+                            fontSize: '1.1rem', 
+                            fontWeight: 800, 
+                            color: '#1F2937', 
+                            margin: 0,
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}>{trip.name}</h4>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 750,
+                              color: trip.role === 'owner' ? '#E86B32' : '#853A51',
+                              backgroundColor: trip.role === 'owner' ? 'rgba(232, 107, 50, 0.06)' : 'rgba(133, 58, 81, 0.06)',
+                              padding: '3px 8px',
+                              borderRadius: '8px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
+                              {trip.role}
+                            </span>
 
-                        <span 
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const newPublicState = !trip.is_public;
-                            try {
-                              const { error } = await supabase
-                                .from('trips')
-                                .update({ is_public: newPublicState })
-                                .eq('id', trip.id);
-                              if (error) throw error;
-                              setTrips(prev => prev.map(t => t.id === trip.id ? { ...t, is_public: newPublicState } : t));
-                            } catch (err) {
-                              console.error("Failed to toggle visibility:", err);
-                              alert("Could not update trip visibility.");
-                            }
-                          }}
-                          style={{
-                            fontSize: '0.68rem',
-                            fontWeight: 750,
-                            color: trip.is_public ? '#059669' : '#4B5563',
-                            backgroundColor: trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)',
-                            padding: '3px 8px',
-                            borderRadius: '8px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            cursor: 'pointer',
-                            border: '1px solid transparent',
-                            transition: 'all 0.15s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = trip.is_public ? 'rgba(5, 150, 105, 0.3)' : 'rgba(75, 85, 99, 0.3)';
-                            e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.12)' : 'rgba(75, 85, 99, 0.12)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = 'transparent';
-                            e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)';
-                          }}
-                          title="Click to toggle Public / Private"
-                        >
-                          {trip.is_public ? '🔓 Public' : '🔒 Private'}
-                        </span>
-                        
-                        <span style={{ fontSize: '0.72rem', color: '#9CA3AF', fontWeight: 550 }}>
-                          Home: {trip.home_currency}
-                        </span>
+                            <span 
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (isBatchMode) return;
+                                const newPublicState = !trip.is_public;
+                                try {
+                                  const { error } = await supabase
+                                    .from('trips')
+                                    .update({ is_public: newPublicState })
+                                    .eq('id', trip.id);
+                                  if (error) throw error;
+                                  setTrips(prev => prev.map(t => t.id === trip.id ? { ...t, is_public: newPublicState } : t));
+                                } catch (err) {
+                                  console.error("Failed to toggle visibility:", err);
+                                  alert("Could not update trip visibility.");
+                                }
+                              }}
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 750,
+                                color: trip.is_public ? '#059669' : '#4B5563',
+                                backgroundColor: trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)',
+                                padding: '3px 8px',
+                                borderRadius: '8px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                cursor: isBatchMode ? 'default' : 'pointer',
+                                border: '1px solid transparent',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isBatchMode) return;
+                                e.currentTarget.style.borderColor = trip.is_public ? 'rgba(5, 150, 105, 0.3)' : 'rgba(75, 85, 99, 0.3)';
+                                e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.12)' : 'rgba(75, 85, 99, 0.12)';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (isBatchMode) return;
+                                e.currentTarget.style.borderColor = 'transparent';
+                                e.currentTarget.style.backgroundColor = trip.is_public ? 'rgba(5, 150, 105, 0.06)' : 'rgba(75, 85, 99, 0.06)';
+                              }}
+                              title={isBatchMode ? "" : "Click to toggle Public / Private"}
+                            >
+                              {trip.is_public ? '🔓 Public' : '🔒 Private'}
+                            </span>
+                            
+                            <span style={{ fontSize: '0.72rem', color: '#9CA3AF', fontWeight: 550 }}>
+                              Home: {trip.home_currency}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      {!isBatchMode && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            onClick={(e) => handleDeleteLeaveTrip(e, trip)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#EF4444',
+                              cursor: 'pointer',
+                              padding: '6px 10px',
+                              fontSize: '1rem',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            title={trip.role === 'owner' ? "Delete Trip" : "Leave Trip"}
+                          >
+                            {trip.role === 'owner' ? '🗑️' : '🚪'}
+                          </button>
+                          <span style={{ 
+                            fontSize: '1.3rem', 
+                            color: '#853A51',
+                            opacity: 0.6,
+                            fontWeight: 700 
+                          }}>→</span>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
-                        onClick={(e) => handleDeleteLeaveTrip(e, trip)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#EF4444',
-                          cursor: 'pointer',
-                          padding: '6px 10px',
-                          fontSize: '1rem',
-                          borderRadius: '10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        title={trip.role === 'owner' ? "Delete Trip" : "Leave Trip"}
-                      >
-                        {trip.role === 'owner' ? '🗑️' : '🚪'}
-                      </button>
-                      <span style={{ 
-                        fontSize: '1.3rem', 
-                        color: '#853A51',
-                        opacity: 0.6,
-                        fontWeight: 700 
-                      }}>→</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -870,6 +985,73 @@ export default function TripsDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isBatchMode && selectedTripIds.length > 0 && (
+        <div style={{
+          position: "fixed",
+          bottom: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "calc(100% - 32px)",
+          maxWidth: "440px",
+          backgroundColor: "#FFFDF9",
+          borderRadius: "20px",
+          border: "1.5px solid rgba(232, 107, 50, 0.3)",
+          boxShadow: "0 10px 25px -5px rgba(232, 107, 50, 0.2)",
+          padding: "16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          zIndex: 1000,
+          boxSizing: "border-box",
+          animation: "fadeInUp 0.25s ease-out"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1F2937" }}>
+              Selected {selectedTripIds.length} trip(s)
+            </span>
+            <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>
+              {selectedTripIds.length} will be permanently deleted or left
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => {
+                setSelectedTripIds([]);
+                setIsBatchMode(false);
+              }}
+              style={{
+                backgroundColor: "transparent",
+                color: "#6B7280",
+                border: "none",
+                borderRadius: "12px",
+                padding: "8px 16px",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteLeaveSelectedTrips}
+              style={{
+                backgroundColor: "#EF4444",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                padding: "8px 16px",
+                fontSize: "0.82rem",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(239, 68, 68, 0.2)"
+              }}
+            >
+              Delete Selected
+            </button>
           </div>
         </div>
       )}
