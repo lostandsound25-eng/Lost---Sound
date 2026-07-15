@@ -595,7 +595,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
             currency: "USD",
             category: "Food & Drink",
             note: "Delicious Local Street Dinner in Ubud",
-            tags: ["worth-it"]
+            tags: []
           },
           {
             id: "demo-exp-2",
@@ -607,19 +607,29 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           },
           {
             id: "demo-exp-3",
-            amount: 45.00,
+            amount: 75.00,
             currency: "USD",
             category: "Other",
             note: "Scuba Diving in El Nido",
-            tags: ["worth-it"],
-            photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"]
+            worthIt: true,
+            photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"],
+            tags: ["worth-it"]
           },
           {
             id: "demo-exp-4",
-            amount: 75.00,
+            amount: 120.00,
             currency: "USD",
             category: "Accommodation",
-            note: "Homestay Bungalow",
+            note: "Beachfront Bungalow (2 nights)",
+            worthIt: true,
+            tags: ["worth-it"]
+          },
+          {
+            id: "demo-exp-5",
+            amount: 8.50,
+            currency: "USD",
+            category: "Food & Drink",
+            note: "Mango Sticky Rice & Fruit Shake",
             tags: []
           }
         ];
@@ -628,7 +638,9 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           let targetDate = today;
           if (idx === 1) targetDate = yesterday;
           if (idx === 2) targetDate = twoDaysAgo;
-          if (idx >= 3) targetDate = threeDaysAgo;
+          if (idx === 3) targetDate = threeDaysAgo;
+          if (idx === 4) targetDate = yesterday;
+          if (idx > 4) targetDate = threeDaysAgo;
           return {
             ...exp,
             timestamp: targetDate.toISOString()
@@ -1530,59 +1542,74 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       }
 
       const savedExpenses = localStorage.getItem("tracker_expenses_demo");
-      let parsedExpenses = [];
-      if (savedExpenses) {
-        setExpenses(parsedExpenses = JSON.parse(savedExpenses));
-      } else {
-        // Prepopulate with realistic example expenses to guide the user
-        const initialDemoExpenses = [
-          {
-            id: "demo-1",
-            amount: 75.00,
-            currency: "USD",
-            category: "Everything Else",
-            note: "Scuba Diving in El Nido",
-            worthIt: true,
-            location: "El Nido | Philippines",
-            tags: ["activities", "scuba"],
-            timestamp: new Date().toISOString()
-          },
-          {
-            id: "demo-2",
-            amount: 8.50,
-            currency: "USD",
-            category: "Food & Drink",
-            note: "Mango Sticky Rice & Fruit Shake",
-            worthIt: false,
-            location: "Manila | Philippines",
-            tags: ["food", "dessert"],
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: "demo-3",
-            amount: 5.00,
-            currency: "USD",
-            category: "Transportation",
-            note: "Tuk Tuk ride around city",
-            worthIt: false,
-            location: "Manila | Philippines",
-            tags: ["transport"],
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: "demo-4",
-            amount: 120.00,
-            currency: "USD",
-            category: "Accommodation",
-            note: "Beachfront Bungalow (2 nights)",
-            worthIt: true,
-            location: "El Nido | Philippines",
-            tags: ["accommodation", "hotel"],
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
-        setExpenses(parsedExpenses = initialDemoExpenses);
-      }
+      const parsedExpenses = savedExpenses ? JSON.parse(savedExpenses) : [];
+      
+      const today = new Date();
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+      
+      const seedList = parsedExpenses.length > 0 ? parsedExpenses : [
+        {
+          id: "demo-exp-1",
+          amount: 20.69,
+          currency: "USD",
+          category: "Food & Drink",
+          note: "Delicious Local Street Dinner in Ubud",
+          tags: []
+        },
+        {
+          id: "demo-exp-2",
+          amount: 125000,
+          currency: "IDR",
+          category: "Transportation",
+          note: "Scooter Rental Ubud",
+          tags: []
+        },
+        {
+          id: "demo-exp-3",
+          amount: 75.00,
+          currency: "USD",
+          category: "Other",
+          note: "Scuba Diving in El Nido",
+          worthIt: true,
+          photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"],
+          tags: ["worth-it"]
+        },
+        {
+          id: "demo-exp-4",
+          amount: 120.00,
+          currency: "USD",
+          category: "Accommodation",
+          note: "Beachfront Bungalow (2 nights)",
+          worthIt: true,
+          tags: ["worth-it"]
+        },
+        {
+          id: "demo-exp-5",
+          amount: 8.50,
+          currency: "USD",
+          category: "Food & Drink",
+          note: "Mango Sticky Rice & Fruit Shake",
+          tags: []
+        }
+      ];
+
+      const mappedExpenses = seedList.map((exp, idx) => {
+        let targetDate = today;
+        if (idx === 1) targetDate = yesterday;
+        if (idx === 2) targetDate = twoDaysAgo;
+        if (idx === 3) targetDate = threeDaysAgo;
+        if (idx === 4) targetDate = yesterday;
+        if (idx > 4) targetDate = threeDaysAgo;
+        return {
+          ...exp,
+          timestamp: targetDate.toISOString()
+        };
+      });
+
+      setExpenses(mappedExpenses);
+      localStorage.setItem("tracker_expenses_demo", JSON.stringify(mappedExpenses));
 
       if (parsedTrip && !parsedTrip.currentLocation && parsedExpenses.length > 0) {
         const lastExp = parsedExpenses.find((e) => e.location);
