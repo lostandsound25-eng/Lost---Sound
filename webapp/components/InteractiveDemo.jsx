@@ -28,20 +28,27 @@ const TOUR_STEPS = [
   {
     step: 4,
     number: '04',
+    title: 'Remember Where You Went',
+    tagline: 'Visual travel memory photostream.',
+    description: 'Add photos of food, tickets, or stays to your log. Your expense history becomes a beautiful visual travel diary!'
+  },
+  {
+    step: 5,
+    number: '05',
     title: 'The "Worth It" Star',
     tagline: 'Track satisfaction, not just cost digits.',
     description: 'Check the star if a meal or ride was genuinely worth the cost. Helps analyze travel value beyond pure spreadsheet rows.'
   },
   {
-    step: 5,
-    number: '05',
+    step: 6,
+    number: '06',
     title: 'Forward Looking Timeline',
     tagline: 'Stay flexible with your itinerary.',
     description: 'Check out the Plan tab. Estimate future spends and outline your travel targets chronological days in advance.'
   },
   {
-    step: 6,
-    number: '06',
+    step: 7,
+    number: '07',
     title: 'Sub-second Search History',
     tagline: 'Recall past details in milliseconds.',
     description: 'Check out the History search. Instantly search flight numbers, checkin times, addresses, or refer costs to friends.'
@@ -266,20 +273,23 @@ export default function InteractiveDemo() {
 
           {/* Screenshot viewport container containing the actual TrackerApp component */}
           <div style={{
-            width: '100%',
-            height: '100%',
-            position: 'relative',
+            width: '375px',
+            height: '762px',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: 'scale(0.8)',
+            transformOrigin: 'top left',
             backgroundColor: '#F9F6ED',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            transform: 'translate3d(0, 0, 0)',
             contain: 'content'
           }}>
             <TrackerApp 
               isDemo={true} 
               externalTourStep={activeStep}
-              hideFloatingButtons={true}
+              hideFloatingButtons={false}
             />
           </div>
 

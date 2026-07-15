@@ -582,7 +582,54 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     try {
       const cached = localStorage.getItem(key);
       const parsedExpenses = cached ? JSON.parse(cached) : [];
-      if (isDemo) return parsedExpenses;
+      if (isDemo) {
+        if (parsedExpenses.length === 0) {
+          const today = new Date();
+          const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+          const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+          return [
+            {
+              id: "demo-exp-1",
+              amount: 20.69,
+              currency: "USD",
+              category: "Food & Drink",
+              note: "Delicious Local Street Dinner in Ubud",
+              timestamp: today.toISOString(),
+              tags: ["worth-it"]
+            },
+            {
+              id: "demo-exp-2",
+              amount: 125000,
+              currency: "IDR",
+              category: "Transportation",
+              note: "Scooter Rental Ubud",
+              timestamp: yesterday.toISOString(),
+              tags: []
+            },
+            {
+              id: "demo-exp-3",
+              amount: 45.00,
+              currency: "USD",
+              category: "Other",
+              note: "Scuba Diving in El Nido",
+              timestamp: twoDaysAgo.toISOString(),
+              tags: ["worth-it"],
+              photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"]
+            },
+            {
+              id: "demo-exp-4",
+              amount: 75.00,
+              currency: "USD",
+              category: "Accommodation",
+              note: "Homestay Bungalow",
+              timestamp: threeDaysAgo.toISOString(),
+              tags: []
+            }
+          ];
+        }
+        return parsedExpenses;
+      }
       const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
       const parsedQueue = savedQueue ? JSON.parse(savedQueue) : [];
       return getMergedExpenses(parsedExpenses, parsedQueue);
@@ -599,7 +646,13 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
         if (cached) return JSON.parse(cached);
       } catch { /* fall through */ }
     }
-    return { name: isDemo ? 'My Local Trip' : 'Loading Trip...', homeCurrency: 'USD', localCurrency: 'USD', currentLocation: '' };
+    return { 
+      name: isDemo ? 'Demo Trip (Southeast Asia)' : 'Loading Trip...', 
+      homeCurrency: 'USD', 
+      localCurrency: isDemo ? 'IDR' : 'USD', 
+      currentLocation: isDemo ? 'Ubud, Bali' : '',
+      dailyBudgetGoal: isDemo ? 100 : 0
+    };
   });
   const [locationInput, setLocationInput] = useState("");
   const [rates, setRates] = useState(() => {
@@ -640,18 +693,14 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     if (stepNumber === 1) {
       setLogView("recent");
       setActiveModal(null);
-    } else if (stepNumber === 2) {
+    } else if (stepNumber === 2 || stepNumber === 3 || stepNumber === 4 || stepNumber === 5) {
       setLogView("recent");
       setEditingExpense(null);
       setActiveModal("manual");
-    } else if (stepNumber === 3 || stepNumber === 4) {
-      setLogView("recent");
-      setEditingExpense(null);
-      setActiveModal("manual");
-    } else if (stepNumber === 5) {
+    } else if (stepNumber === 6) {
       setActiveModal(null);
       setLogView("plan");
-    } else if (stepNumber === 6) {
+    } else if (stepNumber === 7) {
       setActiveModal(null);
       setLogView("history");
     }
@@ -2507,6 +2556,27 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     }
   };
 
+  const updateDailyBudgetGoal = async (goalVal) => {
+    const val = parseFloat(goalVal) || 0;
+    setTrip((prev) => ({ ...prev, dailyBudgetGoal: val }));
+    const key = isDemo ? 'tracker_trip_demo' : (tripId ? `tracker_trip_${tripId}` : null);
+    if (key) {
+      try {
+        const updated = { ...trip, dailyBudgetGoal: val };
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to save daily budget goal locally:", e);
+      }
+    }
+    if (!isDemo && tripId && supabase) {
+      try {
+        await supabase.from("trips").update({ daily_budget_goal: val }).eq("id", tripId);
+      } catch (e) {
+        console.error("Failed to sync daily budget goal to cloud:", e);
+      }
+    }
+  };
+
   const addCustomCurrency = (curr) => {
     setCustomCurrencies((prev) => {
       const merged = [...new Set([...prev, curr])];
@@ -3648,7 +3718,24 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       return true;
     });
 
-
+    const dailyAverage = filteredExpensesTotal / filteredDaysActive;
+    const hasBudgetGoal = trip.dailyBudgetGoal && trip.dailyBudgetGoal > 0;
+    
+    let budgetPacingMessage = "";
+    let isOverBudget = false;
+    let budgetDiffPct = 0;
+    
+    if (hasBudgetGoal) {
+      isOverBudget = dailyAverage > trip.dailyBudgetGoal;
+      budgetDiffPct = Math.round((Math.abs(dailyAverage - trip.dailyBudgetGoal) / trip.dailyBudgetGoal) * 100);
+      if (isOverBudget) {
+        const recoveryGoal = Math.max(0, Math.round(trip.dailyBudgetGoal - (dailyAverage - trip.dailyBudgetGoal)));
+        budgetPacingMessage = `You are currently spending ${formatMoney(dailyAverage, trip.homeCurrency)}/day, that is ${budgetDiffPct}% over your goal of ${formatMoney(trip.dailyBudgetGoal, trip.homeCurrency)}/day. Try spending ${formatMoney(recoveryGoal, trip.homeCurrency)} daily for the next week to get back on track.`;
+      } else {
+        const extra = Math.round(trip.dailyBudgetGoal - dailyAverage);
+        budgetPacingMessage = `Amazing! You are averaging ${formatMoney(dailyAverage, trip.homeCurrency)}/day, which is under your ${formatMoney(trip.dailyBudgetGoal, trip.homeCurrency)}/day goal. You have an extra ${formatMoney(extra, trip.homeCurrency)} daily to play with!`;
+      }
+    }
 
     const handleQuickFilter = (type) => {
       const today = new Date();
@@ -4190,9 +4277,41 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           </div>
         </div>
 
-
-
-
+        {hasBudgetGoal && (
+          <div style={{
+            backgroundColor: isOverBudget ? "rgba(232, 107, 50, 0.04)" : "rgba(16, 185, 129, 0.04)",
+            border: isOverBudget ? "1.5px solid rgba(232, 107, 50, 0.25)" : "1.5px solid rgba(16, 185, 129, 0.25)",
+            padding: "16px",
+            borderRadius: "20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.01)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px"
+          }}>
+            <h4 style={{
+              fontSize: "0.85rem",
+              fontWeight: 800,
+              color: isOverBudget ? "var(--color-orange)" : "#10B981",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}>
+              <span>{isOverBudget ? "⚠️ Daily Budget Alert" : "🏆 Budget On Track"}</span>
+            </h4>
+            <p style={{
+              fontSize: "0.82rem",
+              color: "#4B5563",
+              lineHeight: "1.4",
+              fontWeight: 600,
+              margin: 0
+            }}>
+              {budgetPacingMessage}
+            </p>
+          </div>
+        )}
 
         {/* Category Breakdown list */}
         <div style={{ backgroundColor: "white", padding: "18px 16px", borderRadius: "20px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
@@ -7343,8 +7462,8 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       {/* Floating Action Button */}
       {!hideFloatingButtons && (
         <div style={{
-          position: "fixed",
-          bottom: "30px",
+          position: isDemo ? "absolute" : "fixed",
+          bottom: isDemo ? "20px" : "30px",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 100,
@@ -7780,6 +7899,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           setIsHomeCurrencyLocked={setIsHomeCurrencyLocked}
           updateHomeCurrency={updateHomeCurrency}
           updateTripVisibility={updateTripVisibility}
+          updateDailyBudgetGoal={updateDailyBudgetGoal}
           showFuture={showFuture}
           setShowFuture={setShowFuture}
           expenses={expenses}
@@ -9737,17 +9857,19 @@ function ManualEntryModal({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  background: "none",
-                  border: "none",
+                  background: demoTourStep === 4 ? "rgba(235, 94, 40, 0.12)" : "none",
+                  border: demoTourStep === 4 ? "1.5px solid var(--color-orange)" : "none",
                   color: "var(--color-purple)",
                   cursor: "pointer",
-                  padding: "4px",
+                  padding: demoTourStep === 4 ? "8px" : "4px",
+                  boxShadow: demoTourStep === 4 ? "0 0 12px rgba(235, 94, 40, 0.35)" : "none",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: "50%",
                   marginRight: "4px",
-                  outline: "none"
+                  outline: "none",
+                  transition: "all 0.2s ease"
                 }}
               >
                 <CameraIcon />
@@ -10772,8 +10894,8 @@ function ManualEntryModal({
                   borderRadius: "14px",
                   height: "40px",
                   boxSizing: "border-box",
-                  border: demoTourStep === 4 ? "2.5px solid var(--color-orange)" : (worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)"),
-                  boxShadow: demoTourStep === 4 ? "0 0 12px rgba(235, 94, 40, 0.25)" : "none",
+                  border: demoTourStep === 5 ? "2.5px solid var(--color-orange)" : (worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.12)"),
+                  boxShadow: demoTourStep === 5 ? "0 0 12px rgba(235, 94, 40, 0.25)" : "none",
                   cursor: "pointer",
                   fontSize: "0.82rem",
                   fontWeight: 700,
@@ -11840,6 +11962,7 @@ function SettingsModal({
   setIsHomeCurrencyLocked, 
   updateHomeCurrency,
   updateTripVisibility,
+  updateDailyBudgetGoal,
   showFuture,
   setShowFuture,
   expenses,
@@ -11993,6 +12116,34 @@ function SettingsModal({
 
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.5px" }}>Preferences</label>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "white",
+            padding: "10px 14px",
+            borderRadius: "14px",
+            border: "1.5px solid rgba(133, 58, 81, 0.12)"
+          }}>
+            <span style={{ fontSize: "0.82rem", color: "#4B5563", fontWeight: 600 }}>Daily Budget Goal ({trip.homeCurrency}):</span>
+            <input
+              type="number"
+              value={trip.dailyBudgetGoal || ""}
+              onChange={(e) => updateDailyBudgetGoal(e.target.value)}
+              placeholder="None"
+              style={{
+                width: "70px",
+                border: "1.5px solid #E5E7EB",
+                borderRadius: "8px",
+                padding: "4px 8px",
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                textAlign: "right",
+                color: "var(--color-purple)",
+                outline: "none"
+              }}
+            />
+          </div>
           <div style={{
             display: "flex",
             alignItems: "center",
