@@ -52,16 +52,7 @@ export default function InteractiveDemo() {
   const [activeStep, setActiveStep] = useState(1);
   const activeStepData = TOUR_STEPS.find(s => s.step === activeStep) || TOUR_STEPS[0];
 
-  // Auto-rotation of tour steps
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveStep(currentStep => {
-        return (currentStep % TOUR_STEPS.length) + 1;
-      });
-    }, 10000); // Rotate step every 10s
-
-    return () => clearInterval(timer);
-  }, []);
+  // Auto-rotation removed to prevent page distraction - tour advances only on interaction
 
   return (
     <div style={{
@@ -230,11 +221,14 @@ export default function InteractiveDemo() {
             backgroundColor: '#F9F6ED',
             overflow: 'hidden',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            transform: 'translate3d(0, 0, 0)',
+            contain: 'content'
           }}>
             <TrackerApp 
               isDemo={true} 
               externalTourStep={activeStep}
+              hideFloatingButtons={true}
             />
           </div>
 

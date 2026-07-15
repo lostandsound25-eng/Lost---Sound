@@ -572,7 +572,7 @@ const hasBase64Photos = (payload) => {
 };
 
 
-export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly = false, externalTourStep = 0 }) {
+export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly = false, externalTourStep = 0, hideFloatingButtons = false }) {
   // Lazy initializers: read localStorage synchronously on first render
   // so cached data is available on frame 1 — eliminates the $0.00 flicker on refresh
   const [expenses, setExpenses] = useState(() => {
@@ -5358,8 +5358,8 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
         {/* Floating Batch Edit Action Bar */}
         {selectedPlannerDates.length > 0 && (
           <div style={{
-            position: "fixed",
-            bottom: "80px",
+            position: isDemo ? "absolute" : "fixed",
+            bottom: isDemo ? "60px" : "80px",
             left: "50%",
             transform: "translateX(-50%)",
             width: "calc(100% - 32px)",
@@ -7341,94 +7341,96 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       </main>
 
       {/* Floating Action Button */}
-      <div style={{
-        position: "fixed",
-        bottom: "30px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        gap: "16px"
-      }}>
-        {undoStack.length > 0 && (
+      {!hideFloatingButtons && (
+        <div style={{
+          position: "fixed",
+          bottom: "30px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 100,
+          display: "flex",
+          alignItems: "center",
+          gap: "16px"
+        }}>
+          {undoStack.length > 0 && (
+            <button
+              onClick={handleUndo}
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                backgroundColor: "white",
+                color: "var(--color-purple)",
+                border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease"
+              }}
+              title="Undo"
+              onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+              onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <UndoIcon size={18} />
+            </button>
+          )}
+
           <button
-            onClick={handleUndo}
+            onClick={() => {
+              setEditingExpense(null);
+              setActiveModal("manual");
+            }}
             style={{
-              width: "48px",
-              height: "48px",
+              width: "68px",
+              height: "68px",
               borderRadius: "50%",
-              backgroundColor: "white",
-              color: "var(--color-purple)",
-              border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+              backgroundColor: "var(--color-orange)",
+              color: "white",
+              border: isDemo && demoTourStep === 2 ? "3px solid var(--color-golden)" : "none",
+              boxShadow: isDemo && demoTourStep === 2 
+                ? "0 0 0 6px var(--color-orange), 0 10px 30px rgba(232, 107, 50, 0.4)" 
+                : "0 10px 30px rgba(232, 107, 50, 0.4)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              transition: "all 0.15s ease"
+              transition: "all 0.15s ease",
+              animation: isDemo && demoTourStep === 2 ? "goldGlowPulse 1.5s infinite" : "none"
             }}
-            title="Undo"
-            onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+            onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
             onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
           >
-            <UndoIcon size={18} />
+            <PlusIcon />
           </button>
-        )}
 
-        <button
-          onClick={() => {
-            setEditingExpense(null);
-            setActiveModal("manual");
-          }}
-          style={{
-            width: "68px",
-            height: "68px",
-            borderRadius: "50%",
-            backgroundColor: "var(--color-orange)",
-            color: "white",
-            border: isDemo && demoTourStep === 2 ? "3px solid var(--color-golden)" : "none",
-            boxShadow: isDemo && demoTourStep === 2 
-              ? "0 0 0 6px var(--color-orange), 0 10px 30px rgba(232, 107, 50, 0.4)" 
-              : "0 10px 30px rgba(232, 107, 50, 0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-            animation: isDemo && demoTourStep === 2 ? "goldGlowPulse 1.5s infinite" : "none"
-          }}
-          onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
-          onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          <PlusIcon />
-        </button>
-
-        {redoStack.length > 0 && (
-          <button
-            onClick={handleRedo}
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              backgroundColor: "white",
-              color: "var(--color-purple)",
-              border: "1.5px solid rgba(133, 58, 81, 0.15)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.15s ease"
-            }}
-            title="Redo"
-            onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
-            onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          >
-            <RedoIcon size={18} />
-          </button>
-        )}
-      </div>
+          {redoStack.length > 0 && (
+            <button
+              onClick={handleRedo}
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                backgroundColor: "white",
+                color: "var(--color-purple)",
+                border: "1.5px solid rgba(133, 58, 81, 0.15)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.15s ease"
+              }}
+              title="Redo"
+              onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.9)")}
+              onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <RedoIcon size={18} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       {activeModal === "manual" && (
@@ -7755,6 +7757,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
         <AuthModal
           onClose={() => setActiveModal(null)}
           onSuccess={() => setActiveModal(null)}
+          isDemo={isDemo}
         />
       )}
 
@@ -7763,6 +7766,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           tripId={tripId}
           tripName={trip.name}
           onClose={() => setActiveModal(null)}
+          isDemo={isDemo}
         />
       )}
 
@@ -7781,6 +7785,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           expenses={expenses}
           convertCurrency={convertCurrency}
           onClose={() => setActiveModal(null)}
+          isDemo={isDemo}
         />
       )}
 
@@ -7793,6 +7798,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
           onEmptyBin={handleEmptyBin}
           homeCurrency={trip.homeCurrency}
           rates={rates}
+          isDemo={isDemo}
         />
       )}
 
@@ -9547,7 +9553,7 @@ function ManualEntryModal({
         }
       }}
       style={{
-        position: "fixed",
+        position: isDemo ? "absolute" : "fixed",
         top: 0,
         left: 0,
         right: 0,
@@ -11406,7 +11412,7 @@ function SubscribeModal({ onClose, onSuccess }) {
   );
 }
 
-function AuthModal({ onClose, onSuccess }) {
+function AuthModal({ onClose, onSuccess, isDemo = false }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -11464,7 +11470,7 @@ function AuthModal({ onClose, onSuccess }) {
     <div 
       onClick={onClose}
       style={{
-        position: "fixed",
+        position: isDemo ? "absolute" : "fixed",
         top: 0,
         left: 0,
         right: 0,
@@ -11610,7 +11616,7 @@ function AuthModal({ onClose, onSuccess }) {
   );
 }
 
-function CollaboratorsModal({ tripId, tripName, onClose }) {
+function CollaboratorsModal({ tripId, tripName, onClose, isDemo = false }) {
   const [email, setEmail] = useState("");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -11740,7 +11746,7 @@ function CollaboratorsModal({ tripId, tripName, onClose }) {
     <div 
       onClick={onClose}
       style={{
-        position: "fixed",
+        position: isDemo ? "absolute" : "fixed",
         top: 0,
         left: 0,
         right: 0,
@@ -11935,7 +11941,8 @@ function SettingsModal({
   setShowFuture,
   expenses,
   convertCurrency,
-  onClose 
+  onClose,
+  isDemo = false
 }) {
   const exportToCSV = () => {
     if (!expenses || expenses.length === 0) {
@@ -11992,7 +11999,7 @@ function SettingsModal({
     <div 
       onClick={onClose}
       style={{
-        position: "fixed",
+        position: isDemo ? "absolute" : "fixed",
         top: 0, right: 0, bottom: 0, left: 0,
         backgroundColor: "rgba(15, 23, 42, 0.4)",
         backdropFilter: "blur(8px)",
@@ -12210,7 +12217,8 @@ function TrashBinModal({
   onDeletePermanent, 
   onEmptyBin, 
   homeCurrency, 
-  rates 
+  rates,
+  isDemo = false
 }) {
   const deletedExpenses = React.useMemo(() => {
     return expenses
@@ -12250,7 +12258,7 @@ function TrashBinModal({
     <div 
       onClick={onClose}
       style={{
-        position: "fixed",
+        position: isDemo ? "absolute" : "fixed",
         top: 0, right: 0, bottom: 0, left: 0,
         backgroundColor: "rgba(15, 23, 42, 0.4)",
         backdropFilter: "blur(8px)",
