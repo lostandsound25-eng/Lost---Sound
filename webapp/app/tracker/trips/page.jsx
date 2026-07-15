@@ -218,6 +218,44 @@ export default function TripsDashboard() {
     }
   };
 
+  const handleDeleteLeaveTrip = async (e, trip) => {
+    e.stopPropagation();
+    const isOwner = trip.role === 'owner';
+    const msg = isOwner 
+      ? `Are you sure you want to delete "${trip.name}"? This will permanently delete all expenses for all members and cannot be undone.`
+      : `Are you sure you want to leave "${trip.name}"? You will lose access to this trip.`;
+      
+    if (!confirm(msg)) return;
+    
+    try {
+      setLoading(true);
+      if (isOwner) {
+        await supabase.from('trip_entries').delete().eq('trip_id', trip.id);
+        await supabase.from('trip_members').delete().eq('trip_id', trip.id);
+        const { error } = await supabase.from('trips').delete().eq('id', trip.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('trip_members')
+          .delete()
+          .eq('trip_id', trip.id)
+          .or(`user_id.eq.${session.user.id},email.eq.${session.user.email}`);
+        if (error) throw error;
+      }
+      
+      localStorage.removeItem(`tracker_trip_${trip.id}`);
+      localStorage.removeItem(`tracker_expenses_${trip.id}`);
+      
+      setTrips(prev => prev.filter(t => t.id !== trip.id));
+      alert(isOwner ? `Successfully deleted "${trip.name}".` : `Successfully left "${trip.name}".`);
+    } catch (err) {
+      console.error("Operation failed:", err);
+      alert("Failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -549,12 +587,35 @@ export default function TripsDashboard() {
                         </span>
                       </div>
                     </div>
-                    <span style={{ 
-                      fontSize: '1.3rem', 
-                      color: '#853A51',
-                      opacity: 0.6,
-                      fontWeight: 700 
-                    }}>→</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={(e) => handleDeleteLeaveTrip(e, trip)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#EF4444',
+                          cursor: 'pointer',
+                          padding: '6px 10px',
+                          fontSize: '1rem',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        title={trip.role === 'owner' ? "Delete Trip" : "Leave Trip"}
+                      >
+                        {trip.role === 'owner' ? '🗑️' : '🚪'}
+                      </button>
+                      <span style={{ 
+                        fontSize: '1.3rem', 
+                        color: '#853A51',
+                        opacity: 0.6,
+                        fontWeight: 700 
+                      }}>→</span>
+                    </div>
                   </div>
                 ))}
               </div>
