@@ -2085,23 +2085,28 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       if (memErr) throw memErr;
 
       if (expenses.length > 0) {
-        const dbEntries = expenses.map((e) => ({
-          id: e.id,
-          trip_id: tripData.id,
-          created_by: user.id,
-          amount: e.amount,
-          currency: e.currency,
-          category: e.category,
-          title: e.title || e.note || "",
-          notes: e.notes || "",
-          worth_it: e.worthIt,
-          establishment: e.establishment || e.location || "",
-          tags: e.tags,
-          created_at: e.timestamp,
-          photo_url: e.photoUrl || null,
-          photo_urls: e.photoUrls || [],
-          photo_urls_full: e.photoUrlsFull || []
-        }));
+        const dbEntries = expenses.map((e) => {
+          const entry = {
+            trip_id: tripData.id,
+            created_by: user.id,
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+            title: e.title || e.note || "",
+            notes: e.notes || "",
+            worth_it: e.worthIt,
+            establishment: e.establishment || e.location || "",
+            tags: e.tags,
+            created_at: e.timestamp,
+            photo_url: e.photoUrl || null,
+            photo_urls: e.photoUrls || [],
+            photo_urls_full: e.photoUrlsFull || []
+          };
+          if (e.id && !e.id.startsWith("demo-")) {
+            entry.id = e.id;
+          }
+          return entry;
+        });
         const { error: expErr } = await supabase.from("trip_entries").insert(dbEntries);
         if (expErr) throw expErr;
       }
@@ -2127,22 +2132,6 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       setIsSyncing(false);
     }
   };
-
-  // Local to cloud migration upon user login
-  useEffect(() => {
-    if (!isDemo || !supabase) return;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        // Trigger migration if we detect user logs in/registers
-        handleMigrateDemoTrip(session.user);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [isDemo, trip, expenses]);
 
   // Excel-style drag-to-fill mouseup handler
   useEffect(() => {

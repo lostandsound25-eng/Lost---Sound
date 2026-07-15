@@ -220,7 +220,8 @@ export default function InteractiveDemo() {
 
       {/* Right Column: Phone Chassis Mockup rendering the actual TrackerApp */}
       <div style={{
-        flex: '1 1 320px',
+        flex: '0 0 320px',
+        minWidth: '320px',
         display: 'flex',
         justifyContent: 'center',
         position: 'relative'
@@ -237,7 +238,8 @@ export default function InteractiveDemo() {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          zIndex: 10
+          zIndex: 10,
+          boxSizing: 'content-box'
         }}>
           {/* Notch / Speaker Ear Piece */}
           <div style={{
@@ -284,7 +286,8 @@ export default function InteractiveDemo() {
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            contain: 'content'
+            contain: 'content',
+            boxSizing: 'border-box'
           }}>
             <TrackerApp 
               isDemo={true} 
