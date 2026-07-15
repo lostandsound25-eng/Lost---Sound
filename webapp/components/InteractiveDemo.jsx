@@ -9,7 +9,7 @@ const TOUR_STEPS = [
     number: '01',
     title: 'Live Budget Dashboard',
     tagline: 'Stay on top of what you spent.',
-    description: 'Tracks computes your daily pacing dynamically. Today you spent $20.69, which is under your overall target average of $119.29!'
+    description: 'Tracks and computes your daily pacing dynamically. Today you spent $20.69, with a daily average of $57.99 (which is well within your budget goal of $100/day).'
   },
   {
     step: 2,
