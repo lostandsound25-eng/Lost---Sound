@@ -583,52 +583,57 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
       const cached = localStorage.getItem(key);
       const parsedExpenses = cached ? JSON.parse(cached) : [];
       if (isDemo) {
-        if (parsedExpenses.length === 0) {
-          const today = new Date();
-          const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-          const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-          const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-          return [
-            {
-              id: "demo-exp-1",
-              amount: 20.69,
-              currency: "USD",
-              category: "Food & Drink",
-              note: "Delicious Local Street Dinner in Ubud",
-              timestamp: today.toISOString(),
-              tags: ["worth-it"]
-            },
-            {
-              id: "demo-exp-2",
-              amount: 125000,
-              currency: "IDR",
-              category: "Transportation",
-              note: "Scooter Rental Ubud",
-              timestamp: yesterday.toISOString(),
-              tags: []
-            },
-            {
-              id: "demo-exp-3",
-              amount: 45.00,
-              currency: "USD",
-              category: "Other",
-              note: "Scuba Diving in El Nido",
-              timestamp: twoDaysAgo.toISOString(),
-              tags: ["worth-it"],
-              photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"]
-            },
-            {
-              id: "demo-exp-4",
-              amount: 75.00,
-              currency: "USD",
-              category: "Accommodation",
-              note: "Homestay Bungalow",
-              timestamp: threeDaysAgo.toISOString(),
-              tags: []
-            }
-          ];
-        }
-        return parsedExpenses;
+        const today = new Date();
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        
+        const seedList = parsedExpenses.length > 0 ? parsedExpenses : [
+          {
+            id: "demo-exp-1",
+            amount: 20.69,
+            currency: "USD",
+            category: "Food & Drink",
+            note: "Delicious Local Street Dinner in Ubud",
+            tags: ["worth-it"]
+          },
+          {
+            id: "demo-exp-2",
+            amount: 125000,
+            currency: "IDR",
+            category: "Transportation",
+            note: "Scooter Rental Ubud",
+            tags: []
+          },
+          {
+            id: "demo-exp-3",
+            amount: 45.00,
+            currency: "USD",
+            category: "Other",
+            note: "Scuba Diving in El Nido",
+            tags: ["worth-it"],
+            photoUrls: ["https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop"]
+          },
+          {
+            id: "demo-exp-4",
+            amount: 75.00,
+            currency: "USD",
+            category: "Accommodation",
+            note: "Homestay Bungalow",
+            tags: []
+          }
+        ];
+
+        return seedList.map((exp, idx) => {
+          let targetDate = today;
+          if (idx === 1) targetDate = yesterday;
+          if (idx === 2) targetDate = twoDaysAgo;
+          if (idx >= 3) targetDate = threeDaysAgo;
+          return {
+            ...exp,
+            timestamp: targetDate.toISOString()
+          };
+        });
       }
       const savedQueue = localStorage.getItem(`sync_queue_${tripId}`);
       const parsedQueue = savedQueue ? JSON.parse(savedQueue) : [];
@@ -3650,8 +3655,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
     });
 
     const filteredExpensesTotal = filteredInsightsExpenses.reduce((sum, e) => sum + convertCurrency(e.amount, e.currency, trip.homeCurrency, rates), 0);
-    const filteredUniqueDatesCount = new Set(filteredInsightsExpenses.map(e => new Date(e.timestamp).toLocaleDateString('en-CA'))).size;
-    const filteredDaysActive = Math.max(1, filteredUniqueDatesCount);
+    const filteredDaysActive = getDaysActive(filteredInsightsExpenses);
 
     // Calculations using filteredInsightsExpenses
     const categoryTotals = CATEGORIES.map((cat) => {
@@ -4227,7 +4231,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
             <h3 style={{ fontSize: "1.4rem", fontWeight: 900, color: "var(--color-purple)", marginTop: "4px", marginBottom: "2px" }}>
               {formatMoney(filteredExpensesTotal, trip.homeCurrency)}
             </h3>
-            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {filteredDaysActive} active days</span>
+            <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>across {filteredDaysActive} days</span>
           </div>
 
           <div style={{ backgroundColor: "white", padding: "16px", borderRadius: "16px", border: "1.5px solid #E5E7EB", boxShadow: "0 2px 8px rgba(0,0,0,0.01)" }}>
@@ -6213,7 +6217,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
                       customCurrencies={customCurrencies}
                       onAddCustomCurrency={addCustomCurrency}
                       style={{ fontSize: "0.82rem", fontWeight: 700 }}
-                      align="left"
+                      align="right"
                     />
                   </div>
                 )}
@@ -8398,7 +8402,6 @@ function ExpenseCard({
 
   return (
     <div 
-      className={worthIt ? "worth-it-shimmer-card" : ""}
       style={{
         borderRadius: "16px",
         marginBottom: "12px",
@@ -8441,6 +8444,7 @@ function ExpenseCard({
         )}
 
         <div
+          className={worthIt ? "worth-it-shimmer-card" : ""}
           onTouchStart={(e) => {
             if (isReadOnly) return;
             setStartX(e.touches[0].clientX);
@@ -8472,14 +8476,15 @@ function ExpenseCard({
             alignItems: "center",
             justifyContent: "space-between",
             padding: "14px 16px",
-            backgroundColor: worthIt ? "#FFFDF2" : "white",
-            border: worthIt ? "1.5px solid #FCD34D" : "1.5px solid rgba(133, 58, 81, 0.08)",
+            backgroundColor: worthIt ? undefined : "white",
+            border: worthIt ? undefined : "1.5px solid rgba(133, 58, 81, 0.08)",
             borderRadius: "16px",
             position: "relative",
             zIndex: 2,
             transform: `translateX(${offsetX}px)`,
             transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-            cursor: isReadOnly ? "default" : "pointer"
+            cursor: isReadOnly ? "default" : "pointer",
+            boxShadow: worthIt ? "0 4px 15px rgba(245, 158, 11, 0.12)" : undefined
           }}
           onClick={() => {
             if (isReadOnly) return;
