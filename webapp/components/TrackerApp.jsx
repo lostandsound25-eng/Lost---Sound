@@ -7802,105 +7802,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
         />
       )}
 
-      {isDemo && demoTourStep > 0 && (
-        <div style={{
-          position: "absolute",
-          bottom: "105px",
-          left: "14px",
-          right: "14px",
-          backgroundColor: "#FFFDF9",
-          border: "2px solid var(--color-orange)",
-          borderRadius: "20px",
-          padding: "16px",
-          boxShadow: "0 12px 30px rgba(133,58,81,0.25)",
-          zIndex: 3000,
-          animation: "fadeInUp 0.3s ease-out",
-          fontFamily: "system-ui, sans-serif",
-          boxSizing: "border-box"
-        }}>
-          {/* Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--color-orange)", textTransform: "uppercase", letterSpacing: "1px" }}>
-              💡 Tour Step {demoTourStep} / 6
-            </span>
-            <button
-              onClick={() => setDemoTourStep(0)}
-              style={{ background: "none", border: "none", fontSize: "0.9rem", color: "#9CA3AF", cursor: "pointer", fontWeight: 700 }}
-            >
-              ✕ Skip
-            </button>
-          </div>
 
-          {/* Title */}
-          <p style={{ fontSize: "0.85rem", color: "var(--color-purple)", fontWeight: 800, margin: "0 0 4px" }}>
-            {demoTourStep === 1 && "Welcome & Live Pacing"}
-            {demoTourStep === 2 && "Lightning-Fast Logging"}
-            {demoTourStep === 3 && "Real-Time Auto FX conversion"}
-            {demoTourStep === 4 && "The Satisfaction 'Worth It' Star"}
-            {demoTourStep === 5 && "Forward Looking Timeline"}
-            {demoTourStep === 6 && "Sub-second Search History"}
-          </p>
-
-          {/* Description */}
-          <p style={{ fontSize: "0.8rem", color: "#4B5563", margin: "0 0 12px", lineHeight: "1.4", fontWeight: 500 }}>
-            {demoTourStep === 1 && "Tracks computes your daily pacing dynamically. Today you spent $20.69, which is under your overall target average of $119.29!"}
-            {demoTourStep === 2 && "Tapping the '+' button opens the entry panel to log a purchase in 10s or less. Go ahead, or tap Next to see it open!"}
-            {demoTourStep === 3 && "Type foreign currencies (like Indonesian Rupiah) directly. Tracks calculates conversion math instantly completely offline."}
-            {demoTourStep === 4 && "Check the star if a meal or ride was genuinely worth the cost. Helps analyze travel value beyond pure cost indexes."}
-            {demoTourStep === 5 && "Check out the Plan tab. Estimate future spends and outline your travel targets chronological days in advance."}
-            {demoTourStep === 6 && "Check out the History search. Instantly search flight numbers, checkin times, addresses, or refer costs to friends."}
-          </p>
-
-          {/* Buttons */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <button
-              onClick={() => {
-                if (demoTourStep > 1) {
-                  const prev = demoTourStep - 1;
-                  setDemoTourStep(prev);
-                  handleTourStepTransition(prev);
-                }
-              }}
-              disabled={demoTourStep === 1}
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--color-purple)",
-                background: "none",
-                border: "none",
-                fontWeight: 700,
-                cursor: "pointer",
-                opacity: demoTourStep === 1 ? 0.3 : 1
-              }}
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() => {
-                if (demoTourStep < 6) {
-                  const next = demoTourStep + 1;
-                  setDemoTourStep(next);
-                  handleTourStepTransition(next);
-                } else {
-                  setDemoTourStep(0); // Finished!
-                }
-              }}
-              style={{
-                backgroundColor: "var(--color-orange)",
-                color: "white",
-                border: "none",
-                borderRadius: "10px",
-                padding: "6px 14px",
-                fontSize: "0.78rem",
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: "0 4px 10px rgba(235,94,40,0.2)"
-              }}
-            >
-              {demoTourStep === 6 ? "Finish Tour" : "Next Step →"}
-            </button>
-          </div>
-        </div>
-      )}
       <style>{`
         @keyframes blueGlowPulse {
           0% {
@@ -8671,7 +8573,8 @@ function ManualEntryModal({
   onRefreshRates,
   setGlobalLightbox,
   isTouchDevice,
-  demoTourStep
+  demoTourStep,
+  isDemo = false
 }) {
   const getDraft = () => {
     if (typeof window === 'undefined') return null;

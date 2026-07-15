@@ -9,21 +9,21 @@ const TOUR_STEPS = [
     number: '01',
     title: 'Live Budget Dashboard',
     tagline: 'Stay on top of what you spent.',
-    description: 'Keep track of all travel elements in one place. Log locations, pacing, and category budgets without background process drain.'
+    description: 'Tracks computes your daily pacing dynamically. Today you spent $20.69, which is under your overall target average of $119.29!'
   },
   {
     step: 2,
     number: '02',
     title: 'Log in 10s or Less',
     tagline: 'Lightning-fast offline logging.',
-    description: 'Tap the "+" button at the bottom of the screen to open the log panel. Enter costs quickly while walking around.'
+    description: 'Tapping the "+" button opens the entry panel to log a purchase in 10s or less. Go ahead, or tap Next to see it open!'
   },
   {
     step: 3,
     number: '03',
     title: 'Auto FX Conversion',
     tagline: 'Automatic offline foreign currency math.',
-    description: 'Type local prices (like Indonesian Rupiah) directly. Tracks calculates conversion math instantly completely offline.'
+    description: 'Type foreign currencies (like Indonesian Rupiah) directly. Tracks calculates conversion math instantly completely offline.'
   },
   {
     step: 4,
@@ -37,14 +37,14 @@ const TOUR_STEPS = [
     number: '05',
     title: 'Forward Looking Timeline',
     tagline: 'Stay flexible with your itinerary.',
-    description: 'Check out the Plan tab. Outline locations, targets, and checkin notes chronologically to stay highly flexible.'
+    description: 'Check out the Plan tab. Estimate future spends and outline your travel targets chronological days in advance.'
   },
   {
     step: 6,
     number: '06',
     title: 'Sub-second Search History',
     tagline: 'Recall past details in milliseconds.',
-    description: 'Check out the History tab. Search flight codes, checkin times, stay addresses, or refer costs to friends instantly.'
+    description: 'Check out the History search. Instantly search flight numbers, checkin times, addresses, or refer costs to friends.'
   }
 ];
 
@@ -144,15 +144,66 @@ export default function InteractiveDemo() {
                   {step.tagline}
                 </p>
                 {isActive && (
-                  <p style={{
-                    fontSize: '0.88rem',
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    lineHeight: '1.5',
-                    margin: 0,
+                  <div style={{
                     animation: 'fadeIn 0.4s ease-out'
                   }}>
-                    {step.description}
-                  </p>
+                    <p style={{
+                      fontSize: '0.88rem',
+                      color: 'rgba(255, 255, 255, 0.85)',
+                      lineHeight: '1.5',
+                      margin: '0 0 12px'
+                    }}>
+                      {step.description}
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (activeStep > 1) {
+                            setActiveStep(activeStep - 1);
+                          }
+                        }}
+                        disabled={activeStep === 1}
+                        style={{
+                          fontSize: '0.72rem',
+                          color: activeStep === 1 ? 'rgba(255,255,255,0.3)' : 'white',
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          cursor: activeStep === 1 ? 'not-allowed' : 'pointer',
+                          fontWeight: 700,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (activeStep < TOUR_STEPS.length) {
+                            setActiveStep(activeStep + 1);
+                          } else {
+                            setActiveStep(1);
+                          }
+                        }}
+                        style={{
+                          fontSize: '0.72rem',
+                          color: 'white',
+                          backgroundColor: 'var(--color-orange)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          fontWeight: 800,
+                          boxShadow: '0 4px 10px rgba(235,94,40,0.2)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {activeStep === TOUR_STEPS.length ? 'Start Over ↺' : 'Next Step →'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
