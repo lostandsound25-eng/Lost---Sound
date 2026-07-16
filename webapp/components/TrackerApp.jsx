@@ -1636,6 +1636,7 @@ export default function TrackerApp({ tripId = null, isDemo = false, isReadOnly =
 
   // Prevent bouncy/page-level scrolling on mobile browsers to make the web app feel native
   useEffect(() => {
+    if (isDemo) return;
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
       document.documentElement.style.position = "fixed";
