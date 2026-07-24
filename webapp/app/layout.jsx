@@ -64,6 +64,10 @@ export default function RootLayout({ children }) {
               <KeepInTouchForm />
             </div>
 
+            <p style={{ opacity: 0.65, fontSize: '0.8rem', maxWidth: '620px', margin: '0 auto 1.5rem auto', lineHeight: 1.5, textAlign: 'center' }}>
+              Lost & Sound is reader-supported. As an Amazon Associate and affiliate partner with Booking.com, Agoda, 12Go, and others, we may earn a small commission when you purchase through links on our site at no extra cost to you.
+            </p>
+
             <p style={{ opacity: 0.8 }}>&copy; 2026 Lost & Sound. Sharing our journey to simplify yours.</p>
           </div>
         </footer>
