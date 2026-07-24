@@ -19,14 +19,16 @@ export default function Home() {
               marginBottom: '1rem',
               fontWeight: 600
             }}>
-              This site is everything we wish we knew, all in one place.
+              This site is everything we wish we knew before we started travelling full time.
             </h2>
-            <p style={{ fontSize: '1.2rem', marginBottom: '3rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
-              Explore our <Link href="/blog" style={{ display: 'inline-block', backgroundColor: 'var(--color-golden)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>blog</Link> for tips, recommendations, and honest insights. Browse our curated <Link href="/gallery" style={{ display: 'inline-block', backgroundColor: 'var(--color-purple)', color: 'white', padding: '2px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase' }}>travel gallery</Link> for visual inspiration and highlights of our journeys. 
-              <br /><br />
-              Or, if you are feeling overwhelmed and want help structuring your journey sustainably, we offer 1-on-1 strategy calls to help you curate your own unforgettable route.
+            <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--color-text)', lineHeight: 1.8, maxWidth: '650px' }}>
+              See our <Link href="/travel-tricks" style={{ display: 'inline-block', backgroundColor: 'var(--color-orange)', color: 'white', padding: '3px 16px', borderRadius: '20px', fontWeight: 800, fontSize: '0.9rem', margin: '0 4px', textTransform: 'uppercase', textDecoration: 'none' }}>TRAVEL TRICKS</Link> page for our must-pack items, the gear we use, and our tips and tricks for enjoying the journey through the highs and lows.
             </p>
-            <div className="hero-btns" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            <p style={{ fontSize: '1.15rem', marginBottom: '2.5rem', color: 'var(--color-text)', opacity: 0.9, lineHeight: 1.7, maxWidth: '650px' }}>
+              Explore our <Link href="/blog" style={{ textDecoration: 'underline', color: 'var(--color-purple)', fontWeight: 700 }}>blog</Link> for honest insights, or browse our <Link href="/gallery" style={{ textDecoration: 'underline', color: 'var(--color-purple)', fontWeight: 700 }}>travel gallery</Link> for visual inspiration. If you want help structuring your own journey sustainably, we offer 1-on-1 strategy calls to help you curate your own route.
+            </p>
+            <div className="hero-btns" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <Link href="/travel-tricks" className="btn btn-primary" style={{ backgroundColor: 'var(--color-orange)', borderColor: 'var(--color-orange)' }}>💡 Travel Tricks</Link>
               <Link href="/start-planning" className="btn btn-primary">Start Planning</Link>
               <Link href="/gallery" className="btn btn-secondary">Gallery</Link>
             </div>
@@ -64,7 +66,7 @@ export default function Home() {
               Your Travel. Past, future and present - all in one place.
             </h2>
             <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6', margin: '0 0 30px' }}>
-              Wherever your travels take you, turn your footprints into Tracks.
+              Keep track of what you spent, remember where you went.
             </p>
             <Link href="/tracker" className="btn btn-primary" style={{
               backgroundColor: 'var(--color-golden)',
