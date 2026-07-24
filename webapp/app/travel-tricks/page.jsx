@@ -493,7 +493,7 @@ export default function TravelTricks() {
 
                 <div style={{ padding: '14px', backgroundColor: '#FAFAFA', borderRadius: '14px' }}>
                   <strong style={{ color: 'var(--color-purple)', fontSize: '0.92rem', display: 'block', marginBottom: '4px' }}>🏨 Accommodation 2-Night Rule:</strong>
-                  <span style={{ fontSize: '0.88rem', color: '#555' }}>Compare <a href={AFFILIATE_LINKS.booking} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Booking.com</a>, <a href={AFFILIATE_LINKS.agoda} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Agoda</a>, <a href={AFFILIATE_LINKS.hostelworld} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight 700 }}>Hostelworld</a>, & <a href={AFFILIATE_LINKS.airbnb} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight 700 }}>Airbnb</a>. Book 1–2 nights upfront, then extend in person!</span>
+                  <span style={{ fontSize: '0.88rem', color: '#555' }}>Compare <a href={AFFILIATE_LINKS.booking} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Booking.com</a>, <a href={AFFILIATE_LINKS.agoda} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Agoda</a>, <a href={AFFILIATE_LINKS.hostelworld} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Hostelworld</a>, & <a href={AFFILIATE_LINKS.airbnb} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Airbnb</a>. Book 1–2 nights upfront, then extend in person!</span>
                 </div>
 
                 <div style={{ padding: '14px', backgroundColor: '#FAFAFA', borderRadius: '14px' }}>
@@ -503,7 +503,7 @@ export default function TravelTricks() {
 
                 <div style={{ padding: '14px', backgroundColor: '#FAFAFA', borderRadius: '14px' }}>
                   <strong style={{ color: 'var(--color-purple)', fontSize: '0.92rem', display: 'block', marginBottom: '4px' }}>💳 Multi-Card ATM Strategy:</strong>
-                  <span style={{ fontSize: '0.88rem', color: '#555' }}>Carry backup cards from <a href={AFFILIATE_LINKS.wise} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight 700 }}>Wise</a> and <a href={AFFILIATE_LINKS.revolut} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight 700 }}>Revolut</a> to avoid foreign ATM fee surcharges.</span>
+                  <span style={{ fontSize: '0.88rem', color: '#555' }}>Carry backup cards from <a href={AFFILIATE_LINKS.wise} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Wise</a> and <a href={AFFILIATE_LINKS.revolut} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-orange)', fontWeight: 700 }}>Revolut</a> to avoid foreign ATM fee surcharges.</span>
                 </div>
 
                 <div style={{ padding: '14px', backgroundColor: '#FAFAFA', borderRadius: '14px' }}>
