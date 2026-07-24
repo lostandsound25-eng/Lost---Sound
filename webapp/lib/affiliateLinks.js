@@ -34,6 +34,7 @@ export const AFFILIATE_LINKS = {
   microfiber_towel: 'https://www.amazon.com/s?k=quick+dry+microfiber+travel+towel&tag=lostandsound-20',
   salomon_runners: 'https://www.amazon.com/s?k=Salomon+trail+running+shoes&tag=lostandsound-20',
   ultra_runners: 'https://www.amazon.com/s?k=Altra+ultra+running+shoes&tag=lostandsound-20',
+  sweater: 'https://www.amazon.com/s?k=travel+packable+sweater+hoodie&tag=lostandsound-20',
   universal_adapter: 'https://www.amazon.com/s?k=universal+travel+adapter+all+in+one&tag=lostandsound-20',
   wired_headphones: 'https://www.amazon.com/s?k=wired+earbuds+3.5mm+airplane&tag=lostandsound-20',
   sleeping_mask: 'https://www.amazon.com/s?k=3d+contour+sleep+mask&tag=lostandsound-20',
