@@ -15,7 +15,7 @@ export default function TravelTricksClient() {
 
   // Top 3 Must-Packs Teaser for Stage 02
   const top3MustPacks = [
-    { name: 'Osprey 70L & 55L Packs', tag: 'Primary Luggage', desc: 'Our primary carry-on travel pack setup', image: '/assets/osprey-closed.png', link: getAffiliateLink('osprey_70l') },
+    { name: 'Osprey 70L & 55L Packs', tag: 'Primary Luggage', desc: 'Our primary carry-on travel pack setup', image: '/assets/pack-closed-removebg-preview.png', link: getAffiliateLink('osprey_70l') },
     { name: 'Compression Packing Cubes', tag: 'Space Saver', desc: 'Saves 40% luggage volume instantly', icon: '📦', link: getAffiliateLink('packing_cubes') },
     { name: 'Universal Travel Adapter', tag: 'Tech Essential', desc: 'All-in-one global surge-protected plug', icon: '🔌', link: getAffiliateLink('universal_adapter') },
   ];
@@ -67,8 +67,8 @@ export default function TravelTricksClient() {
     <main style={{ backgroundColor: '#F4F1EA', minHeight: '100vh', padding: '90px 16px 100px' }}>
       <div className="container" style={{ maxWidth: '1080px', margin: '0 auto' }}>
         
-        {/* Organic Header */}
-        <header style={{ textAlign: 'center', marginBottom: '18px' }}>
+        {/* Header */}
+        <header style={{ textAlign: 'center', marginBottom: '24px' }}>
           <span style={{
             textTransform: 'uppercase',
             letterSpacing: '2.5px',
@@ -87,64 +87,6 @@ export default function TravelTricksClient() {
             Travel is a continuous journey. Use our interactive roadmap below to explore each phase — from pre-trip preparation to packing, flight hacks, and relationship rituals.
           </p>
         </header>
-
-        {/* PHASE 3: STICKY LOCKER TRIGGER CONTAINER */}
-        <div style={{
-          position: 'sticky',
-          top: '75px',
-          zIndex: 90,
-          backgroundColor: 'rgba(250, 248, 245, 0.95)',
-          backdropFilter: 'blur(8px)',
-          padding: '10px 18px',
-          borderRadius: '16px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-          border: '1.5px solid var(--color-golden)',
-          display: 'flex',
-          justify: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '10px',
-          marginBottom: '24px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Image 
-              src="/assets/osprey-closed.png" 
-              alt="Fully Packed Osprey Pack" 
-              width={42} 
-              height={42} 
-              style={{ objectFit: 'contain' }}
-            />
-            <div>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-purple)', display: 'block', lineHeight: 1.2 }}>
-                Lost & Sound Packs (Fully Packed)
-              </span>
-              <span style={{ fontSize: '0.75rem', color: '#666' }}>21 Carry-On Essentials Blueprint</span>
-            </div>
-          </div>
-          <button
-            onClick={() => setGearLockerOpen(true)}
-            style={{
-              backgroundColor: 'var(--color-orange)',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '20px',
-              fontWeight: 800,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(235, 94, 40, 0.3)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <span>🎒 See Inside Our Packs</span>
-            <span style={{ fontSize: '0.9rem' }}>→</span>
-          </button>
-        </div>
 
         {/* VISUAL JOURNEY ROADMAP PIPELINE */}
         <div style={{
@@ -295,7 +237,7 @@ export default function TravelTricksClient() {
             </div>
           )}
 
-          {/* PHASE 2: STAGE 2: PACK (Cleaned Up Main Flow with Top 3 Teaser) */}
+          {/* STAGE 2: PACK (Cleaned Up Main Flow with Top 3 Teaser) */}
           {activeStep === 'pack' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
@@ -323,7 +265,7 @@ export default function TravelTricksClient() {
                 </div>
               </div>
 
-              {/* PHASE 2: TOP 3 MUST-PACKS TEASER SECTION */}
+              {/* TOP 3 MUST-PACKS TEASER BANNER SECTION */}
               <div style={{
                 backgroundColor: '#FFFDF7',
                 borderRadius: '20px',
@@ -353,7 +295,7 @@ export default function TravelTricksClient() {
                       cursor: 'pointer'
                     }}
                   >
-                    View Full 21-Item Locker →
+                    Unlock 21-Item Gear Locker →
                   </button>
                 </div>
 
@@ -617,124 +559,203 @@ export default function TravelTricksClient() {
 
       </div>
 
-      {/* PHASE 1: FULL 21-ITEM GEAR LOCKER DASHBOARD MODAL */}
-      {gearLockerOpen && (
-        <div style={{
+      {/* SPEC 1: THE TRIGGER - FLOATING ACTION PILL BUTTON */}
+      <button
+        onClick={() => setGearLockerOpen(!gearLockerOpen)}
+        style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(20, 10, 15, 0.75)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 9999,
+          bottom: '28px',
+          right: '28px',
+          zIndex: 999,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px 16px'
-        }}>
-          <div style={{
-            backgroundColor: '#FFFDF7',
-            width: '92%',
-            maxWidth: '1100px',
-            maxHeight: '88vh',
-            borderRadius: '28px',
-            border: '2px solid var(--color-golden)',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
+          gap: '12px',
+          backgroundColor: 'var(--color-orange)',
+          color: 'white',
+          border: 'none',
+          padding: '10px 22px 10px 14px',
+          borderRadius: '50px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+          cursor: 'pointer',
+          transition: 'all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05) translateY(-3px)';
+          e.currentTarget.style.boxShadow = '0 15px 35px rgba(235, 94, 40, 0.4)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1) translateY(0)';
+          e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+        }}
+      >
+        <Image 
+          src={gearLockerOpen ? "/assets/pack-open-removebg-preview.png" : "/assets/pack-closed-removebg-preview.png"} 
+          alt={gearLockerOpen ? "Open Osprey Pack" : "Closed Osprey Pack"} 
+          width={40} 
+          height={40} 
+          style={{ objectFit: 'contain' }}
+        />
+        <span style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
+          {gearLockerOpen ? 'Close Gear Locker' : '🎒 Unlock 21-Item Gear Locker'}
+        </span>
+      </button>
+
+      {/* SPEC 2 & 3: THE MODAL - OFF-CANVAS RIGHT DRAWER */}
+      {gearLockerOpen && (
+        <div 
+          onClick={() => setGearLockerOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(20, 10, 15, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9998,
             display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            position: 'relative'
-          }}>
-            
-            {/* Modal Header Bar */}
+            justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          {/* Off-Canvas Drawer Container (40% desktop / 100% mobile) */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#FFFDF7',
+              width: '460px',
+              maxWidth: '100vw',
+              height: '100vh',
+              boxShadow: '-10px 0 35px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              zIndex: 9999,
+              animation: 'slideLeft 0.3s ease-out'
+            }}
+          >
+            {/* Drawer Header */}
             <div style={{
               padding: '20px 24px',
-              backgroundColor: 'var(--color-purple)',
-              color: 'white',
+              borderBottom: '1px solid #EAE5D9',
               display: 'flex',
               justify: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              backgroundColor: '#FAF7EE'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '1.6rem' }}>🎒</span>
-                <div>
-                  <h3 style={{ fontSize: '1.3rem', color: 'white', margin: 0, fontFamily: 'var(--font-heading)' }}>
-                    Lost & Sound Carry-On Gear Locker
-                  </h3>
-                  <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>Full 21-Item Tested Blueprint</span>
-                </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-orange)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Interactive Gear Blueprint
+                </span>
+                <h3 style={{ fontSize: '1.25rem', color: 'var(--color-purple)', margin: '2px 0 0', fontFamily: 'var(--font-heading)' }}>
+                  The Carry-On Only Blueprint
+                </h3>
               </div>
               <button
                 onClick={() => setGearLockerOpen(false)}
+                aria-label="Close Drawer"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  color: 'white',
-                  border: 'none',
+                  backgroundColor: 'white',
+                  color: 'var(--color-purple)',
+                  border: '1px solid #E0D8C8',
                   borderRadius: '50%',
                   width: '36px',
                   height: '36px',
-                  fontSize: '1.2rem',
+                  fontSize: '1.1rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                 }}
               >
                 ✕
               </button>
             </div>
 
-            {/* Modal Content Dashboard Layout */}
+            {/* Filter Chips & Search Bar */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #EAE5D9', backgroundColor: '#FFFDF7' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search 21 items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 14px',
+                    borderRadius: '16px',
+                    border: '1.5px solid #E0D8C8',
+                    fontSize: '0.84rem',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {gearCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setGearCategory(cat)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      backgroundColor: gearCategory === cat ? 'var(--color-purple)' : '#EFEAE1',
+                      color: gearCategory === cat ? 'white' : '#555',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat === 'all' ? 'All (21)' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SPEC 3: INSIDE DRAWER LAYOUT (35% Left Sticky Pack / 65% Right 2-Column Grid) */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(250px, 320px) 1fr',
+              display: 'flex',
               flex: 1,
-              overflowY: 'auto'
-            }} className="modal-grid-container">
+              overflowY: 'auto',
+              backgroundColor: '#FFFDF7'
+            }}>
               
-              {/* Left Column: Transparent Osprey Bag Showcase Block */}
+              {/* Left Column (35% width): Sticky Open Osprey Pack PNG */}
               <div style={{
+                width: '35%',
                 backgroundColor: '#FAF5EE',
-                padding: '24px 20px',
-                borderRight: '1.5px solid #EAE2D5',
+                padding: '16px 12px',
+                borderRight: '1px solid #EAE5D9',
                 display: 'flex',
                 flexDirection: 'column',
-                justify: 'space-between',
                 alignItems: 'center',
-                textAlign: 'center'
+                textAlign: 'center',
+                position: 'sticky',
+                top: 0,
+                height: 'fit-content'
               }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-orange)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Primary Pack System
-                  </span>
-                  <h4 style={{ fontSize: '1.2rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: '4px 0 12px' }}>
-                    Osprey Farpoint 70L & 55L
-                  </h4>
-                  <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.45, marginBottom: '16px' }}>
-                    Our proven carry-on pack setup that carried us through 20+ countries without checking bags.
-                  </p>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-orange)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Pack View
+                </span>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-purple)', margin: '2px 0 12px', lineHeight: 1.2 }}>
+                  Osprey Farpoint
                 </div>
 
-                {/* Osprey Open Bag Image Block */}
                 <div style={{
                   position: 'relative',
                   width: '100%',
                   height: '240px',
-                  margin: '10px 0',
-                  borderRadius: '20px',
-                  backgroundColor: 'white',
-                  border: '1.5px solid var(--color-golden)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '12px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
+                  justifyContent: 'center'
                 }}>
                   <Image 
-                    src="/assets/osprey-open.png" 
-                    alt="Open Osprey Farpoint Pack" 
-                    width={220} 
+                    src="/assets/pack-open-removebg-preview.png" 
+                    alt="Opened Osprey Pack Inside Drawer" 
+                    width={140} 
                     height={220} 
                     style={{ objectFit: 'contain', maxHeight: '100%' }}
                   />
@@ -747,68 +768,26 @@ export default function TravelTricksClient() {
                   style={{
                     display: 'block',
                     width: '100%',
-                    padding: '10px 16px',
-                    borderRadius: '16px',
+                    padding: '8px 10px',
+                    borderRadius: '12px',
                     backgroundColor: 'var(--color-purple)',
                     color: 'white',
                     fontWeight: 800,
-                    fontSize: '0.85rem',
+                    fontSize: '0.78rem',
                     textDecoration: 'none',
-                    marginTop: '12px'
+                    marginTop: '16px'
                   }}
                 >
-                  Shop Osprey Packs ↗
+                  Shop Osprey ↗
                 </a>
               </div>
 
-              {/* Right Column: 21-Item Gear Locker Grid */}
-              <div style={{ padding: '24px 20px', backgroundColor: '#FFFDF7' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {gearCategories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setGearCategory(cat)}
-                        style={{
-                          padding: '5px 12px',
-                          borderRadius: '12px',
-                          border: 'none',
-                          backgroundColor: gearCategory === cat ? 'var(--color-purple)' : '#EFEAE1',
-                          color: gearCategory === cat ? 'white' : '#555',
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {cat === 'all' ? 'All Items (21)' : cat}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="🔍 Search gear..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '16px',
-                      border: '1.5px solid #E0D8C8',
-                      fontSize: '0.82rem',
-                      outline: 'none',
-                      maxWidth: '180px'
-                    }}
-                  />
-                </div>
-
-                {/* High-density Gear Grid */}
+              {/* Right Column (65% width): Clean Minimalist 2-Column Grid */}
+              <div style={{ width: '65%', padding: '16px 14px' }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-                  gap: '10px',
-                  maxHeight: '52vh',
-                  overflowY: 'auto',
-                  paddingRight: '4px'
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                  gap: '10px'
                 }}>
                   {filteredGear.map((item, idx) => (
                     <a
@@ -818,14 +797,15 @@ export default function TravelTricksClient() {
                       rel="noopener noreferrer sponsored"
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
+                        flexDirection: 'column',
+                        justify: 'space-between',
                         backgroundColor: 'white',
-                        borderRadius: '14px',
-                        padding: '10px 12px',
-                        border: item.highlight ? '1.5px solid var(--color-golden)' : '1px solid #EAE5D9',
+                        borderRadius: '8px',
+                        padding: '10px 10px',
+                        border: item.highlight ? '1px solid var(--color-golden)' : '1px solid #EAEAE5',
                         textDecoration: 'none',
                         color: 'inherit',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
                         transition: 'all 0.15s ease'
                       }}
                       onMouseEnter={(e) => {
@@ -833,74 +813,31 @@ export default function TravelTricksClient() {
                         e.currentTarget.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = item.highlight ? 'var(--color-golden)' : '#EAE5D9';
+                        e.currentTarget.style.borderColor = item.highlight ? 'var(--color-golden)' : '#EAEAE5';
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
-                      <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{item.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
+                          <span style={{ color: 'var(--color-orange)', fontSize: '0.7rem', fontWeight: 800 }}>↗</span>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-purple)', lineHeight: 1.25, marginBottom: '2px' }}>
                           {item.name}
                         </div>
-                        <div style={{ fontSize: '0.74rem', color: '#777', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {item.desc}
-                        </div>
                       </div>
-                      <span style={{ color: 'var(--color-orange)', fontSize: '0.8rem', fontWeight: 800 }}>↗</span>
+                      <div style={{ fontSize: '0.7rem', color: '#777', marginTop: '4px', lineHeight: 1.25 }}>
+                        {item.desc}
+                      </div>
                     </a>
                   ))}
                 </div>
               </div>
 
             </div>
+
           </div>
         </div>
-      )}
-      {!gearLockerOpen && (
-        <button
-          onClick={() => setGearLockerOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 990,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            backgroundColor: 'var(--color-purple)',
-            color: 'white',
-            border: '2.5px solid var(--color-golden)',
-            padding: '8px 20px 8px 10px',
-            borderRadius: '40px',
-            boxShadow: '0 10px 30px rgba(133, 58, 81, 0.4)',
-            cursor: 'pointer',
-            transition: 'all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.06) translateY(-3px)';
-            e.currentTarget.style.boxShadow = '0 15px 35px rgba(133, 58, 81, 0.5)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-            e.currentTarget.style.boxShadow = '0 10px 30px rgba(133, 58, 81, 0.4)';
-          }}
-        >
-          <Image 
-            src="/assets/osprey-closed.png" 
-            alt="Fully Packed Osprey Pack" 
-            width={46} 
-            height={46} 
-            style={{ objectFit: 'contain' }}
-          />
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: '0.88rem', fontWeight: 900, color: 'white', lineHeight: 1.1 }}>
-              See Inside Our Packs
-            </div>
-            <div style={{ fontSize: '0.72rem', opacity: 0.85, color: 'var(--color-golden)' }}>
-              21 Essential Items →
-            </div>
-          </div>
-        </button>
       )}
 
     </main>
