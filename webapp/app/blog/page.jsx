@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export const metadata = {
   title: 'Travel Blog & Honest Insights | Lost & Sound',
   description: 'Travel inspiration, city guides, packing matrix, and honest stories from full-time travel.',
