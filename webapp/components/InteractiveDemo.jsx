@@ -57,12 +57,27 @@ const TOUR_STEPS = [
 
 export default function InteractiveDemo() {
   const [activeStep, setActiveStep] = useState(1);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '250px' });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const activeStepData = TOUR_STEPS.find(s => s.step === activeStep) || TOUR_STEPS[0];
 
-  // Auto-rotation removed to prevent page distraction - tour advances only on interaction
-
   return (
-    <div style={{
+    <div 
+      ref={containerRef}
+      style={{
       display: 'flex',
       flexDirection: 'row',
       gap: '40px',
@@ -289,11 +304,17 @@ export default function InteractiveDemo() {
             contain: 'content',
             boxSizing: 'border-box'
           }}>
-            <TrackerApp 
-              isDemo={true} 
-              externalTourStep={activeStep}
-              hideFloatingButtons={false}
-            />
+            {isVisible ? (
+              <TrackerApp 
+                isDemo={true} 
+                externalTourStep={activeStep}
+                hideFloatingButtons={false}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-purple)' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, opacity: 0.7 }}>📱 Loading Interactive Simulator...</span>
+              </div>
+            )}
           </div>
 
           {/* Bottom simulated home bar indicator */}

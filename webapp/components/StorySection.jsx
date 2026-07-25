@@ -61,9 +61,15 @@ export default function StorySection({ isExcerpt = false }) {
       <div className="container" style={{ maxWidth: '800px' }}>
         
         <div style={{ textAlign: 'left', marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>
-            {isExcerpt ? 'Our Journey' : 'Our Story'}
-          </h2>
+          {isExcerpt ? (
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '0', fontFamily: 'var(--font-heading)' }}>
+              Our Journey
+            </h2>
+          ) : (
+            <h1 style={{ fontSize: '3rem', marginBottom: '0', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)' }}>
+              Our Story: From Grad School to 20,000 Miles Around the World
+            </h1>
+          )}
         </div>
 
         <div style={{ fontSize: '1.05rem', lineHeight: '1.7', color: '#444' }}>
@@ -81,22 +87,26 @@ export default function StorySection({ isExcerpt = false }) {
                 overflow: 'hidden'
               }}
             >
-              {journeyPhotos.map((photo, idx) => (
-                <div key={photo} style={{ 
-                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                  opacity: idx === photoIndex ? 1 : 0,
-                  transition: 'opacity 1.5s ease-in-out',
-                  zIndex: idx === photoIndex ? 1 : 0
-                }}>
-                  <Image 
-                    src={photo} 
-                    alt="Journey photo" 
-                    layout="fill"
-                    objectFit="cover"
-                    unoptimized={true}
-                  />
-                </div>
-              ))}
+              {journeyPhotos.map((photo, idx) => {
+                if (idx !== photoIndex && idx !== 0) return null;
+                return (
+                  <div key={photo} style={{ 
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    opacity: idx === photoIndex ? 1 : 0,
+                    transition: 'opacity 1.5s ease-in-out',
+                    zIndex: idx === photoIndex ? 1 : 0
+                  }}>
+                    <Image 
+                      src={photo} 
+                      alt="Journey photo" 
+                      layout="fill"
+                      objectFit="cover"
+                      priority={idx === 0}
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             {/* NAVIGATION ARROWS */}
