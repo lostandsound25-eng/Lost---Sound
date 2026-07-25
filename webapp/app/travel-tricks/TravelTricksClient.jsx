@@ -15,7 +15,7 @@ export default function TravelTricksClient() {
 
   // Top 3 Must-Packs Teaser for Stage 02
   const top3MustPacks = [
-    { name: 'Osprey 70L & 55L Packs', tag: 'Primary Luggage', desc: 'Our primary carry-on travel pack setup', icon: '🎒', link: getAffiliateLink('osprey_70l') },
+    { name: 'Osprey 70L & 55L Packs', tag: 'Primary Luggage', desc: 'Our primary carry-on travel pack setup', image: '/assets/osprey-closed.png', link: getAffiliateLink('osprey_70l') },
     { name: 'Compression Packing Cubes', tag: 'Space Saver', desc: 'Saves 40% luggage volume instantly', icon: '📦', link: getAffiliateLink('packing_cubes') },
     { name: 'Universal Travel Adapter', tag: 'Tech Essential', desc: 'All-in-one global surge-protected plug', icon: '🔌', link: getAffiliateLink('universal_adapter') },
   ];
@@ -95,7 +95,7 @@ export default function TravelTricksClient() {
           zIndex: 90,
           backgroundColor: 'rgba(250, 248, 245, 0.95)',
           backdropFilter: 'blur(8px)',
-          padding: '10px 16px',
+          padding: '10px 18px',
           borderRadius: '16px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
           border: '1.5px solid var(--color-golden)',
@@ -106,11 +106,20 @@ export default function TravelTricksClient() {
           gap: '10px',
           marginBottom: '24px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.2rem' }}>🎒</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-purple)' }}>
-              Lost & Sound Gear Locker: <span style={{ color: '#666', fontWeight: 400 }}>21 Carry-On Essentials</span>
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image 
+              src="/assets/osprey-closed.png" 
+              alt="Osprey Closed Pack" 
+              width={40} 
+              height={40} 
+              style={{ objectFit: 'contain' }}
+            />
+            <div>
+              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-purple)', display: 'block', lineHeight: 1.2 }}>
+                Lost & Sound Gear Locker
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#666' }}>21 Carry-On Essentials Blueprint</span>
+            </div>
           </div>
           <button
             onClick={() => setGearLockerOpen(true)}
@@ -118,21 +127,21 @@ export default function TravelTricksClient() {
               backgroundColor: 'var(--color-orange)',
               color: 'white',
               border: 'none',
-              padding: '8px 18px',
+              padding: '10px 20px',
               borderRadius: '20px',
               fontWeight: 800,
               fontSize: '0.88rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(235, 94, 40, 0.3)',
+              boxShadow: '0 4px 14px rgba(235, 94, 40, 0.3)',
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '8px'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <span>🎒 Open Full 21-Item Gear Locker</span>
+            <span>🎒 Open Full 21-Item Locker</span>
             <span style={{ fontSize: '0.9rem' }}>→</span>
           </button>
         </div>
@@ -373,7 +382,11 @@ export default function TravelTricksClient() {
                     >
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '1.6rem' }}>{item.icon}</span>
+                          {item.image ? (
+                            <Image src={item.image} alt={item.name} width={36} height={36} style={{ objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ fontSize: '1.6rem' }}>{item.icon}</span>
+                          )}
                           <span style={{ fontSize: '0.65rem', fontWeight: 800, backgroundColor: 'rgba(235, 94, 40, 0.1)', color: 'var(--color-orange)', padding: '2px 6px', borderRadius: '8px' }}>
                             {item.tag}
                           </span>
@@ -703,7 +716,7 @@ export default function TravelTricksClient() {
                   </p>
                 </div>
 
-                {/* Osprey Bag Image Block (Ready for User PNG Upload) */}
+                {/* Osprey Open Bag Image Block */}
                 <div style={{
                   position: 'relative',
                   width: '100%',
@@ -711,20 +724,20 @@ export default function TravelTricksClient() {
                   margin: '10px 0',
                   borderRadius: '20px',
                   backgroundColor: 'white',
-                  border: '1.5px dashed var(--color-golden)',
+                  border: '1.5px solid var(--color-golden)',
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '16px'
+                  padding: '12px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
                 }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '8px' }}>🎒</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)' }}>
-                    Osprey Farpoint Pack
-                  </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-orange)', fontWeight: 700, marginTop: '4px' }}>
-                    [Transparent PNG Ready]
-                  </span>
+                  <Image 
+                    src="/assets/osprey-open.png" 
+                    alt="Open Osprey Farpoint Pack" 
+                    width={220} 
+                    height={220} 
+                    style={{ objectFit: 'contain', maxHeight: '100%' }}
+                  />
                 </div>
 
                 <a
