@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import StorySection from '../components/StorySection';
 import InteractiveDemo from '../components/InteractiveDemo';
 
@@ -16,7 +17,7 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <>
+    <main>
       <header className="hero">
         <div className="container hero-split">
           <div className="hero-text">
@@ -45,8 +46,23 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-visuals">
-            <img src="/assets/hj-cottonwood.jpg" alt="Couple traveling" className="blob-shape-1" />
-            <img src="/assets/rice-terraces.jpg" alt="Temple" className="blob-shape-2" />
+            <Image 
+              src="/assets/hj-cottonwood.jpg" 
+              alt="Couple traveling" 
+              width={440}
+              height={520}
+              priority={true}
+              className="blob-shape-1" 
+              sizes="(max-width: 768px) 100vw, 440px"
+            />
+            <Image 
+              src="/assets/rice-terraces.jpg" 
+              alt="Rice terraces" 
+              width={380}
+              height={460}
+              className="blob-shape-2" 
+              sizes="(max-width: 768px) 100vw, 380px"
+            />
           </div>
         </div>
       </header>
@@ -102,6 +118,6 @@ export default function Home() {
         </div>
       </section>
 
-    </>
+    </main>
   )
 }
