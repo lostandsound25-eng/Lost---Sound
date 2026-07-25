@@ -109,14 +109,14 @@ export default function TravelTricksClient() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image 
               src="/assets/osprey-closed.png" 
-              alt="Osprey Closed Pack" 
-              width={40} 
-              height={40} 
+              alt="Fully Packed Osprey Pack" 
+              width={42} 
+              height={42} 
               style={{ objectFit: 'contain' }}
             />
             <div>
-              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-purple)', display: 'block', lineHeight: 1.2 }}>
-                Lost & Sound Gear Locker
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-purple)', display: 'block', lineHeight: 1.2 }}>
+                Lost & Sound Packs (Fully Packed)
               </span>
               <span style={{ fontSize: '0.75rem', color: '#666' }}>21 Carry-On Essentials Blueprint</span>
             </div>
@@ -141,7 +141,7 @@ export default function TravelTricksClient() {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <span>🎒 Open Full 21-Item Locker</span>
+            <span>🎒 See Inside Our Packs</span>
             <span style={{ fontSize: '0.9rem' }}>→</span>
           </button>
         </div>
@@ -853,9 +853,54 @@ export default function TravelTricksClient() {
               </div>
 
             </div>
-
           </div>
         </div>
+      )}
+      {!gearLockerOpen && (
+        <button
+          onClick={() => setGearLockerOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 990,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backgroundColor: 'var(--color-purple)',
+            color: 'white',
+            border: '2.5px solid var(--color-golden)',
+            padding: '8px 20px 8px 10px',
+            borderRadius: '40px',
+            boxShadow: '0 10px 30px rgba(133, 58, 81, 0.4)',
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.06) translateY(-3px)';
+            e.currentTarget.style.boxShadow = '0 15px 35px rgba(133, 58, 81, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.boxShadow = '0 10px 30px rgba(133, 58, 81, 0.4)';
+          }}
+        >
+          <Image 
+            src="/assets/osprey-closed.png" 
+            alt="Fully Packed Osprey Pack" 
+            width={46} 
+            height={46} 
+            style={{ objectFit: 'contain' }}
+          />
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 900, color: 'white', lineHeight: 1.1 }}>
+              See Inside Our Packs
+            </div>
+            <div style={{ fontSize: '0.72rem', opacity: 0.85, color: 'var(--color-golden)' }}>
+              21 Essential Items →
+            </div>
+          </div>
+        </button>
       )}
 
     </main>
