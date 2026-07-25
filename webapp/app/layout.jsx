@@ -77,7 +77,7 @@ export default function RootLayout({ children }) {
         </footer>
         <Analytics />
         <GoogleAnalytics gaId="G-858PS2M57B" />
-        <Script id="stay22-script" strategy="afterInteractive">
+        <Script id="stay22-script" strategy="lazyOnload">
           {`
             (function (s, t, a, y, twenty, two) {
               if (window.location.pathname.startsWith('/tracker')) return;
