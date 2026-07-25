@@ -1,4 +1,14 @@
-import Link from 'next/link';
+export const metadata = {
+  title: 'Travel Blog & Honest Insights | Lost & Sound',
+  description: 'Travel inspiration, city guides, packing matrix, and honest stories from full-time travel.',
+  openGraph: {
+    title: 'Travel Blog & Honest Insights | Lost & Sound',
+    description: 'Travel inspiration, city guides, packing matrix, and honest stories from full-time travel.',
+    url: 'https://lostandsound.com/blog',
+    siteName: 'Lost & Sound',
+    type: 'website',
+  },
+};
 
 // Enable ISR: Revalidate the page every 60 seconds
 export const revalidate = 60;

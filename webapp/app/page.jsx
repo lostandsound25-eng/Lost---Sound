@@ -1,6 +1,18 @@
-import Link from 'next/link'
-import StorySection from '../components/StorySection'
-import InteractiveDemo from '../components/InteractiveDemo'
+import Link from 'next/link';
+import StorySection from '../components/StorySection';
+import InteractiveDemo from '../components/InteractiveDemo';
+
+export const metadata = {
+  title: 'Lost & Sound | Travel Tips, Packing Matrix & Companion App',
+  description: 'Sharing our journey to simplify yours. Explore our travel blog, packing tricks, and companion app.',
+  openGraph: {
+    title: 'Lost & Sound | Travel Tips, Packing Matrix & Companion App',
+    description: 'Sharing our journey to simplify yours. Explore our travel blog, packing tricks, and companion app.',
+    url: 'https://lostandsound.com',
+    siteName: 'Lost & Sound',
+    type: 'website',
+  },
+};
 
 export default function Home() {
   return (
