@@ -8,8 +8,6 @@ import { getAffiliateLink } from '../../lib/affiliateLinks';
 export default function TravelTricksClient() {
   const [activeStep, setActiveStep] = useState('prepare'); // 'prepare' | 'pack' | 'go' | 'keepGoing' | 'demo'
   const [gearLockerOpen, setGearLockerOpen] = useState(false);
-  const [gearCategory, setGearCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [fanosOpen, setFanosOpen] = useState(false);
   const [expandedAffirmation, setExpandedAffirmation] = useState(null);
 
@@ -22,39 +20,31 @@ export default function TravelTricksClient() {
 
   // Full 21-Item Gear Locker
   const gearItems = [
-    { name: 'Osprey 70L & 55L Packs', desc: 'Primary carry-on travel packs', category: 'Luggage', link: getAffiliateLink('osprey_70l'), icon: '🎒', highlight: true },
-    { name: 'Compression Packing Cubes', desc: 'Saves 40% luggage volume', category: 'Luggage', link: getAffiliateLink('packing_cubes'), icon: '📦', highlight: true },
-    { name: 'Universal Travel Adapter', desc: 'Global surge-protected plug', category: 'Tech', link: getAffiliateLink('universal_adapter'), icon: '🔌', highlight: true },
-    { name: 'Salomon Trail Runners', desc: 'Hiking & city walk shoes', category: 'Footwear', link: getAffiliateLink('salomon_runners'), icon: '👟', highlight: true },
-    { name: 'Altra Wide-Toe Runners', desc: 'Ergonomic long-distance shoes', category: 'Footwear', link: getAffiliateLink('ultra_runners'), icon: '🏃', highlight: true },
-    { name: 'Osmo Pocket 3', desc: 'Stabilized vlogging camera', category: 'Tech', link: getAffiliateLink('osmo_pocket_3'), icon: '📹', highlight: true },
+    { name: 'Osprey 70L & 55L Packs', desc: 'Primary carry-on travel packs', link: getAffiliateLink('osprey_70l'), icon: '🎒', highlight: true },
+    { name: 'Compression Packing Cubes', desc: 'Saves 40% luggage volume', link: getAffiliateLink('packing_cubes'), icon: '📦', highlight: true },
+    { name: 'Universal Travel Adapter', desc: 'Global surge-protected plug', link: getAffiliateLink('universal_adapter'), icon: '🔌', highlight: true },
+    { name: 'Salomon Trail Runners', desc: 'Hiking & city walk shoes', link: getAffiliateLink('salomon_runners'), icon: '👟', highlight: true },
+    { name: 'Altra Wide-Toe Runners', desc: 'Ergonomic long-distance shoes', link: getAffiliateLink('ultra_runners'), icon: '🏃', highlight: true },
+    { name: 'Osmo Pocket 3', desc: 'Stabilized vlogging camera', link: getAffiliateLink('osmo_pocket_3'), icon: '📹', highlight: true },
 
-    { name: 'DJI Neo / Mini Drone', desc: 'Ultralight travel drone', category: 'Tech', link: getAffiliateLink('dji_drone'), icon: '🚁' },
-    { name: 'JBL GO4 Speaker', desc: 'Compact waterproof speaker', category: 'Tech', link: getAffiliateLink('jbl_speaker'), icon: '🔊' },
-    { name: 'Olympus Street Camera', desc: 'Discrete street photo camera', category: 'Tech', link: getAffiliateLink('olympus_camera'), icon: '📷' },
-    { name: 'Kindle Paperwhite', desc: 'Glare-free digital library', category: 'Tech', link: getAffiliateLink('kindle'), icon: '📚' },
-    { name: 'Kindle Protective Cover', desc: 'Durable protective case', category: 'Tech', link: getAffiliateLink('kindle_case'), icon: '📖' },
-    { name: 'Side-by-Side Cable Pouch', desc: 'Untangled cord & tech organizer', category: 'Tech', link: getAffiliateLink('tech_organizer'), icon: '💼' },
-    { name: 'Wired Headphones (3.5mm)', desc: 'Zero battery drain inflight set', category: 'Tech', link: getAffiliateLink('wired_headphones'), icon: '🎧' },
-    { name: 'Apple AirTags (4-Pack)', desc: 'Global GPS luggage trackers', category: 'Tech', link: getAffiliateLink('airtags'), icon: '🏷️' },
+    { name: 'DJI Neo / Mini Drone', desc: 'Ultralight travel drone', link: getAffiliateLink('dji_drone'), icon: '🚁' },
+    { name: 'JBL GO4 Speaker', desc: 'Compact waterproof speaker', link: getAffiliateLink('jbl_speaker'), icon: '🔊' },
+    { name: 'Olympus Street Camera', desc: 'Discrete street photo camera', link: getAffiliateLink('olympus_camera'), icon: '📷' },
+    { name: 'Kindle Paperwhite', desc: 'Glare-free digital library', link: getAffiliateLink('kindle'), icon: '📚' },
+    { name: 'Kindle Protective Cover', desc: 'Durable protective case', link: getAffiliateLink('kindle_case'), icon: '📖' },
+    { name: 'Side-by-Side Cable Pouch', desc: 'Untangled cord & tech organizer', link: getAffiliateLink('tech_organizer'), icon: '💼' },
+    { name: 'Wired Headphones (3.5mm)', desc: 'Zero battery drain inflight set', link: getAffiliateLink('wired_headphones'), icon: '🎧' },
+    { name: 'Apple AirTags (4-Pack)', desc: 'Global GPS luggage trackers', link: getAffiliateLink('airtags'), icon: '🏷️' },
 
-    { name: 'Heavy-Duty Carabiners', desc: 'Clips shoes & wet gear outside', category: 'Luggage', link: getAffiliateLink('carabiners'), icon: '🧗' },
-    { name: 'Cozy Transit Sweater', desc: 'Blanket & pillow for cold AC', category: 'Clothing', link: getAffiliateLink('sweater'), icon: '🧥' },
-    { name: 'Lightweight Temple Sarong', desc: 'Modest cover for temple visits', category: 'Clothing', link: getAffiliateLink('temple_sarong'), icon: '🧣' },
+    { name: 'Heavy-Duty Carabiners', desc: 'Clips shoes & wet gear outside', link: getAffiliateLink('carabiners'), icon: '🧗' },
+    { name: 'Cozy Transit Sweater', desc: 'Blanket & pillow for cold AC', link: getAffiliateLink('sweater'), icon: '🧥' },
+    { name: 'Lightweight Temple Sarong', desc: 'Modest cover for temple visits', link: getAffiliateLink('temple_sarong'), icon: '🧣' },
 
-    { name: 'Travel Resistance Bands', desc: 'Zero-weight full body workout', category: 'Fitness', link: getAffiliateLink('resistance_bands'), icon: '💪' },
-    { name: 'Foldable Travel Yoga Mat', desc: 'Thin mat for stretch sessions', category: 'Fitness', link: getAffiliateLink('yoga_mat'), icon: '🧘' },
-    { name: 'Pharmacy & Liquid Bandages', desc: 'Meds & instant cut sealant', category: 'Health', link: getAffiliateLink('liquid_bandage'), icon: '🩹' },
-    { name: '3D Sleeping Contour Mask', desc: '100% light blackout mask', category: 'Comfort', link: getAffiliateLink('sleeping_mask'), icon: '😴' },
+    { name: 'Travel Resistance Bands', desc: 'Zero-weight full body workout', link: getAffiliateLink('resistance_bands'), icon: '💪' },
+    { name: 'Foldable Travel Yoga Mat', desc: 'Thin mat for stretch sessions', link: getAffiliateLink('yoga_mat'), icon: '🧘' },
+    { name: 'Pharmacy & Liquid Bandages', desc: 'Meds & instant cut sealant', link: getAffiliateLink('liquid_bandage'), icon: '🩹' },
+    { name: '3D Sleeping Contour Mask', desc: '100% light blackout mask', link: getAffiliateLink('sleeping_mask'), icon: '😴' },
   ];
-
-  const gearCategories = ['all', 'Luggage', 'Tech', 'Footwear', 'Clothing', 'Fitness', 'Health', 'Comfort'];
-
-  const filteredGear = gearItems.filter(item => {
-    const matchesCat = gearCategory === 'all' || item.category === gearCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.desc.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
 
   const journeySteps = [
     { id: 'prepare', step: '01', title: 'PREPARE', subtitle: 'Work Backwards & Save', icon: '📝' },
@@ -285,17 +275,18 @@ export default function TravelTricksClient() {
                   <button
                     onClick={() => setGearLockerOpen(true)}
                     style={{
-                      padding: '6px 14px',
-                      borderRadius: '16px',
-                      border: '1.5px solid var(--color-purple)',
-                      backgroundColor: 'white',
-                      color: 'var(--color-purple)',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      backgroundColor: 'var(--color-orange)',
+                      color: 'white',
                       fontWeight: 800,
-                      fontSize: '0.82rem',
-                      cursor: 'pointer'
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(235, 94, 40, 0.25)'
                     }}
                   >
-                    Unlock 21-Item Gear Locker →
+                    Unzip Our Packs →
                   </button>
                 </div>
 
@@ -325,7 +316,7 @@ export default function TravelTricksClient() {
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                           {item.image ? (
-                            <Image src={item.image} alt={item.name} width={36} height={36} style={{ objectFit: 'contain' }} />
+                            <Image src={item.image} alt={item.name} width={38} height={38} style={{ objectFit: 'contain' }} />
                           ) : (
                             <span style={{ fontSize: '1.6rem' }}>{item.icon}</span>
                           )}
@@ -596,7 +587,7 @@ export default function TravelTricksClient() {
           style={{ objectFit: 'contain' }}
         />
         <span style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
-          {gearLockerOpen ? 'Close Gear Locker' : '🎒 Unlock 21-Item Gear Locker'}
+          {gearLockerOpen ? 'Close Gear Locker' : 'Unzip Our Packs'}
         </span>
       </button>
 
@@ -614,8 +605,7 @@ export default function TravelTricksClient() {
             backdropFilter: 'blur(4px)',
             zIndex: 9998,
             display: 'flex',
-            justifyContent: 'flex-end',
-            animation: 'fadeIn 0.2s ease-out'
+            justify: 'flex-end'
           }}
         >
           {/* Off-Canvas Drawer Container (40% desktop / 100% mobile) */}
@@ -630,11 +620,10 @@ export default function TravelTricksClient() {
               display: 'flex',
               flexDirection: 'column',
               position: 'relative',
-              zIndex: 9999,
-              animation: 'slideLeft 0.3s ease-out'
+              zIndex: 9999
             }}
           >
-            {/* Drawer Header */}
+            {/* Drawer Header (NO Search Bar / Category Filter Chips) */}
             <div style={{
               padding: '20px 24px',
               borderBottom: '1px solid #EAE5D9',
@@ -674,48 +663,7 @@ export default function TravelTricksClient() {
               </button>
             </div>
 
-            {/* Filter Chips & Search Bar */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #EAE5D9', backgroundColor: '#FFFDF7' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search 21 items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 14px',
-                    borderRadius: '16px',
-                    border: '1.5px solid #E0D8C8',
-                    fontSize: '0.84rem',
-                    outline: 'none',
-                    backgroundColor: 'white'
-                  }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {gearCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setGearCategory(cat)}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      border: 'none',
-                      backgroundColor: gearCategory === cat ? 'var(--color-purple)' : '#EFEAE1',
-                      color: gearCategory === cat ? 'white' : '#555',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {cat === 'all' ? 'All (21)' : cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* SPEC 3: INSIDE DRAWER LAYOUT (35% Left Sticky Pack / 65% Right 2-Column Grid) */}
+            {/* SPEC 3: INSIDE DRAWER LAYOUT (35% Left Sticky Open Pack / 65% Right 2-Column Grid) */}
             <div style={{
               display: 'flex',
               flex: 1,
@@ -727,7 +675,7 @@ export default function TravelTricksClient() {
               <div style={{
                 width: '35%',
                 backgroundColor: '#FAF5EE',
-                padding: '16px 12px',
+                padding: '20px 12px',
                 borderRight: '1px solid #EAE5D9',
                 display: 'flex',
                 flexDirection: 'column',
@@ -740,7 +688,7 @@ export default function TravelTricksClient() {
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-orange)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Pack View
                 </span>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-purple)', margin: '2px 0 12px', lineHeight: 1.2 }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-purple)', margin: '2px 0 14px', lineHeight: 1.2 }}>
                   Osprey Farpoint
                 </div>
 
@@ -782,14 +730,14 @@ export default function TravelTricksClient() {
                 </a>
               </div>
 
-              {/* Right Column (65% width): Clean Minimalist 2-Column Grid */}
+              {/* Right Column (65% width): Clean Minimalist 2-Column Grid (All 21 Items) */}
               <div style={{ width: '65%', padding: '16px 14px' }}>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
                   gap: '10px'
                 }}>
-                  {filteredGear.map((item, idx) => (
+                  {gearItems.map((item, idx) => (
                     <a
                       key={idx}
                       href={item.link}
