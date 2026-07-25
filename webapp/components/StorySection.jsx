@@ -102,7 +102,6 @@ export default function StorySection({ isExcerpt = false }) {
                       layout="fill"
                       objectFit="cover"
                       priority={idx === 0}
-                      loading={idx === 0 ? 'eager' : 'lazy'}
                     />
                   </div>
                 );
