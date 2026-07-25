@@ -7,9 +7,9 @@ import Navbar from '../components/Navbar'
 import Link from 'next/link'
 import Script from 'next/script'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-body' })
-const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '600', '800', '900'] })
-const caveat = Caveat({ subsets: ['latin'], variable: '--font-hand' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '700'], display: 'swap' })
+const caveat = Caveat({ subsets: ['latin'], variable: '--font-hand', display: 'swap' })
 
 export const metadata = {
   metadataBase: new URL('https://lostandsound.com'),
