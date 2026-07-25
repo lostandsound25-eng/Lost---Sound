@@ -50,7 +50,7 @@ export default function Navbar() {
             <Link href="/about">Our Story</Link>
             <Link href="/start-planning" className="btn btn-primary btn-nav">Start Planning</Link>
             
-            <div className="nav-socials" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="nav-socials" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <a href="mailto:lostandsound25@gmail.com" aria-label="Email Us" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
               </a>
@@ -60,8 +60,8 @@ export default function Navbar() {
               <a href="https://www.tiktok.com/@lostandsound.jpg?_r=1&_t=ZS-96DtrMvLXi1" target="_blank" rel="noopener noreferrer" aria-label="TikTok" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
               </a>
-              <a href="https://pin.it/64nvnZg6i" target="_blank" rel="noopener noreferrer" aria-label="Pinterest" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '-6px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--color-purple)"><path d="M9.686 18.885c.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.02 0 1.513.769 1.513 1.688 0 1.027-.653 2.567-.992 3.993-.284 1.194.598 2.169 1.776 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.397 2.967 7.397 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146"/></svg>
+              <a href="https://pin.it/64nvnZg6i" target="_blank" rel="noopener noreferrer" aria-label="Pinterest" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <svg width="19" height="22" viewBox="4 2 16 20" fill="var(--color-purple)"><path d="M9.686 18.885c.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.02 0 1.513.769 1.513 1.688 0 1.027-.653 2.567-.992 3.993-.284 1.194.598 2.169 1.776 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.397 2.967 7.397 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146"/></svg>
               </a>
             </div>
           </div>
@@ -128,8 +128,8 @@ export default function Navbar() {
               <a href="https://www.tiktok.com/@lostandsound.jpg?_r=1&_t=ZS-96DtrMvLXi1" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-purple)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
               </a>
-              <a href="https://pin.it/64nvnZg6i" target="_blank" rel="noopener noreferrer" aria-label="Pinterest" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '-6px' }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--color-purple)"><path d="M9.686 18.885c.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.02 0 1.513.769 1.513 1.688 0 1.027-.653 2.567-.992 3.993-.284 1.194.598 2.169 1.776 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.397 2.967 7.397 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146"/></svg>
+              <a href="https://pin.it/64nvnZg6i" target="_blank" rel="noopener noreferrer" aria-label="Pinterest" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <svg width="22" height="26" viewBox="4 2 16 20" fill="var(--color-purple)"><path d="M9.686 18.885c.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.02 0 1.513.769 1.513 1.688 0 1.027-.653 2.567-.992 3.993-.284 1.194.598 2.169 1.776 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.397 2.967 7.397 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146"/></svg>
               </a>
             </div>
           </div>

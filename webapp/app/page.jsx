@@ -49,19 +49,21 @@ export default function Home() {
             <Image 
               src="/assets/hj-cottonwood.jpg" 
               alt="Couple traveling" 
-              width={440}
-              height={520}
+              width={340}
+              height={400}
               priority={true}
+              quality={60}
               className="blob-shape-1" 
-              sizes="(max-width: 768px) 100vw, 440px"
+              sizes="(max-width: 768px) 320px, 440px"
             />
             <Image 
               src="/assets/rice-terraces.jpg" 
               alt="Rice terraces" 
-              width={380}
-              height={460}
+              width={300}
+              height={360}
+              quality={60}
               className="blob-shape-2" 
-              sizes="(max-width: 768px) 100vw, 380px"
+              sizes="(max-width: 768px) 280px, 380px"
             />
           </div>
         </div>
