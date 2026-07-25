@@ -52,6 +52,8 @@ export default function Home() {
               width={440}
               height={520}
               priority={true}
+              fetchPriority="high"
+              decoding="sync"
               className="blob-shape-1" 
               sizes="(max-width: 768px) 380px, 440px"
             />
@@ -60,6 +62,7 @@ export default function Home() {
               alt="Rice terraces" 
               width={380}
               height={460}
+              decoding="async"
               className="blob-shape-2" 
               sizes="(max-width: 768px) 340px, 380px"
             />
