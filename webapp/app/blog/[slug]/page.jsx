@@ -26,14 +26,28 @@ async function getPost(slug) {
   }
 }
 
-// Normalize heading hierarchy for SEO:
-// Ensures article title is the ONE AND ONLY <h1> tag on the page.
-// Safely converts any inner body <h1> to <h2> while preserving <h2>, <h3>, <h4>, <h5>, <h6> exactly as dictated in WordPress.
-function normalizeHeadingHierarchy(html) {
+// Normalize heading hierarchy & internal blog URLs for SEO:
+// 1. Ensures article title is the ONE AND ONLY <h1> tag on the page.
+// 2. Rewrites any wpcomstaging.com or wordpress.com internal blog links to /blog/[slug].
+function normalizeContent(html) {
   if (!html) return '';
-  return html
+  let cleaned = html
     .replace(/<h1(\s+[^>]*)?>/gi, '<h2$1>')
     .replace(/<\/h1>/gi, '</h2>');
+
+  // Rewrite any wpcomstaging.com or wordpress.com internal post links to /blog/[slug]
+  cleaned = cleaned.replace(
+    /href="https?:\/\/[a-z0-9-]+\.(wpcomstaging|wordpress)\.com(?:\/\d{4}\/\d{2}\/\d{2})?\/([a-z0-9-]+)\/?"/gi,
+    'href="/blog/$2"'
+  );
+
+  // Normalize full lostandsoundtravel.com/blog/[slug] URLs to relative /blog/[slug]
+  cleaned = cleaned.replace(
+    /href="https?:\/\/(www\.)?lostandsoundtravel\.com\/blog\/([a-z0-9-]+)\/?"/gi,
+    'href="/blog/$2"'
+  );
+
+  return cleaned;
 }
 
 export default async function BlogPostPage({ params }) {
@@ -48,7 +62,7 @@ export default async function BlogPostPage({ params }) {
     || (post.content.match(/<img[^>]+src="([^">]+)"/) ? post.content.match(/<img[^>]+src="([^">]+)"/)[1] : null)
     || '/assets/hero.png';
 
-  const cleanContent = normalizeHeadingHierarchy(post.content);
+  const cleanContent = normalizeContent(post.content);
 
   return (
     <article style={{ backgroundColor: 'white', minHeight: '100vh' }}>
