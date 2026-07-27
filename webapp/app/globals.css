@@ -74,49 +74,60 @@ img {
   line-height: 1.25;
 }
 
-/* H2: Main chapters or sections - Signature Golden Yellow & Bold (1.5rem) */
+/* H1 inside content (fallback if present) */
 .blog-content h1,
+.blog-content h1 strong {
+  font-size: 2.2rem !important;
+  font-weight: 800 !important;
+  color: var(--color-purple) !important;
+  margin-top: 3rem !important;
+  margin-bottom: 1.2rem !important;
+}
+
+/* H2: Main chapters or sections - Signature Golden Yellow, 1.85rem, Bold */
 .blog-content h2,
-.blog-content h1 strong,
 .blog-content h2 strong { 
-  font-size: 1.5rem !important; 
+  font-size: 1.85rem !important; 
   font-weight: 800 !important;
   color: var(--color-golden) !important;
-  margin-top: 2.2rem !important;
+  margin-top: 2.5rem !important;
   margin-bottom: 1rem !important;
 }
 
-/* H3: Sub-sections under H2 - Signature Golden Yellow, 1.35rem, NOT bold */
+/* H3: Sub-sections under H2 - Signature Golden Yellow, 1.45rem, NOT bold */
 .blog-content h3,
 .blog-content h3 strong { 
-  font-size: 1.35rem !important; 
+  font-size: 1.45rem !important; 
   font-weight: 400 !important;
   color: var(--color-golden) !important;
-  margin-top: 1.8rem !important;
+  margin-top: 2rem !important;
   margin-bottom: 0.8rem !important;
 }
 
-/* H4: Sub-sections under H3 */
+/* H4: Sub-sections under H3 - Warm Orange, 1.25rem */
 .blog-content h4,
 .blog-content h4 strong { 
-  font-size: 1.45rem !important; 
+  font-size: 1.25rem !important; 
   font-weight: 600 !important;
   color: var(--color-orange) !important;
-  margin-top: 1.8rem !important;
-  margin-bottom: 0.8rem !important;
-}
-
-.blog-content h5 { 
-  font-size: 1.25rem !important; 
-  font-weight: 700 !important;
-  color: var(--color-purple) !important;
-  margin-top: 1.5rem !important;
+  margin-top: 1.6rem !important;
   margin-bottom: 0.6rem !important;
 }
 
-.blog-content h6 { 
-  font-size: 1.1rem !important; 
-  font-weight: 700 !important;
+/* H5 & H6 */
+.blog-content h5,
+.blog-content h5 strong { 
+  font-size: 1.15rem !important; 
+  font-weight: 600 !important;
+  color: var(--color-purple) !important;
+  margin-top: 1.4rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.blog-content h6,
+.blog-content h6 strong { 
+  font-size: 1.05rem !important; 
+  font-weight: 600 !important;
   color: #555 !important;
   margin-top: 1.2rem !important;
   margin-bottom: 0.5rem !important;
