@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import LightboxWrapper from '../../../components/LightboxWrapper';
 
-// Enable ISR: Revalidate the post every 60 seconds
-export const revalidate = 60;
+// Enable instant revalidation for fresh SEO HTML rendering (no stale ISR cache)
+export const revalidate = 0;
 
 import { fetchWithTimeout } from '../../../lib/fetch';
 
@@ -11,7 +11,7 @@ async function getPost(slug) {
   try {
     const res = await fetchWithTimeout(
       `https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts/slug:${encodeURIComponent(slug)}`,
-      { next: { revalidate: 60 }, timeout: 5000 }
+      { cache: 'no-store', timeout: 5000 }
     );
     
     if (!res.ok) {
@@ -29,23 +29,12 @@ async function getPost(slug) {
 // Normalize heading hierarchy & internal blog URLs for SEO:
 // 1. Ensures article title is the ONE AND ONLY <h1> tag on the page.
 // 2. Converts any inner body <h1> to <h2>.
-// 3. If a post has no <h2> tags at all (authored entirely in <h3>), promotes <h3> to <h2> chapters.
-// 4. Rewrites any wpcomstaging.com or wordpress.com internal blog links to /blog/[slug].
+// 3. Rewrites any wpcomstaging.com or wordpress.com internal blog links to /blog/[slug].
 function normalizeContent(html) {
   if (!html) return '';
   let cleaned = html
     .replace(/<h1(\s+[^>]*)?>/gi, '<h2$1>')
     .replace(/<\/h1>/gi, '</h2>');
-
-  // If post has no <h2> tags at all, promote top-level <h3> tags to <h2>
-  const hasH2 = /<h2[\s>]/i.test(cleaned);
-  if (!hasH2) {
-    cleaned = cleaned
-      .replace(/<h3(\s+[^>]*)?>/gi, '<h2$1>')
-      .replace(/<\/h3>/gi, '</h2>')
-      .replace(/<h4(\s+[^>]*)?>/gi, '<h3$1>')
-      .replace(/<\/h4>/gi, '</h3>');
-  }
 
   // Rewrite any wpcomstaging.com or wordpress.com internal post links to /blog/[slug]
   cleaned = cleaned.replace(
