@@ -452,8 +452,7 @@ section {
   position: relative;
   height: 550px;
   width: 100%;
-  aspect-ratio: 440 / 550;
-  contain: layout paint;
+  overflow: visible;
 }
 
 .blob-shape-1 {
@@ -464,9 +463,11 @@ section {
   height: 85%;
   object-fit: cover;
   border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: morph 8s ease-in-out infinite;
   border: 14px solid white;
   box-shadow: 25px 25px 0 var(--color-golden), 0 30px 60px rgba(0,0,0,0.1);
   z-index: 1;
+  will-change: border-radius;
 }
 
 .blob-shape-2 {
@@ -477,9 +478,11 @@ section {
   height: 55%;
   object-fit: cover;
   border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  animation: morph 10s ease-in-out infinite reverse;
   border: 12px solid white;
   box-shadow: -20px 20px 0 var(--color-teal), 0 20px 40px rgba(0,0,0,0.1);
   z-index: 2;
+  will-change: border-radius;
 }
 
 @keyframes morph {
