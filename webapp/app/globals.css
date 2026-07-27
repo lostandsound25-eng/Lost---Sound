@@ -74,61 +74,73 @@ img {
   line-height: 1.25;
 }
 
-/* H1 inside content (fallback if present) */
+/* H1 inside content (fallback) */
 .blog-content h1,
-.blog-content h1 strong {
+.blog-content h1 strong,
+.blog-content h1 a,
+.blog-content h1 span {
   font-size: 2.2rem !important;
   font-weight: 800 !important;
-  color: var(--color-purple) !important;
+  color: var(--color-orange) !important;
   margin-top: 3rem !important;
   margin-bottom: 1.2rem !important;
 }
 
-/* H2: Main chapters or sections - Signature Golden Yellow, 1.85rem, Bold */
+/* H2: Main chapters/sections - Signature Orange & Bold (2.1rem) */
 .blog-content h2,
-.blog-content h2 strong { 
-  font-size: 1.85rem !important; 
+.blog-content h2 strong,
+.blog-content h2 a,
+.blog-content h2 span { 
+  font-size: 2.1rem !important; 
   font-weight: 800 !important;
-  color: var(--color-golden) !important;
-  margin-top: 2.5rem !important;
-  margin-bottom: 1rem !important;
+  color: var(--color-orange) !important;
+  margin-top: 2.8rem !important;
+  margin-bottom: 1.2rem !important;
 }
 
-/* H3: Sub-sections under H2 - Signature Golden Yellow, 1.45rem, NOT bold */
+/* H3: Sub-sections under H2 - Signature Golden Yellow, 1.5rem, NOT bold */
 .blog-content h3,
-.blog-content h3 strong { 
-  font-size: 1.45rem !important; 
+.blog-content h3 strong,
+.blog-content h3 a,
+.blog-content h3 span { 
+  font-size: 1.5rem !important; 
   font-weight: 400 !important;
   color: var(--color-golden) !important;
   margin-top: 2rem !important;
   margin-bottom: 0.8rem !important;
 }
 
-/* H4: Sub-sections under H3 - Warm Orange, 1.25rem */
+/* H4: Sub-sections under H3 - Signature Golden Yellow, 1.25rem, NOT bold */
 .blog-content h4,
-.blog-content h4 strong { 
+.blog-content h4 strong,
+.blog-content h4 a,
+.blog-content h4 span { 
   font-size: 1.25rem !important; 
-  font-weight: 600 !important;
-  color: var(--color-orange) !important;
+  font-weight: 400 !important;
+  color: var(--color-golden) !important;
   margin-top: 1.6rem !important;
   margin-bottom: 0.6rem !important;
 }
 
-/* H5 & H6 */
+/* H5 & H6 - Signature Golden Yellow, NOT bold */
 .blog-content h5,
-.blog-content h5 strong { 
+.blog-content h5 strong,
+.blog-content h5 a,
+.blog-content h5 span { 
   font-size: 1.15rem !important; 
-  font-weight: 600 !important;
-  color: var(--color-purple) !important;
+  font-weight: 400 !important;
+  color: var(--color-golden) !important;
   margin-top: 1.4rem !important;
   margin-bottom: 0.5rem !important;
 }
 
 .blog-content h6,
-.blog-content h6 strong { 
+.blog-content h6 strong,
+.blog-content h6 a,
+.blog-content h6 span { 
   font-size: 1.05rem !important; 
-  font-weight: 600 !important;
-  color: #555 !important;
+  font-weight: 400 !important;
+  color: var(--color-golden) !important;
   margin-top: 1.2rem !important;
   margin-bottom: 0.5rem !important;
 }
