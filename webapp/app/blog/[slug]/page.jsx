@@ -26,6 +26,16 @@ async function getPost(slug) {
   }
 }
 
+// Normalize heading hierarchy for SEO:
+// Ensures article title is the ONE AND ONLY <h1> tag on the page.
+// Safely converts any inner body <h1> to <h2> while preserving <h2>, <h3>, <h4>, <h5>, <h6> exactly as dictated in WordPress.
+function normalizeHeadingHierarchy(html) {
+  if (!html) return '';
+  return html
+    .replace(/<h1(\s+[^>]*)?>/gi, '<h2$1>')
+    .replace(/<\/h1>/gi, '</h2>');
+}
+
 export default async function BlogPostPage({ params }) {
   const post = await getPost(params.slug);
 
@@ -37,6 +47,8 @@ export default async function BlogPostPage({ params }) {
   const featuredImage = post.featured_image 
     || (post.content.match(/<img[^>]+src="([^">]+)"/) ? post.content.match(/<img[^>]+src="([^">]+)"/)[1] : null)
     || '/assets/hero.png';
+
+  const cleanContent = normalizeHeadingHierarchy(post.content);
 
   return (
     <article style={{ backgroundColor: 'white', minHeight: '100vh' }}>
@@ -57,6 +69,7 @@ export default async function BlogPostPage({ params }) {
             ← Back to Stories
           </Link>
           
+          {/* Main Article H1 Title (The ONLY <h1> tag on the page for SEO) */}
           <h1 
             style={{ fontSize: '3.5rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)', lineHeight: '1.1' }}
             dangerouslySetInnerHTML={{ __html: post.title }}
@@ -85,9 +98,9 @@ export default async function BlogPostPage({ params }) {
         />
       </div>
 
-      {/* Article Body */}
+      {/* Article Body with Strict H2-H6 WordPress Hierarchy */}
       <div className="container" style={{ maxWidth: '800px', padding: '80px 24px' }}>
-        <LightboxWrapper html={post.content} />
+        <LightboxWrapper html={cleanContent} />
       </div>
 
       {/* Footer CTA */}

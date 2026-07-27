@@ -63,24 +63,57 @@ img {
 .mb-4 { margin-bottom: 2rem; }
 .mb-5 { margin-bottom: 3rem; }
 
-/* WordPress Content Styling */
+/* WordPress Content Styling - SEO Heading Hierarchy */
+.blog-content h1, 
 .blog-content h2, 
 .blog-content h3, 
 .blog-content h4,
 .blog-content h5,
 .blog-content h6 {
-  margin-top: 3rem !important;
-  margin-bottom: 1.5rem !important;
-  color: var(--color-golden);
   font-family: var(--font-heading);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
-.blog-content h2 { font-size: 2.5rem !important; }
-.blog-content h3 { font-size: 2rem !important; }
-.blog-content h4 { font-size: 1.6rem !important; }
-.blog-content h5 { font-size: 1.35rem !important; }
-.blog-content h6 { font-size: 1.2rem !important; }
+.blog-content h1,
+.blog-content h2 { 
+  font-size: 2.4rem !important; 
+  font-weight: 800 !important;
+  color: var(--color-purple) !important;
+  margin-top: 3rem !important;
+  margin-bottom: 1.2rem !important;
+}
+
+.blog-content h3 { 
+  font-size: 1.85rem !important; 
+  font-weight: 700 !important;
+  color: var(--color-purple) !important;
+  margin-top: 2.4rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.blog-content h4 { 
+  font-size: 1.45rem !important; 
+  font-weight: 700 !important;
+  color: var(--color-orange) !important;
+  margin-top: 1.8rem !important;
+  margin-bottom: 0.8rem !important;
+}
+
+.blog-content h5 { 
+  font-size: 1.25rem !important; 
+  font-weight: 700 !important;
+  color: var(--color-purple) !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.6rem !important;
+}
+
+.blog-content h6 { 
+  font-size: 1.1rem !important; 
+  font-weight: 700 !important;
+  color: #555 !important;
+  margin-top: 1.2rem !important;
+  margin-bottom: 0.5rem !important;
+}
 
 /* Support WordPress text alignments */
 .blog-content .has-text-align-center,
