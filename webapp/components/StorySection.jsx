@@ -39,16 +39,20 @@ export default function StorySection({ isExcerpt = false }) {
     julie: {
       name: 'Julie 🇮🇪',
       color: 'Emerald Green',
-      book: 'The Alchemist',
-      vibe: 'Slow mornings & hidden coastal trails',
-      fact: 'Has a sixth sense for finding the best local bakeries.'
+      food: 'Pizza',
+      book: 'Throne of Glass',
+      coffee: 'Flat White',
+      quote: '"How inappropriate to call this planet Earth when it is clearly Ocean." - Arthur C. Clarke',
+      mustPack: 'Kindle'
     },
     harry: {
       name: 'Harry 🇺🇸',
-      color: 'Midnight Blue',
-      book: 'On the Road',
-      vibe: 'Mountain peaks & long-exposure nights',
-      fact: 'Once lived in a van for 3 months just to catch a sunrise.'
+      color: 'Sunset Orange',
+      food: 'Anything spicy',
+      book: 'Life of Pi',
+      coffee: 'Americano',
+      quote: '"Travel is fatal to prejudice, bigotry, and narrow-mindedness." - Mark Twain',
+      mustPack: 'Hat'
     }
   };
 
@@ -189,30 +193,158 @@ export default function StorySection({ isExcerpt = false }) {
               </div>
 
               {/* PLAYER CARDS */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '60px' }}>
-                <div onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginTop: '50px' }}>
+                
+                {/* JULIE CARD */}
+                <div 
+                  onClick={() => setActiveCard(activeCard === 'julie' ? null : 'julie')} 
+                  style={{ 
+                    cursor: 'pointer', 
+                    position: 'relative', 
+                    overflow: 'hidden', 
+                    borderRadius: '25px', 
+                    height: '420px', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.1)',
+                    border: '2px solid rgba(133, 58, 81, 0.15)'
+                  }}
+                >
                   <Image src="/julie_card.jpg" alt="Julie" layout="fill" objectFit="cover" />
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
-                    <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.julie.name}</h3>
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
-                      <p><strong>Fav Color:</strong> {stats.julie.color}</p>
-                      <p><strong>Fav Book:</strong> {stats.julie.book}</p>
-                      <p><strong>Vibe:</strong> {stats.julie.vibe}</p>
+                  
+                  {/* Default Bottom Banner (Visible when closed) */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '16px 20px',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)',
+                    color: 'white',
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    transition: 'opacity 0.3s ease',
+                    opacity: activeCard === 'julie' ? 0 : 1
+                  }}>
+                    <div>
+                      <h3 style={{ color: 'white', fontSize: '1.4rem', margin: 0, fontFamily: 'var(--font-heading)' }}>{stats.julie.name}</h3>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-golden)', fontWeight: 700 }}>Tap to reveal stats 🎴</span>
                     </div>
+                    <span style={{ fontSize: '1.2rem' }}>↑</span>
+                  </div>
+
+                  {/* Expanded Stats Overlay (Visible when clicked/tapped) */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: 0, left: 0, right: 0, top: 0, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justify: 'space-between', 
+                    padding: '24px 20px', 
+                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)', 
+                    transform: activeCard === 'julie' ? 'translateY(0)' : 'translateY(100%)', 
+                    backgroundColor: 'rgba(20, 10, 15, 0.92)', 
+                    backdropFilter: 'blur(10px)',
+                    color: 'white',
+                    overflowY: 'auto'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: '10px' }}>
+                        <h3 style={{ color: 'white', fontSize: '1.5rem', margin: 0, fontFamily: 'var(--font-heading)' }}>{stats.julie.name}</h3>
+                        <span style={{ fontSize: '0.78rem', backgroundColor: 'var(--color-orange)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>PLAYER STATS</span>
+                      </div>
+
+                      <div style={{ fontSize: '0.85rem', display: 'grid', gap: '8px', lineHeight: 1.4 }}>
+                        <p style={{ margin: 0 }}><strong>🎨 Fav Color:</strong> {stats.julie.color}</p>
+                        <p style={{ margin: 0 }}><strong>🍕 Fav Food:</strong> {stats.julie.food}</p>
+                        <p style={{ margin: 0 }}><strong>📚 Fav Travel Book:</strong> {stats.julie.book}</p>
+                        <p style={{ margin: 0 }}><strong>☕ Coffee Order:</strong> {stats.julie.coffee}</p>
+                        <p style={{ margin: 0 }}><strong>🎒 Must-Pack Item:</strong> {stats.julie.mustPack}</p>
+                        <div style={{ marginTop: '4px', backgroundColor: 'rgba(255,255,255,0.08)', padding: '10px 12px', borderRadius: '12px', borderLeft: '3px solid var(--color-golden)' }}>
+                          <strong style={{ color: 'var(--color-golden)', fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>💬 Travel Quote:</strong>
+                          <span style={{ fontStyle: 'italic', fontSize: '0.82rem', color: '#E0E0E0' }}>{stats.julie.quote}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '12px', textAlign: 'center', fontWeight: 700 }}>Tap anywhere to close ✕</span>
                   </div>
                 </div>
 
-                <div onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: '25px', height: '350px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+                {/* HARRY CARD */}
+                <div 
+                  onClick={() => setActiveCard(activeCard === 'harry' ? null : 'harry')} 
+                  style={{ 
+                    cursor: 'pointer', 
+                    position: 'relative', 
+                    overflow: 'hidden', 
+                    borderRadius: '25px', 
+                    height: '420px', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.1)',
+                    border: '2px solid rgba(133, 58, 81, 0.15)'
+                  }}
+                >
                   <Image src="/assets/Harry_Albania.jpg" alt="Harry" layout="fill" objectFit="cover" />
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, top: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', transition: 'all 0.4s ease', transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)', backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
-                    <h3 style={{ color: 'white', fontSize: '1.5rem', marginBottom: '10px' }}>{stats.harry.name}</h3>
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', display: 'grid', gap: '6px' }}>
-                      <p><strong>Fav Color:</strong> {stats.harry.color}</p>
-                      <p><strong>Fav Book:</strong> {stats.harry.book}</p>
-                      <p><strong>Vibe:</strong> {stats.harry.vibe}</p>
+                  
+                  {/* Default Bottom Banner (Visible when closed) */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '16px 20px',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)',
+                    color: 'white',
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    transition: 'opacity 0.3s ease',
+                    opacity: activeCard === 'harry' ? 0 : 1
+                  }}>
+                    <div>
+                      <h3 style={{ color: 'white', fontSize: '1.4rem', margin: 0, fontFamily: 'var(--font-heading)' }}>{stats.harry.name}</h3>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-golden)', fontWeight: 700 }}>Tap to reveal stats 🎴</span>
                     </div>
+                    <span style={{ fontSize: '1.2rem' }}>↑</span>
+                  </div>
+
+                  {/* Expanded Stats Overlay (Visible when clicked/tapped) */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: 0, left: 0, right: 0, top: 0, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justify: 'space-between', 
+                    padding: '24px 20px', 
+                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)', 
+                    transform: activeCard === 'harry' ? 'translateY(0)' : 'translateY(100%)', 
+                    backgroundColor: 'rgba(20, 10, 15, 0.92)', 
+                    backdropFilter: 'blur(10px)',
+                    color: 'white',
+                    overflowY: 'auto'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: '10px' }}>
+                        <h3 style={{ color: 'white', fontSize: '1.5rem', margin: 0, fontFamily: 'var(--font-heading)' }}>{stats.harry.name}</h3>
+                        <span style={{ fontSize: '0.78rem', backgroundColor: 'var(--color-orange)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>PLAYER STATS</span>
+                      </div>
+
+                      <div style={{ fontSize: '0.85rem', display: 'grid', gap: '8px', lineHeight: 1.4 }}>
+                        <p style={{ margin: 0 }}><strong>🎨 Fav Color:</strong> {stats.harry.color}</p>
+                        <p style={{ margin: 0 }}><strong>🍕 Fav Food:</strong> {stats.harry.food}</p>
+                        <p style={{ margin: 0 }}><strong>📚 Fav Travel Book:</strong> {stats.harry.book}</p>
+                        <p style={{ margin: 0 }}><strong>☕ Coffee Order:</strong> {stats.harry.coffee}</p>
+                        <p style={{ margin: 0 }}><strong>🎒 Must-Pack Item:</strong> {stats.harry.mustPack}</p>
+                        <div style={{ marginTop: '4px', backgroundColor: 'rgba(255,255,255,0.08)', padding: '10px 12px', borderRadius: '12px', borderLeft: '3px solid var(--color-golden)' }}>
+                          <strong style={{ color: 'var(--color-golden)', fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>💬 Travel Quote:</strong>
+                          <span style={{ fontStyle: 'italic', fontSize: '0.82rem', color: '#E0E0E0' }}>{stats.harry.quote}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '12px', textAlign: 'center', fontWeight: 700 }}>Tap anywhere to close ✕</span>
                   </div>
                 </div>
+
               </div>
             </>
           )}
