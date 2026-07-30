@@ -9273,6 +9273,8 @@ function ManualEntryModal({
                 {item.day}
               </button>
             );
+          })}
+        </div>
       </div>
     );
   };
