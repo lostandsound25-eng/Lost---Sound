@@ -140,6 +140,16 @@ export default function TrackerLandingPage() {
   const handleGoogleSignIn = async () => {
     if (!supabase) return;
     setErrorMsg('');
+
+    // Check if running inside embedded webview (Instagram, TikTok, FB, etc.) where Google OAuth blocks sign-in
+    const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || navigator.vendor || window.opera || '') : '';
+    const isWebview = /FBAN|FBAV|Instagram|TikTok|MicroMessenger|Snapchat|Twitter|Line|FB_IAB|FB4A|GSA|WebView/i.test(ua);
+
+    if (isWebview) {
+      setErrorMsg("Google Sign-In is blocked inside in-app browsers. Please tap the top-right menu (⋮ or ⋯) and select 'Open in Safari' or 'Open in Chrome', or log in with Email & Password below.");
+      return;
+    }
+
     try {
       const redirectToUrl = window.location.origin + window.location.pathname;
       const { error } = await supabase.auth.signInWithOAuth({
@@ -151,7 +161,7 @@ export default function TrackerLandingPage() {
       if (error) throw error;
     } catch (err) {
       console.error("Google sign in error:", err);
-      setErrorMsg("Google sign in failed. Please try again.");
+      setErrorMsg("Google sign in failed. Please try again or use Email login below.");
     }
   };
 

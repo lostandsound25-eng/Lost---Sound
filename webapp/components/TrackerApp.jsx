@@ -9085,6 +9085,7 @@ function ManualEntryModal({
   });
   const [isDateExpanded, setIsDateExpanded] = useState(false);
   const [calendarTarget, setCalendarTarget] = useState("start"); // "start" | "end"
+  const [showKeypad, setShowKeypad] = useState(false);
   const [calMonth, setCalMonth] = useState(() => {
     const initDate = expenseToEdit && expenseToEdit.timestamp ? new Date(expenseToEdit.timestamp) : new Date();
     return initDate.getMonth();
@@ -9184,32 +9185,40 @@ function ManualEntryModal({
     };
     
     return (
-      <div style={{ padding: "2px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-          <button 
-            type="button" 
-            onClick={() => changeMonth(-1)}
-            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
-          >
-            ◀
-          </button>
-          <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
-            {months[calMonth]} {calYear}
-          </span>
-          <button 
-            type="button" 
-            onClick={() => changeMonth(1)}
-            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
-          >
-            ▶
-          </button>
+      <div style={{ padding: "4px 2px" }}>
+        {/* Tricount Style Calendar Header: Month Year > with < > Navigation Arrows */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", padding: "0 4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontWeight: 800, color: "var(--color-purple)", fontSize: "0.95rem" }}>
+              {months[calMonth]} {calYear}
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-purple)", opacity: 0.7 }}>›</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button 
+              type="button" 
+              onClick={() => changeMonth(-1)}
+              style={{ border: "none", background: "none", fontSize: "1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "4px 8px", outline: "none" }}
+            >
+              ‹
+            </button>
+            <button 
+              type="button" 
+              onClick={() => changeMonth(1)}
+              style={{ border: "none", background: "none", fontSize: "1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "4px 8px", outline: "none" }}
+            >
+              ›
+            </button>
+          </div>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.68rem", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        {/* Tricount Style 3-Letter Day Headers */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 700, color: "#6B7280", fontSize: "0.68rem", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "4px", columnGap: "2px" }}>
+        {/* Day Grid with Circular Active Highlights */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "6px", columnGap: "2px" }}>
           {daysGrid.map((item, idx) => {
             const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
             const isStart = spreadStart === item.dateStr;
@@ -9219,17 +9228,17 @@ function ManualEntryModal({
             const isSelected = !spreadExpense ? (expenseDate === item.dateStr) : (isStart || isEnd);
             
             let bg = "transparent";
-            let color = item.isCurrentMonth ? "#374151" : "#D1D5DB";
+            let color = item.isCurrentMonth ? "#111827" : "#D1D5DB";
             let fontWeight = 600;
             let borderRadius = "50%";
             
             if (isSelected) {
-              bg = isStart || isEnd ? "var(--color-orange)" : "var(--color-purple)";
+              bg = isStart || isEnd ? "var(--color-orange)" : "#0088FF";
               color = "white";
               fontWeight = 800;
             } else if (isInRange) {
-              bg = "rgba(232, 107, 50, 0.12)";
-              color = "#C2410C";
+              bg = "rgba(0, 136, 255, 0.12)";
+              color = "#0088FF";
               fontWeight = 700;
               borderRadius = "6px";
             } else if (isToday) {
@@ -9248,22 +9257,22 @@ function ManualEntryModal({
                   background: bg,
                   color: color,
                   fontWeight: fontWeight,
-                  fontSize: "0.7rem",
-                  height: "26px",
+                  fontSize: "0.82rem",
+                  width: "30px",
+                  height: "30px",
+                  margin: "0 auto",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: borderRadius,
                   cursor: "pointer",
-                  transition: "all 0.15s",
+                  transition: "all 0.15s ease",
                   outline: "none"
                 }}
               >
                 {item.day}
               </button>
             );
-          })}
-        </div>
       </div>
     );
   };
@@ -9850,11 +9859,16 @@ function ManualEntryModal({
                 type="button"
                 onClick={() => {
                   setShowLocSearchInput(true);
+                  requestAnimationFrame(() => {
+                    if (establishmentInputRef.current) {
+                      establishmentInputRef.current.focus();
+                    }
+                  });
                   setTimeout(() => {
                     if (establishmentInputRef.current) {
                       establishmentInputRef.current.focus();
                     }
-                  }, 50);
+                  }, 20);
                 }}
                 style={{
                   background: "none",
@@ -10173,13 +10187,14 @@ function ManualEntryModal({
                       />
                     </div>
 
-                    {/* Right Side: Input Box */}
+                    {/* Right Side: Input Box & Keypad Toggle */}
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
                       <input
                         ref={totalInputRef}
                         type="text"
                         className="amount-input-placeholder"
                         value={amount}
+                        onFocus={() => setShowKeypad(true)}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (/^[0-9+\-*/().\s,]*$/.test(val)) {
@@ -10213,11 +10228,119 @@ function ManualEntryModal({
                           color: "#111827",
                           textAlign: "right",
                           padding: "4px 0",
-                          paddingRight: "8px"
+                          paddingRight: "4px"
                         }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowKeypad(!showKeypad)}
+                        style={{
+                          background: showKeypad ? "rgba(133, 58, 81, 0.12)" : "none",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "4px 6px",
+                          cursor: "pointer",
+                          fontSize: "1rem",
+                          color: "var(--color-purple)",
+                          outline: "none",
+                          transition: "all 0.2s"
+                        }}
+                        title="Toggle Tricount custom arithmetic keypad"
+                      >
+                        🧮
+                      </button>
                     </div>
                   </div>
+
+                  {/* Tricount Style Arithmetic & Number Keypad */}
+                  {showKeypad && (
+                    <div style={{
+                      marginTop: "6px",
+                      backgroundColor: "#111827",
+                      borderRadius: "16px",
+                      padding: "10px",
+                      boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      animation: "fadeInUp 0.18s ease-out"
+                    }}>
+                      {/* Arithmetic Operators Row */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
+                        {['+', '-', '×', '÷', '='].map((op) => (
+                          <button
+                            key={op}
+                            type="button"
+                            onClick={() => {
+                              if (op === '=') {
+                                const cleanAmt = amount.replace(/,/g, '');
+                                const evaluated = evaluateMathExpression(cleanAmt);
+                                setAmount(formatInputWithCommas(evaluated));
+                              } else {
+                                const charMap = { '×': '*', '÷': '/' };
+                                const realOp = charMap[op] || op;
+                                setAmount(prev => {
+                                  const clean = prev.replace(/,/g, '');
+                                  return formatInputWithCommas(clean + realOp);
+                                });
+                              }
+                            }}
+                            style={{
+                              backgroundColor: op === '=' ? "var(--color-orange)" : "#374151",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "10px",
+                              padding: "10px 0",
+                              fontSize: "1rem",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                              transition: "transform 0.1s active",
+                              outline: "none"
+                            }}
+                          >
+                            {op}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Numbers Grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map((k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => {
+                              if (k === '⌫') {
+                                setAmount(prev => {
+                                  const clean = prev.replace(/,/g, '');
+                                  if (clean.length <= 1) return '';
+                                  return formatInputWithCommas(clean.slice(0, -1));
+                                });
+                              } else {
+                                setAmount(prev => {
+                                  const clean = prev.replace(/,/g, '');
+                                  return formatInputWithCommas(clean + k);
+                                });
+                              }
+                            }}
+                            style={{
+                              backgroundColor: "#4B5563",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "10px",
+                              padding: "11px 0",
+                              fontSize: "1.15rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              outline: "none"
+                            }}
+                          >
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Multi-Day Mode Orange Text Helper */}
                   {isSeriesActive && (
