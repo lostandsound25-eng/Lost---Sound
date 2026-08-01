@@ -1,9 +1,9 @@
 {
   "appId": "com.lostandsoundtravel.app",
-  "appName": "Lost & Sound",
+  "appName": "Travel Tracker",
   "webDir": "out",
   "server": {
-    "url": "https://www.lostandsoundtravel.com",
+    "url": "https://www.lostandsoundtravel.com/tracker",
     "cleartext": true
   },
   "plugins": {
