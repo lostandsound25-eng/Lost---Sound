@@ -47,10 +47,10 @@ export default function TravelTricksClient() {
   ];
 
   const journeySteps = [
-    { id: 'prepare', step: '01', title: 'PREPARE', subtitle: 'Work Backwards & Save', icon: '📝' },
-    { id: 'pack', step: '02', title: 'PACK', subtitle: 'Carry-On Only Matrix', icon: '🧳' },
-    { id: 'go', step: '03', title: 'GO', subtitle: 'On The Road Hacks', icon: '✈️' },
-    { id: 'keepGoing', step: '04', title: 'KEEP GOING', subtitle: 'Burnout & Mindset', icon: '🧘' },
+    { id: 'prepare', step: '01', title: 'Prepare', subtitle: 'Work backwards and save' },
+    { id: 'pack', step: '02', title: 'Pack' },
+    { id: 'go', step: '03', title: 'Travel' },
+    { id: 'keepGoing', step: '04', title: 'Thrive' },
   ];
 
   return (
@@ -58,107 +58,117 @@ export default function TravelTricksClient() {
       <div className="container" style={{ maxWidth: '1080px', margin: '0 auto' }}>
         
         {/* Header */}
-        <header style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <span style={{
-            textTransform: 'uppercase',
-            letterSpacing: '2.5px',
-            fontSize: '0.8rem',
-            fontWeight: 800,
-            color: 'var(--color-orange)',
-            display: 'block',
-            marginBottom: '6px'
-          }}>
-            Interactive Travel Toolkit
-          </span>
-          <h1 style={{ fontSize: '3rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: '0 0 10px', lineHeight: 1.05 }}>
-            Travel Tricks & Journey Blueprint
+        <header style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '3.2rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: '0 0 14px', lineHeight: 1.05 }}>
+            Travel Tricks
           </h1>
-          <p style={{ fontSize: '1.05rem', color: '#555', maxWidth: '650px', margin: '0 auto', lineHeight: 1.5 }}>
-            Travel is a continuous journey. Use our interactive roadmap below to explore each phase — from pre-trip preparation to packing, flight hacks, and relationship rituals.
+          <p style={{ fontSize: '1.1rem', color: '#555', maxWidth: '720px', margin: '0 auto', lineHeight: 1.6 }}>
+            These are valuable lessons that we have learned the long way. From start to finish, long-term travel should be something that makes you feel energized, not drained. The little things go a long way.
           </p>
         </header>
 
-        {/* VISUAL JOURNEY ROADMAP PIPELINE */}
+        {/* STICKY 4-STEP STAGE NAVIGATION PIPELINE */}
         <div style={{
-          backgroundColor: 'white',
+          position: 'sticky',
+          top: '75px',
+          zIndex: 100,
+          backgroundColor: 'rgba(254, 253, 249, 0.95)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           borderRadius: '24px',
-          padding: '20px 16px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-          marginBottom: '24px',
-          border: '1.5px solid rgba(133, 58, 81, 0.08)'
+          padding: '16px 20px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+          marginBottom: '32px',
+          border: '1.5px solid rgba(133, 58, 81, 0.1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-purple)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              🗺️ Continuous Travel Pipeline: Click any stage to explore
-            </span>
-            <button
-              onClick={() => setActiveStep('demo')}
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                color: 'var(--color-orange)',
-                backgroundColor: 'rgba(235, 94, 40, 0.1)',
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              📱 Companion App Simulator →
-            </button>
-          </div>
-
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '10px'
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'relative',
+            maxWidth: '850px',
+            margin: '0 auto'
           }}>
-            {journeySteps.map((s) => {
+            {/* Slim Connecting Line */}
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              left: '40px',
+              right: '40px',
+              height: '2px',
+              backgroundColor: '#E5E7EB',
+              zIndex: 1
+            }} />
+
+            {journeySteps.map((s, index) => {
               const isActive = activeStep === s.id;
               return (
                 <div
                   key={s.id}
                   onClick={() => setActiveStep(s.id)}
                   style={{
+                    position: 'relative',
+                    zIndex: 2,
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    borderRadius: '16px',
                     cursor: 'pointer',
-                    backgroundColor: isActive ? 'var(--color-purple)' : '#FAF9F6',
-                    color: isActive ? 'white' : 'var(--color-purple)',
-                    border: isActive ? '1.5px solid var(--color-purple)' : '1.5px solid #EBEBEB',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isActive ? '0 6px 18px rgba(133, 58, 81, 0.2)' : 'none',
-                    transform: isActive ? 'translateY(-2px)' : 'none'
+                    flex: 1
                   }}
                 >
+                  {/* Circle Badge */}
                   <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '12px',
-                    backgroundColor: isActive ? 'var(--color-golden)' : 'white',
-                    color: isActive ? 'var(--color-purple)' : 'var(--color-orange)',
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    backgroundColor: isActive ? 'var(--color-purple)' : 'white',
+                    color: isActive ? 'white' : 'var(--color-purple)',
+                    border: isActive ? '2px solid var(--color-purple)' : '2px solid #D1D5DB',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontWeight: 900,
-                    fontSize: '1rem',
-                    flexShrink: 0
+                    fontWeight: 800,
+                    fontSize: '1.1rem',
+                    marginBottom: '8px',
+                    transition: 'all 0.25s ease',
+                    boxShadow: isActive ? '0 4px 14px rgba(133, 58, 81, 0.3)' : '0 2px 6px rgba(0,0,0,0.04)',
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)'
                   }}>
-                    {s.icon}
+                    {index + 1}
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: isActive ? 0.8 : 0.6, letterSpacing: '0.5px' }}>
-                      STAGE {s.step}
+
+                  {/* Stage Number & Title Stack */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: isActive ? 'var(--color-orange)' : '#9CA3AF',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase'
+                    }}>
+                      Stage {index + 1}
                     </div>
-                    <div style={{ fontSize: '0.98rem', fontWeight: 800, lineHeight: 1.1 }}>
+                    <div style={{
+                      fontSize: '0.92rem',
+                      fontWeight: 800,
+                      color: isActive ? 'var(--color-purple)' : '#4B5563',
+                      lineHeight: 1.15
+                    }}>
                       {s.title}
                     </div>
-                    <div style={{ fontSize: '0.74rem', opacity: isActive ? 0.9 : 0.7, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {s.subtitle}
-                    </div>
+
+                    {/* Subtitle text ONLY for Stage 1 */}
+                    {s.id === 'prepare' && isActive && (
+                      <div style={{
+                        fontSize: '0.72rem',
+                        color: 'var(--color-orange)',
+                        fontWeight: 700,
+                        marginTop: '3px',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Work backwards and save
+                      </div>
+                    )}
                   </div>
                 </div>
               );
