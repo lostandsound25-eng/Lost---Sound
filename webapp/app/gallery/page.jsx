@@ -8,6 +8,7 @@ export default function GalleryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeItem, setActiveItem] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
   // Fetch photos specifically from the dedicated WordPress Gallery page (slug: gallery)
   useEffect(() => {
@@ -125,8 +126,8 @@ export default function GalleryPage() {
                 <div 
                   key={n} 
                   style={{ 
-                    height: '350px', 
-                    borderRadius: '20px', 
+                    height: '380px', 
+                    borderRadius: '24px', 
                     backgroundColor: '#E5E7EB', 
                     animation: 'pulse 1.5s infinite ease-in-out' 
                   }} 
@@ -168,40 +169,56 @@ export default function GalleryPage() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.3 }}
                     onClick={() => setActiveItem(item)}
+                    onMouseEnter={() => setHoveredId(item.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                     style={{
                       cursor: 'pointer',
                       borderRadius: '24px',
                       overflow: 'hidden',
                       position: 'relative',
-                      backgroundColor: 'white',
+                      height: '380px',
+                      backgroundColor: '#F3F4F6',
                       boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
                       border: '1px solid rgba(133, 58, 81, 0.08)'
                     }}
                     whileHover={{ y: -4 }}
                   >
-                    <div style={{ width: '100%', height: '360px', overflow: 'hidden', backgroundColor: '#F3F4F6' }}>
-                      <img
-                        src={item.url}
-                        alt={item.caption || item.title}
-                        loading="lazy"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: 'block',
-                          transition: 'transform 0.5s ease'
-                        }}
-                      />
-                    </div>
+                    <img
+                      src={item.url}
+                      alt={item.caption || item.title}
+                      loading="lazy"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                        transition: 'transform 0.5s ease',
+                        transform: hoveredId === item.id ? 'scale(1.04)' : 'scale(1)'
+                      }}
+                    />
 
+                    {/* Overlay Caption (Only shows on hover or touch) */}
                     {item.caption && (
-                      <div style={{ padding: '16px 20px', backgroundColor: 'white' }}>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: '28px 20px 20px 20px',
+                        background: 'linear-gradient(to top, rgba(15, 23, 42, 0.88) 0%, rgba(15, 23, 42, 0.4) 70%, transparent 100%)',
+                        color: 'white',
+                        opacity: hoveredId === item.id ? 1 : 0,
+                        transform: hoveredId === item.id ? 'translateY(0)' : 'translateY(10px)',
+                        transition: 'all 0.3s ease',
+                        pointerEvents: 'none'
+                      }}>
                         <p style={{
                           fontSize: '0.95rem',
-                          color: 'var(--color-purple)',
                           fontWeight: 600,
                           margin: 0,
-                          lineHeight: 1.4
+                          lineHeight: 1.4,
+                          color: 'white',
+                          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
                         }}>
                           {item.caption}
                         </p>
@@ -216,7 +233,7 @@ export default function GalleryPage() {
         </div>
       </main>
 
-      {/* Lightbox Modal */}
+      {/* Lightbox Modal (Click to View Full Photo & Caption) */}
       <AnimatePresence>
         {activeItem && (
           <motion.div
@@ -274,7 +291,7 @@ export default function GalleryPage() {
                   height: '36px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justify: 'center',
                   cursor: 'pointer',
                   zIndex: 10
                 }}
@@ -282,7 +299,7 @@ export default function GalleryPage() {
                 <X size={20} />
               </button>
 
-              {/* Image Preview */}
+              {/* Full Image Preview */}
               <div style={{ 
                 backgroundColor: '#111827', 
                 display: 'flex', 
@@ -302,7 +319,7 @@ export default function GalleryPage() {
                 />
               </div>
 
-              {/* Caption Footer */}
+              {/* Caption Footer in Lightbox */}
               {activeItem.caption && (
                 <div style={{ padding: '20px 24px', backgroundColor: 'white' }}>
                   <p style={{ fontSize: '1.05rem', color: 'var(--color-purple)', fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
