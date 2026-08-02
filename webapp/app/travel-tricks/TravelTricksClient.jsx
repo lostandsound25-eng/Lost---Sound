@@ -194,53 +194,54 @@ export default function TravelTricksClient() {
             {/* STAGE 1: PREPARE */}
             {activeStep === 'prepare' && (
               <div>
-                <span style={{ fontSize: '1.8rem' }}>📝</span>
-                <div>
-                  <span style={{ color: 'var(--color-orange)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 01</span>
-                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
-                    Pre-Trip Preparation Systems
-                  </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+                  <span style={{ fontSize: '1.8rem' }}>📝</span>
+                  <div>
+                    <span style={{ color: 'var(--color-orange)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 01</span>
+                    <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                      Pre-Trip Preparation Systems
+                    </h2>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
+                    <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🚀 Commit & Timeline:</strong>
+                    <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Define departure dates and work backwards (saving goals, housing sublets, work notices, storing gear).
+                    </span>
+                  </div>
+
+                  <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
+                    <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>📊 Use Our Budget Tool:</strong>
+                    <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Log target daily budgets to compute exact runway needed. <Link href="/tracker" style={{ color: 'var(--color-orange)', fontWeight: 800 }}>Try free app →</Link>
+                    </span>
+                  </div>
+
+                  <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
+                    <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>💳 Credit Cards & Points:</strong>
+                    <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Route daily expenses through travel cards early to bank flight points. <a href={getAffiliateLink('chase_travel')} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-purple)', fontWeight: 800 }}>We use Chase Travel →</a>
+                    </span>
+                  </div>
+
+                  <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
+                    <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🗓️ Tuesday Planning Nights:</strong>
+                    <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Reserve every Tuesday evening dedicated solely to visa rules, accommodation research, and safety checks.
+                    </span>
+                  </div>
+
+                  <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
+                    <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🩺 Insurance & Vaccines:</strong>
+                    <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      Secure global travel health insurance and complete yellow fever / regional vaccines ahead of time.
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-                <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
-                  <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🚀 Commit & Timeline:</strong>
-                  <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Define departure dates and work backwards (saving goals, housing sublets, work notices, storing gear).
-                  </span>
-                </div>
-
-                <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
-                  <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>📊 Use Our Budget Tool:</strong>
-                  <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Log target daily budgets to compute exact runway needed. <Link href="/tracker" style={{ color: 'var(--color-orange)', fontWeight: 800 }}>Try free app →</Link>
-                  </span>
-                </div>
-
-                <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
-                  <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>💳 Credit Cards & Points:</strong>
-                  <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Route daily expenses through travel cards early to bank flight points. <a href={getAffiliateLink('chase_travel')} target="_blank" rel="noopener noreferrer sponsored" style={{ color: 'var(--color-purple)', fontWeight: 800 }}>We use Chase Travel →</a>
-                  </span>
-                </div>
-
-                <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
-                  <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🗓️ Tuesday Planning Nights:</strong>
-                  <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Reserve every Tuesday evening dedicated solely to visa rules, accommodation research, and safety checks.
-                  </span>
-                </div>
-
-                <div style={{ backgroundColor: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #F0EAD6' }}>
-                  <strong style={{ color: 'var(--color-purple)', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>🩺 Insurance & Vaccines:</strong>
-                  <span style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Secure global travel health insurance and complete yellow fever / regional vaccines ahead of time.
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
 
           {/* STAGE 2: PACK (Cleaned Up Main Flow with Top 3 Teaser) */}
           {activeStep === 'pack' && (
