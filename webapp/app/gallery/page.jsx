@@ -286,23 +286,28 @@ export default function GalleryPage() {
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
                   color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
                   borderRadius: '50%',
                   width: '40px',
                   height: '40px',
+                  padding: 0,
+                  margin: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justify: 'center',
                   cursor: 'pointer',
-                  zIndex: 20,
+                  zIndex: 30,
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+                  lineHeight: 0,
+                  outline: 'none'
                 }}
               >
-                <X size={20} />
+                <X size={20} style={{ display: 'block', flexShrink: 0 }} />
               </button>
 
               {/* Perfectly Centered High-Res Image */}
