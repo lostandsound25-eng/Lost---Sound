@@ -179,8 +179,21 @@ export default function TravelTricksClient() {
               );
             })}
           </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+
+          {/* ACTIVE STAGE CONTENT TOOLKIT CANVAS */}
+          <div style={{
+            flex: 1,
+            minWidth: '280px',
+            backgroundColor: 'white',
+            borderRadius: '24px',
+            padding: '28px 24px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+            border: '2px solid rgba(133, 58, 81, 0.12)'
+          }}>
+
+            {/* STAGE 1: PREPARE */}
+            {activeStep === 'prepare' && (
+              <div>
                 <span style={{ fontSize: '1.8rem' }}>📝</span>
                 <div>
                   <span style={{ color: 'var(--color-orange)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 01</span>
