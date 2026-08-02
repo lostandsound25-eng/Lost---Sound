@@ -233,7 +233,7 @@ export default function GalleryPage() {
         </div>
       </main>
 
-      {/* Lightbox Modal (Click to View Full Photo & Caption) */}
+      {/* Ultra-Premium Lightbox Modal (Auto-fitting & Perfectly Centered) */}
       <AnimatePresence>
         {activeItem && (
           <motion.div
@@ -247,9 +247,9 @@ export default function GalleryPage() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(15, 23, 42, 0.92)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(10, 15, 30, 0.88)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
               zIndex: 3000,
               display: 'flex',
               alignItems: 'center',
@@ -258,24 +258,27 @@ export default function GalleryPage() {
             }}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.94, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                backgroundColor: 'white',
+                backgroundColor: '#0F172A',
                 borderRadius: '24px',
                 overflow: 'hidden',
-                maxWidth: '900px',
-                width: '100%',
-                maxHeight: '90vh',
+                maxWidth: '85vw',
+                maxHeight: '88vh',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
-                position: 'relative'
+                alignItems: 'center',
+                boxShadow: '0 30px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                position: 'relative',
+                width: 'fit-content',
+                margin: 'auto'
               }}
             >
-              {/* Close Button */}
+              {/* Floating Close Button */}
               <button
                 type="button"
                 onClick={() => setActiveItem(null)}
@@ -283,46 +286,63 @@ export default function GalleryPage() {
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                  backdropFilter: 'blur(8px)',
                   color: 'white',
-                  border: 'none',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
+                  width: '40px',
+                  height: '40px',
                   display: 'flex',
                   alignItems: 'center',
                   justify: 'center',
                   cursor: 'pointer',
-                  zIndex: 10
+                  zIndex: 20,
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                 }}
               >
                 <X size={20} />
               </button>
 
-              {/* Full Image Preview */}
+              {/* Perfectly Centered High-Res Image */}
               <div style={{ 
-                backgroundColor: '#111827', 
+                position: 'relative',
                 display: 'flex', 
                 alignItems: 'center', 
                 justify: 'center',
-                maxHeight: '70vh',
-                overflow: 'hidden'
+                maxHeight: '74vh',
+                overflow: 'hidden',
+                backgroundColor: '#090D16'
               }}>
                 <img
                   src={activeItem.url}
                   alt={activeItem.caption || activeItem.title}
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '70vh',
-                    objectFit: 'contain'
+                    maxHeight: '74vh',
+                    objectFit: 'contain',
+                    display: 'block'
                   }}
                 />
               </div>
 
-              {/* Caption Footer in Lightbox */}
+              {/* Elegant Dark Caption Bar */}
               {activeItem.caption && (
-                <div style={{ padding: '20px 24px', backgroundColor: 'white' }}>
-                  <p style={{ fontSize: '1.05rem', color: 'var(--color-purple)', fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                <div style={{ 
+                  width: '100%', 
+                  padding: '18px 24px', 
+                  backgroundColor: '#0F172A', 
+                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                  textAlign: 'center' 
+                }}>
+                  <p style={{ 
+                    fontSize: '1.05rem', 
+                    color: '#F3F4F6', 
+                    fontWeight: 500, 
+                    margin: 0, 
+                    lineHeight: 1.5 
+                  }}>
                     {activeItem.caption}
                   </p>
                 </div>
