@@ -3,308 +3,187 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
-import { Camera, MapPin, Tag, Shuffle, Search, X, Play, Volume2, VolumeX } from 'lucide-react';
-
-// Seeding standard mockup travel moments
-const MOCK_GALLERY = [
-  {
-    id: 'mock-1',
-    title: 'Coconut Americano Experience',
-    location: 'Senja Kopi, Bali, Indonesia',
-    notes: 'The Coconut americano was to DIE FOR. Smooth, creamy, and local coffee beans mixed with fresh coconut water.',
-    tags: ['coffee', 'cafe', 'bali'],
-    dominant_color: 'gold',
-    media_type: 'image',
-    media_url: '/assets/gallery/bali_cafe.jpg'
-  },
-  {
-    id: 'mock-2',
-    title: 'Volcanic Cloud Sea at Dawn',
-    location: 'Mount Bromo, East Java, Indonesia',
-    notes: 'Stood in freezing temperatures at 4:30 AM, but seeing the volcanic caldera peek through a golden sea of clouds was unforgettable.',
-    tags: ['trekking', 'volcano', 'java'],
-    dominant_color: 'gold',
-    media_type: 'image',
-    media_url: '/assets/gallery/bromo_sunrise.jpg'
-  },
-  {
-    id: 'mock-3',
-    title: 'Train Street Alleyways',
-    location: 'Train Street, Hanoi, Vietnam',
-    notes: 'Sipping egg coffee on tiny plastic stools while a giant green train squeezes past inches from your face. Intense and spectacular.',
-    tags: ['train', 'city', 'vietnam'],
-    dominant_color: 'green',
-    media_type: 'image',
-    media_url: '/assets/gallery/vietnam_train.jpg'
-  },
-  {
-    id: 'mock-4',
-    title: 'Koh Phi Phi Lagoon Exploration',
-    location: 'Maya Bay Tour, Koh Phi Phi, Thailand',
-    notes: 'Chartered a traditional wooden longtail boat. The water is so clear it feels like the boat is floating in mid-air.',
-    tags: ['beach', 'island', 'thailand'],
-    dominant_color: 'blue',
-    media_type: 'image',
-    media_url: '/assets/gallery/thailand_beach.jpg'
-  },
-  {
-    id: 'mock-5',
-    title: 'Tegalalang Emerald Terraces',
-    location: 'Tegalalang Rice Fields, Bali, Indonesia',
-    notes: 'Exploring the sweeping terraced valleys early in the morning before the crowd arrives. The shades of green are unreal.',
-    tags: ['nature', 'trekking', 'bali'],
-    dominant_color: 'green',
-    media_type: 'image',
-    media_url: '/assets/rice-terraces.jpg'
-  },
-  {
-    id: 'mock-6',
-    title: 'Deep Cottonwood Valley Trails',
-    location: 'Cottonwood Canyon, Utah, USA',
-    notes: 'Chasing the crisp golden foliage in the mountains. High-altitude air and giant red-rock peaks towering above.',
-    tags: ['hiking', 'mountains', 'usa'],
-    dominant_color: 'gold',
-    media_type: 'image',
-    media_url: '/assets/hj-cottonwood.jpg'
-  },
-  {
-    id: 'mock-7',
-    title: 'Tropical Ocean Sunset Breeze',
-    location: 'Sunset Beach, Koh Lipe, Thailand',
-    notes: 'Listening to the slow crash of waves as the tropical sun dips below the horizon. Absolute peace.',
-    tags: ['beach', 'nature', 'ocean'],
-    dominant_color: 'blue',
-    media_type: 'video',
-    media_url: 'https://assets.mixkit.co/videos/preview/mixkit-waves-breaking-in-the-ocean-1527-large.mp4'
-  },
-  {
-    id: 'mock-8',
-    title: 'Golden Hour Palm Sway',
-    location: 'Nusa Penida Cliffs, Indonesia',
-    notes: 'Wind blowing through giant coconut palms overlooking the dramatic limestone cliffs. Golden rays catching every leaf.',
-    tags: ['nature', 'beach', 'sunset'],
-    dominant_color: 'green',
-    media_type: 'video',
-    media_url: 'https://assets.mixkit.co/videos/preview/mixkit-palm-trees-in-a-sunny-breeze-4182-large.mp4'
-  }
-];
-
-// Helper to morph shapes with vertex continuity on hover
-const getShapeStyle = (index, isHovered) => {
-  const shapes = [
-    // Hexagon (6 points) -> Square (6 points)
-    {
-      normal: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
-      hover: "polygon(0% 0%, 100% 0%, 100% 50%, 100% 100%, 0% 100%, 0% 50%)"
-    },
-    // Pentagon (5 points) -> Square (5 points)
-    {
-      normal: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
-      hover: "polygon(50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%)"
-    },
-    // Octagon (8 points) -> Square (8 points)
-    {
-      normal: "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-      hover: "polygon(0% 0%, 100% 0%, 100% 0%, 100% 100%, 100% 100%, 0% 100%, 0% 100%, 0% 0%)"
-    },
-    // Trapezoid (4 points) -> Square (4 points)
-    {
-      normal: "polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%)",
-      hover: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
-    }
-  ];
-  const shape = shapes[index % shapes.length];
-  return isHovered ? shape.hover : shape.normal;
-};
-
-// 5 Alternating preset layout patterns for our organic grid (dense packing)
-const LAYOUT_PATTERNS = [
-  // Pattern 0: Large blocks spread out
-  [
-    'col-span-2 row-span-2', 'col-span-1 row-span-1', 'col-span-1 row-span-2',
-    'col-span-2 row-span-1', 'col-span-1 row-span-1', 'col-span-1 row-span-1',
-    'col-span-2 row-span-2', 'col-span-1 row-span-1'
-  ],
-  // Pattern 1: Horizontal stripes and tall verticals
-  [
-    'col-span-2 row-span-1', 'col-span-1 row-span-2', 'col-span-1 row-span-1',
-    'col-span-2 row-span-2', 'col-span-1 row-span-1', 'col-span-2 row-span-1',
-    'col-span-1 row-span-1', 'col-span-1 row-span-1'
-  ],
-  // Pattern 2: Dense cluster
-  [
-    'col-span-1 row-span-2', 'col-span-2 row-span-2', 'col-span-1 row-span-1',
-    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-2 row-span-1',
-    'col-span-1 row-span-2', 'col-span-1 row-span-1'
-  ],
-  // Pattern 3: Asymmetrical waterfall
-  [
-    'col-span-1 row-span-1', 'col-span-2 row-span-1', 'col-span-1 row-span-2',
-    'col-span-1 row-span-1', 'col-span-2 row-span-2', 'col-span-1 row-span-1',
-    'col-span-1 row-span-1', 'col-span-1 row-span-1'
-  ],
-  // Pattern 4: Alternating showcase
-  [
-    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-2 row-span-2',
-    'col-span-1 row-span-1', 'col-span-1 row-span-1', 'col-span-1 row-span-2',
-    'col-span-2 row-span-1', 'col-span-1 row-span-1'
-  ]
-];
-
-// Helper to translate spans into grid style objects
-const getGridSpanStyle = (layoutClass) => {
-  switch (layoutClass) {
-    case 'col-span-2 row-span-2':
-      return { gridColumn: 'span 2', gridRow: 'span 2' };
-    case 'col-span-1 row-span-2':
-      return { gridColumn: 'span 1', gridRow: 'span 2' };
-    case 'col-span-2 row-span-1':
-      return { gridColumn: 'span 2', gridRow: 'span 1' };
-    default:
-      return { gridColumn: 'span 1', gridRow: 'span 1' };
-  }
-};
+import { Search, X, Calendar, ArrowRight, Image as ImageIcon } from 'lucide-react';
 
 export default function GalleryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Minimalist search input
   const [searchQuery, setSearchQuery] = useState('');
-  // Grid layout index (determines which of the 5 organic patterns is active)
-  const [patternIndex, setPatternIndex] = useState(0);
-
-  const [hoveredIndex, setHoveredIndex] = useState(null);
   const [activeItem, setActiveItem] = useState(null);
-  
-  // Lightbox options
-  const [videoMuted, setVideoMuted] = useState(true);
 
-  // Fetch gallery from Supabase
+  // Fetch photos directly from WordPress REST API
   useEffect(() => {
-    async function fetchGallery() {
+    async function fetchWordPressGallery() {
       try {
-        const { data, error } = await supabase
-          .from('gallery_entries')
-          .select('*')
-          .order('created_at', { ascending: false });
+        setLoading(true);
+        const res = await fetch(
+          'https://public-api.wordpress.com/rest/v1.1/sites/lostandsoundtravel.wordpress.com/posts?number=100'
+        );
+        if (!res.ok) throw new Error(`WordPress API HTTP error ${res.status}`);
+        const data = await res.json();
+        
+        const photos = [];
+        const seenUrls = new Set();
 
-        if (!error && data && data.length > 0) {
-          const formatted = data.map(d => ({
-            ...d,
-            tags: Array.isArray(d.tags) ? d.tags : (d.tags ? d.tags.split(',') : [])
-          }));
-          setItems(formatted);
-        } else {
-          setItems(MOCK_GALLERY);
-        }
-      } catch (e) {
-        console.error('Failed to load gallery database, using fallback:', e);
-        setItems(MOCK_GALLERY);
+        (data.posts || []).forEach(post => {
+          const cleanPostTitle = post.title
+            ? post.title.replace(/&#8217;/g, "'").replace(/&amp;/g, "&").replace(/&#8220;/g, '"').replace(/&#8221;/g, '"')
+            : 'Lost & Sound Moment';
+
+          // 1. Featured image
+          if (post.featured_image && !seenUrls.has(post.featured_image)) {
+            seenUrls.add(post.featured_image);
+            photos.push({
+              id: `wp-feat-${post.ID}`,
+              title: cleanPostTitle,
+              caption: post.excerpt ? post.excerpt.replace(/<[^>]+>/g, '').trim() : '',
+              url: post.featured_image,
+              date: post.date,
+              postSlug: post.slug,
+              postTitle: cleanPostTitle
+            });
+          }
+
+          // 2. Extract embedded photos & alt/caption text from post content
+          const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/gi;
+          let match;
+          let imgIdx = 0;
+          while ((match = imgRegex.exec(post.content)) !== null) {
+            imgIdx++;
+            const imgTag = match[0];
+            const src = match[1];
+
+            // Filter out gravatars, emojis, and duplicate URLs
+            if (
+              src && 
+              !src.includes('gravatar.com') && 
+              !src.includes('s.w.org') && 
+              !src.includes('avatar') &&
+              !seenUrls.has(src)
+            ) {
+              seenUrls.add(src);
+              const altMatch = imgTag.match(/alt="([^"]*)"/i);
+              const altText = altMatch ? altMatch[1].trim() : '';
+
+              photos.push({
+                id: `wp-img-${post.ID}-${imgIdx}`,
+                title: altText || cleanPostTitle,
+                caption: altText || '',
+                url: src,
+                date: post.date,
+                postSlug: post.slug,
+                postTitle: cleanPostTitle
+              });
+            }
+          }
+        });
+
+        setItems(photos);
+      } catch (err) {
+        console.error('Error fetching WordPress gallery media:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetchGallery();
+
+    fetchWordPressGallery();
   }, []);
 
-  // Filter items based on organic keyword search matching (tags, colors, location, title)
+  // Filter items by search query (title, caption, post title)
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase().trim();
-
-    const matchesTag = item.tags?.some(t => t.toLowerCase().includes(query));
-    const matchesColor = item.dominant_color?.toLowerCase().includes(query);
-    const matchesLocation = item.location?.toLowerCase().includes(query);
-    const matchesTitle = item.title?.toLowerCase().includes(query);
-
-    return matchesTag || matchesColor || matchesLocation || matchesTitle;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      (item.title && item.title.toLowerCase().includes(q)) ||
+      (item.caption && item.caption.toLowerCase().includes(q)) ||
+      (item.postTitle && item.postTitle.toLowerCase().includes(q))
+    );
   });
 
-  // Random reshuffle of item positions and cycle to a new layout pattern
-  const handleReshuffle = () => {
-    // 1. Randomize items order in local state
-    const shuffled = [...items];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    setItems(shuffled);
-
-    // 2. Select next random layout pattern
-    const nextPattern = Math.floor(Math.random() * LAYOUT_PATTERNS.length);
-    setPatternIndex(nextPattern);
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
-
-  const activePattern = LAYOUT_PATTERNS[patternIndex];
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Navbar deleted here because it is globally rendered in RootLayout (app/layout.jsx) */}
-
       <main style={{ flex: 1, padding: '120px 24px 80px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <h1 style={{ 
-              fontSize: '3.5rem', 
-              fontWeight: 900, 
-              color: 'var(--color-purple)', 
-              marginBottom: '1rem', 
-              fontFamily: 'var(--font-heading)' 
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <span style={{ 
+              color: 'var(--color-orange)', 
+              fontWeight: 800, 
+              fontSize: '0.85rem', 
+              letterSpacing: '2px', 
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: '8px'
             }}>
-              Travel Mosaic
+              Live Photo Feed
+            </span>
+            
+            <h1 style={{ 
+              fontSize: '3rem', 
+              fontFamily: 'var(--font-heading)', 
+              color: 'var(--color-purple)', 
+              marginBottom: '12px',
+              lineHeight: 1.15
+            }}>
+              Travel Gallery
             </h1>
-            <p style={{ fontSize: '1.15rem', color: '#555', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
-              A collection of raw travel snapshots and 10s video loops. Morphing layouts, organized by tags and hues.
+            
+            <p style={{ 
+              fontSize: '1.15rem', 
+              color: '#666', 
+              maxWidth: '600px', 
+              margin: '0 auto 2rem auto',
+              lineHeight: 1.6
+            }}>
+              Moments, landscapes, and stories captured on the road, automatically updating live from our travels.
             </p>
-          </div>
 
-          {/* Minimalist Control Bar (Shuffle & Search) */}
-          <div style={{ 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            marginBottom: '3rem',
-            maxWidth: '550px',
-            margin: '0 auto 3rem auto'
-          }}>
             {/* Search Input */}
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{
+              position: 'relative',
+              maxWidth: '420px',
+              margin: '0 auto'
+            }}>
+              <Search style={{
+                position: 'absolute',
+                left: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#9CA3AF',
+                width: '18px',
+                height: '18px'
+              }} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search (e.g. coffee, orange, beach)..."
+                placeholder="Search photos, places & captions..."
                 style={{
                   width: '100%',
-                  padding: '12px 16px 12px 42px',
-                  borderRadius: '16px',
+                  padding: '14px 16px 14px 44px',
+                  borderRadius: '30px',
                   border: '1.5px solid rgba(133, 58, 81, 0.15)',
-                  outline: 'none',
-                  fontSize: '0.95rem',
                   backgroundColor: 'white',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                  transition: 'all 0.25s ease'
+                  fontSize: '0.95rem',
+                  outline: 'none',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease',
+                  color: '#111827'
                 }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--color-purple)'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(133, 58, 81, 0.15)'}
-              />
-              <Search 
-                size={18} 
-                style={{ 
-                  position: 'absolute', 
-                  left: '14px', 
-                  top: '50%', 
-                  transform: 'translateY(-50%)', 
-                  color: '#9CA3AF' 
-                }} 
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
                   style={{
                     position: 'absolute',
@@ -322,248 +201,148 @@ export default function GalleryPage() {
                 </button>
               )}
             </div>
-
-            {/* Reshuffle Button */}
-            <button
-              onClick={handleReshuffle}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                borderRadius: '16px',
-                border: 'none',
-                backgroundColor: 'var(--color-purple)',
-                color: 'white',
-                fontWeight: 700,
-                fontSize: '0.92rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(133, 58, 81, 0.2)',
-                transition: 'all 0.25s ease',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.backgroundColor = '#6e2b40';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.backgroundColor = 'var(--color-purple)';
-              }}
-            >
-              <Shuffle size={16} /> Shuffle
-            </button>
           </div>
 
-          {/* Mosaic Grid */}
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
-              <div style={{ border: '3px solid rgba(133,58,81,0.1)', borderTop: '3px solid var(--color-purple)', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }} />
+          {/* Loading Skeleton */}
+          {loading && (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+              gap: '24px' 
+            }}>
+              {[1, 2, 3, 4, 5, 6].map(n => (
+                <div 
+                  key={n} 
+                  style={{ 
+                    height: '280px', 
+                    borderRadius: '20px', 
+                    backgroundColor: '#E5E7EB', 
+                    animation: 'pulse 1.5s infinite ease-in-out' 
+                  }} 
+                />
+              ))}
             </div>
-          ) : (
-            <>
-              {filteredItems.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '100px 20px', backgroundColor: 'white', borderRadius: '24px', border: '1px dashed rgba(133,58,81,0.2)' }}>
-                  <h3 style={{ fontSize: '1.25rem', color: 'var(--color-purple)', marginBottom: '0.5rem' }}>No travel moments match</h3>
-                  <p style={{ color: '#666', fontSize: '0.95rem' }}>Try searching another keyword (e.g. coffee, gold, Bali).</p>
-                </div>
-              ) : (
-                <motion.div 
-                  layout
-                  style={{
-                    display: 'grid',
-                    // Organic grid layouts utilizing tight responsive columns
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                    gridAutoRows: '160px',
-                    // dense grid packing fills all remaining holes dynamically
-                    gridAutoFlow: 'dense',
-                    gap: '8px',
-                    marginTop: '20px',
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    backgroundColor: '#FAF9F6',
-                    padding: '8px'
-                  }}
-                >
-                  <AnimatePresence mode="popLayout">
-                    {filteredItems.map((item, index) => {
-                      const isHovered = hoveredIndex === index;
-                      const clipPathValue = getShapeStyle(index, isHovered);
-                      
-                      // Match current item to active layout pattern for size span
-                      const layoutClass = activePattern[index % activePattern.length];
-                      const gridStyle = getGridSpanStyle(layoutClass);
-
-                      return (
-                        <motion.div
-                          layout
-                          key={item.id}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
-                          onMouseEnter={() => setHoveredIndex(index)}
-                          onMouseLeave={() => setHoveredIndex(null)}
-                          onClick={() => setActiveItem(item)}
-                          style={{
-                            ...gridStyle,
-                            position: 'relative',
-                            width: '100%',
-                            height: '100%',
-                            cursor: 'pointer',
-                            overflow: 'hidden',
-                            backgroundColor: '#E5E7EB',
-                            clipPath: clipPathValue,
-                            WebkitClipPath: clipPathValue,
-                            transition: 'clip-path 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), -webkit-clip-path 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.45s ease',
-                            transform: isHovered ? 'scale(1.03) rotate(0.3deg)' : 'scale(1) rotate(0deg)',
-                            zIndex: isHovered ? 10 : 1,
-                            boxShadow: isHovered ? '0 12px 20px -5px rgba(0,0,0,0.15)' : 'none'
-                          }}
-                        >
-                          {/* Image Thumbnail */}
-                          {item.media_type === 'image' && (
-                            <img
-                              src={item.media_url}
-                              alt={item.title}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                pointerEvents: 'none',
-                                userSelect: 'none'
-                              }}
-                            />
-                          )}
-
-                          {/* Video Thumbnail */}
-                          {item.media_type === 'video' && (
-                            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                              <video
-                                src={item.media_url}
-                                loop
-                                muted
-                                playsInline
-                                autoPlay
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                  pointerEvents: 'none',
-                                  userSelect: 'none'
-                                }}
-                              />
-                              <div style={{
-                                position: 'absolute',
-                                bottom: '8px',
-                                right: '8px',
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'white',
-                                backdropFilter: 'blur(4px)'
-                              }}>
-                                <Play size={10} fill="white" />
-                              </div>
-                            </div>
-                          )}
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-            </>
           )}
 
-          {/* Premium Glassmorphic App CTA */}
-          <section style={{
-            marginTop: '8rem',
-            position: 'relative',
-            borderRadius: '32px',
-            overflow: 'hidden',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            background: 'radial-gradient(circle at top left, var(--color-purple) 0%, #31151F 100%)',
-            padding: '80px 40px',
-            textAlign: 'center'
-          }}>
-            {/* Ambient Background Glows */}
-            <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(242,174,48,0.15) 0%, rgba(242,174,48,0) 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(133,58,81,0.3) 0%, rgba(133,58,81,0) 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
-
-            <div style={{ 
-              maxWidth: '750px', 
-              margin: '0 auto', 
-              position: 'relative', 
-              zIndex: 2,
-              backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '24px',
-              border: '1.5px solid rgba(255, 255, 255, 0.1)',
-              padding: '48px 24px'
-            }}>
-              <h2 style={{ 
-                fontSize: '2.5rem', 
-                fontWeight: 900, 
-                color: 'white', 
-                marginBottom: '1.5rem', 
-                fontFamily: 'var(--font-heading)',
-                letterSpacing: '-0.5px',
-                lineHeight: 1.2
-              }}>
-                Build Your Own Travel Mosaic
-              </h2>
-              <p style={{ 
-                fontSize: '1.15rem', 
-                color: 'rgba(255,255,255,0.85)', 
-                marginBottom: '2.5rem', 
-                lineHeight: 1.7,
-                maxWidth: '600px',
-                margin: '0 auto 2.5rem auto'
-              }}>
-                Capture your memories, map daily expenses, and automatically generate your own gorgeous, reshufflable travel mosaic on the go.
+          {/* Empty Search State */}
+          {!loading && filteredItems.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
+              <ImageIcon size={48} style={{ color: 'var(--color-orange)', opacity: 0.5, marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '1.4rem', fontFamily: 'var(--font-heading)', color: 'var(--color-purple)', marginBottom: '8px' }}>
+                No photos found
+              </h3>
+              <p style={{ fontSize: '0.95rem' }}>
+                Try searching for a different destination or keyword.
               </p>
-              <Link 
-                href="/tracker" 
-                className="btn"
-                style={{ 
-                  backgroundColor: 'white', 
-                  color: 'var(--color-purple)', 
-                  padding: '16px 36px', 
-                  fontSize: '1.05rem',
-                  fontWeight: 800,
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  display: 'inline-block',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)';
-                }}
-              >
-                Open Travel Tracker →
-              </Link>
             </div>
-          </section>
+          )}
+
+          {/* Live WordPress Photo Grid */}
+          {!loading && filteredItems.length > 0 && (
+            <motion.div 
+              layout
+              style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                gap: '24px' 
+              }}
+            >
+              <AnimatePresence>
+                {filteredItems.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3 }}
+                    onClick={() => setActiveItem(item)}
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: '20px',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      height: '320px',
+                      backgroundColor: '#E5E7EB',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.06)'
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.title}
+                      loading="lazy"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
+                    />
+
+                    {/* Gradient Overlay & Details on Hover */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.15) 60%, rgba(0,0,0,0) 100%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justify: 'flex-end',
+                      padding: '20px',
+                      color: 'white',
+                      transition: 'opacity 0.3s ease'
+                    }}>
+                      <span style={{ 
+                        fontSize: '0.72rem', 
+                        fontWeight: 700, 
+                        color: 'var(--color-golden)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        marginBottom: '4px'
+                      }}>
+                        <Calendar size={12} />
+                        {formatDate(item.date)}
+                      </span>
+
+                      <h3 style={{
+                        fontSize: '1.25rem',
+                        fontFamily: 'var(--font-heading)',
+                        color: 'white',
+                        margin: '0 0 6px 0',
+                        lineHeight: 1.25
+                      }}>
+                        {item.title}
+                      </h3>
+
+                      {item.caption && (
+                        <p style={{
+                          fontSize: '0.82rem',
+                          color: 'rgba(255, 255, 255, 0.85)',
+                          margin: 0,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.4
+                        }}>
+                          {item.caption}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
         </div>
       </main>
 
-      {/* Glassmorphic Lightbox Modal */}
+      {/* Lightbox Modal */}
       <AnimatePresence>
         {activeItem && (
           <motion.div
@@ -573,159 +352,130 @@ export default function GalleryPage() {
             onClick={() => setActiveItem(null)}
             style={{
               position: 'fixed',
-              top: 0, right: 0, bottom: 0, left: 0,
-              backgroundColor: 'rgba(15, 23, 42, 0.82)',
-              backdropFilter: 'blur(12px)',
-              zIndex: 9999,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 3000,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justify: 'center',
               padding: '24px'
             }}
           >
             <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                width: '100%',
-                maxWidth: '920px',
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '32px',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+                backgroundColor: 'white',
+                borderRadius: '24px',
                 overflow: 'hidden',
+                maxWidth: '900px',
+                width: '100%',
+                maxHeight: '90vh',
                 display: 'flex',
                 flexDirection: 'column',
-                maxHeight: '85vh'
+                boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+                position: 'relative'
               }}
             >
-              <div style={{ display: 'flex', flex: 1, flexDirection: 'row', flexWrap: 'wrap', minHeight: 0 }}>
-                
-                {/* Media Pane */}
-                <div style={{ 
-                  flex: '1.2 1 450px', 
-                  position: 'relative', 
-                  backgroundColor: '#1E1B1D',
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setActiveItem(null)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '350px'
-                }}>
-                  {activeItem.media_type === 'image' ? (
-                    <img
-                      src={activeItem.media_url}
-                      alt={activeItem.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '70vh' }}
-                    />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                      <video
-                        src={activeItem.media_url}
-                        controls
-                        autoPlay
-                        loop
-                        muted={videoMuted}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', maxHeight: '70vh' }}
-                      />
-                      <button
-                        onClick={() => setVideoMuted(!videoMuted)}
-                        style={{
-                          position: 'absolute',
-                          bottom: '16px',
-                          right: '16px',
-                          border: 'none',
-                          backgroundColor: 'rgba(0,0,0,0.6)',
-                          color: 'white',
-                          borderRadius: '50%',
-                          width: '36px',
-                          height: '36px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          backdropFilter: 'blur(4px)'
-                        }}
-                      >
-                        {videoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                      </button>
-                    </div>
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  transition: 'transform 0.2s'
+                }}
+              >
+                <X size={20} />
+              </button>
+
+              {/* Image Preview Container */}
+              <div style={{ 
+                backgroundColor: '#111827', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                maxHeight: '65vh',
+                overflow: 'hidden'
+              }}>
+                <img
+                  src={activeItem.url}
+                  alt={activeItem.title}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '65vh',
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+
+              {/* Caption & Metadata Footer */}
+              <div style={{ padding: '24px', backgroundColor: 'white', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <h2 style={{
+                    fontSize: '1.6rem',
+                    fontFamily: 'var(--font-heading)',
+                    color: 'var(--color-purple)',
+                    margin: 0
+                  }}>
+                    {activeItem.title}
+                  </h2>
+                  
+                  {activeItem.date && (
+                    <span style={{ fontSize: '0.82rem', color: '#6B7280', fontWeight: 600, flexShrink: 0, marginLeft: '12px' }}>
+                      {formatDate(activeItem.date)}
+                    </span>
                   )}
                 </div>
 
-                {/* Details Pane */}
-                <div style={{ 
-                  flex: '0.8 1 320px', 
-                  padding: '40px 32px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  justifyContent: 'space-between',
-                  backgroundColor: '#FAF9F6',
-                  borderLeft: '1px solid rgba(133, 58, 81, 0.06)',
-                  position: 'relative'
-                }}>
-                  <button
+                {activeItem.caption && (
+                  <p style={{ fontSize: '1rem', color: '#4B5563', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+                    {activeItem.caption}
+                  </p>
+                )}
+
+                {activeItem.postSlug && (
+                  <Link
+                    href={`/blog/${activeItem.postSlug}`}
                     onClick={() => setActiveItem(null)}
                     style={{
-                      position: 'absolute',
-                      top: '20px',
-                      right: '20px',
-                      background: 'none',
-                      border: 'none',
-                      color: '#9CA3AF',
-                      cursor: 'pointer',
-                      padding: '4px'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--color-orange)',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      textDecoration: 'none'
                     }}
                   >
-                    <X size={20} />
-                  </button>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                      <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-purple)', margin: 0, fontFamily: 'var(--font-heading)', lineHeight: 1.25 }}>
-                        {activeItem.title}
-                      </h2>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-golden)', fontWeight: 700, fontSize: '0.92rem', marginTop: '8px' }}>
-                        <MapPin size={14} />
-                        {activeItem.location}
-                      </div>
-                    </div>
-
-                    <div style={{ borderLeft: '3px solid var(--color-golden)', paddingLeft: '16px', marginTop: '10px' }}>
-                      <p style={{ margin: 0, color: '#4B5563', fontSize: '1.05rem', lineHeight: 1.6, fontStyle: 'italic' }}>
-                        "{activeItem.notes}"
-                      </p>
-                    </div>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid rgba(133, 58, 81, 0.08)', paddingTop: '24px', marginTop: '30px' }}>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                      {activeItem.tags?.map(t => (
-                        <span key={t} style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-purple)', backgroundColor: 'rgba(133, 58, 81, 0.06)', padding: '4px 10px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#9CA3AF', fontWeight: 600 }}>
-                      <Camera size={12} /> Captured during our journeys
-                    </div>
-                  </div>
-
-                </div>
-
+                    Read Story: {activeItem.postTitle} <ArrowRight size={16} />
+                  </Link>
+                )}
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style jsx global>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
