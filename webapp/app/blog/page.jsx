@@ -12,8 +12,9 @@ export const metadata = {
   },
 };
 
-// Enable ISR: Revalidate the page every 60 seconds
-export const revalidate = 60;
+// Force dynamic server-side rendering to bypass static generation timeouts during Vercel build
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { fetchWithTimeout } from '../../lib/fetch';
 

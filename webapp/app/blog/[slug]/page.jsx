@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import LightboxWrapper from '../../../components/LightboxWrapper';
 
-// Enable instant revalidation for fresh SEO HTML rendering (no stale ISR cache)
+// Force dynamic server-side rendering to bypass static generation timeouts during Vercel build
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { fetchWithTimeout } from '../../../lib/fetch';
