@@ -607,9 +607,6 @@ export default function TravelTricksClient() {
         </span>
       </button>
 
-          </div>
-        </div>
-
       {/* SPEC 2 & 3: THE MODAL - OFF-CANVAS RIGHT DRAWER */}
       {gearLockerOpen && (
         <div 
