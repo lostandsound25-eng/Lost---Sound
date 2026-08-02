@@ -50,53 +50,56 @@ export default function TravelTricksClient() {
     { id: 'prepare', step: '01', title: 'Prepare', subtitle: 'Work backwards and save' },
     { id: 'pack', step: '02', title: 'Pack' },
     { id: 'go', step: '03', title: 'Travel' },
-    { id: 'keepGoing', step: '04', title: 'Thrive' },
+    { id: 'keepGoing', step: '04', title: 'Keep Going' },
   ];
 
   return (
-    <main style={{ backgroundColor: '#F4F1EA', minHeight: '100vh', padding: '90px 16px 100px' }}>
-      <div className="container" style={{ maxWidth: '1080px', margin: '0 auto' }}>
+    <main style={{ backgroundColor: 'var(--color-golden)', minHeight: '100vh', padding: '90px 16px 100px' }}>
+      <div className="container" style={{ maxWidth: '1140px', margin: '0 auto' }}>
         
         {/* Header */}
-        <header style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '3.2rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: '0 0 14px', lineHeight: 1.05 }}>
+        <header style={{ textAlign: 'center', marginBottom: '36px' }}>
+          <h1 style={{ fontSize: '3.4rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: '0 0 14px', lineHeight: 1.05 }}>
             Travel Tricks
           </h1>
-          <p style={{ fontSize: '1.1rem', color: '#555', maxWidth: '720px', margin: '0 auto', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '1.1rem', color: 'var(--color-purple)', maxWidth: '740px', margin: '0 auto', lineHeight: 1.6, fontWeight: 500 }}>
             These are valuable lessons that we have learned the long way. From start to finish, long-term travel should be something that makes you feel energized, not drained. The little things go a long way.
           </p>
         </header>
 
-        {/* STICKY 4-STEP STAGE NAVIGATION PIPELINE */}
+        {/* 2-COLUMN LAYOUT WITH STICKY VERTICAL SIDEBAR */}
         <div style={{
-          position: 'sticky',
-          top: '75px',
-          zIndex: 100,
-          backgroundColor: 'rgba(254, 253, 249, 0.95)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderRadius: '24px',
-          padding: '16px 20px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
-          marginBottom: '32px',
-          border: '1.5px solid rgba(133, 58, 81, 0.1)'
+          display: 'flex',
+          gap: '24px',
+          alignItems: 'flex-start',
+          position: 'relative',
+          flexWrap: 'wrap'
         }}>
+          {/* STICKY VERTICAL LEFT SIDEBAR NAVIGATION */}
           <div style={{
+            position: 'sticky',
+            top: '90px',
+            zIndex: 90,
+            backgroundColor: 'white',
+            borderRadius: '24px',
+            padding: '22px 16px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+            border: '2px solid rgba(133, 58, 81, 0.12)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'relative',
-            maxWidth: '850px',
-            margin: '0 auto'
+            flexDirection: 'column',
+            gap: '22px',
+            minWidth: '170px',
+            maxWidth: '220px',
+            flexShrink: 0
           }}>
-            {/* Slim Connecting Line */}
+            {/* Slim Vertical Connector Line */}
             <div style={{
               position: 'absolute',
-              top: '20px',
-              left: '40px',
-              right: '40px',
-              height: '2px',
-              backgroundColor: '#E5E7EB',
+              top: '40px',
+              bottom: '40px',
+              left: '34px',
+              width: '2px',
+              backgroundColor: 'rgba(133, 58, 81, 0.15)',
               zIndex: 1
             }} />
 
@@ -110,39 +113,41 @@ export default function TravelTricksClient() {
                     position: 'relative',
                     zIndex: 2,
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
+                    gap: '12px',
                     cursor: 'pointer',
-                    flex: 1
+                    padding: '2px 0'
                   }}
                 >
-                  {/* Circle Badge */}
+                  {/* Circle Badge with Blue Glow when Active */}
                   <div style={{
-                    width: '42px',
-                    height: '42px',
+                    width: '38px',
+                    height: '38px',
                     borderRadius: '50%',
-                    backgroundColor: isActive ? 'var(--color-purple)' : 'white',
+                    backgroundColor: isActive ? '#0088FF' : 'white',
                     color: isActive ? 'white' : 'var(--color-purple)',
-                    border: isActive ? '2px solid var(--color-purple)' : '2px solid #D1D5DB',
+                    border: isActive ? '2px solid #0088FF' : '2px solid #D1D5DB',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 800,
-                    fontSize: '1.1rem',
-                    marginBottom: '8px',
+                    fontSize: '1.05rem',
+                    flexShrink: 0,
                     transition: 'all 0.25s ease',
-                    boxShadow: isActive ? '0 4px 14px rgba(133, 58, 81, 0.3)' : '0 2px 6px rgba(0,0,0,0.04)',
-                    transform: isActive ? 'scale(1.1)' : 'scale(1)'
+                    boxShadow: isActive 
+                      ? '0 0 16px rgba(0, 136, 255, 0.7), 0 0 4px #0088FF' 
+                      : '0 2px 6px rgba(0,0,0,0.04)',
+                    transform: isActive ? 'scale(1.08)' : 'scale(1)'
                   }}>
                     {index + 1}
                   </div>
 
                   {/* Stage Number & Title Stack */}
-                  <div style={{ textAlign: 'center' }}>
+                  <div>
                     <div style={{
-                      fontSize: '0.68rem',
+                      fontSize: '0.66rem',
                       fontWeight: 800,
-                      color: isActive ? 'var(--color-orange)' : '#9CA3AF',
+                      color: isActive ? '#0088FF' : '#888',
                       letterSpacing: '0.5px',
                       textTransform: 'uppercase'
                     }}>
@@ -160,11 +165,11 @@ export default function TravelTricksClient() {
                     {/* Subtitle text ONLY for Stage 1 */}
                     {s.id === 'prepare' && isActive && (
                       <div style={{
-                        fontSize: '0.72rem',
+                        fontSize: '0.7rem',
                         color: 'var(--color-orange)',
                         fontWeight: 700,
                         marginTop: '3px',
-                        whiteSpace: 'nowrap'
+                        lineHeight: 1.2
                       }}>
                         Work backwards and save
                       </div>
@@ -174,19 +179,6 @@ export default function TravelTricksClient() {
               );
             })}
           </div>
-        </div>
-
-        {/* ACTIVE STAGE CONTENT TOOLKIT CANVAS */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '24px',
-          padding: '28px 24px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-          border: '1.5px solid rgba(133, 58, 81, 0.08)'
-        }}>
-
-          {/* STAGE 1: PREPARE */}
-          {activeStep === 'prepare' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
                 <span style={{ fontSize: '1.8rem' }}>📝</span>
