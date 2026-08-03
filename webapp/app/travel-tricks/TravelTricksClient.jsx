@@ -48,9 +48,9 @@ export default function TravelTricksClient() {
 
   const journeySteps = [
     { id: 'prepare', step: '01', title: 'Prepare', subtitle: 'Work backwards and save' },
-    { id: 'pack', step: '02', title: 'Pack' },
-    { id: 'go', step: '03', title: 'Travel' },
-    { id: 'keepGoing', step: '04', title: 'Keep Going' },
+    { id: 'pack', step: '02', title: 'Pack', subtitle: 'Carry-on only matrix' },
+    { id: 'go', step: '03', title: 'Travel', subtitle: 'Transit & daily rituals' },
+    { id: 'keepGoing', step: '04', title: '"Keep Going"', subtitle: 'Prevent travel burnout' },
   ];
 
   return (
@@ -210,8 +210,8 @@ export default function TravelTricksClient() {
                       {s.title}
                     </div>
 
-                    {/* Subtitle text ONLY for Stage 1 */}
-                    {s.id === 'prepare' && isActive && (
+                    {/* Subtitle text for Active Stage */}
+                    {isActive && s.subtitle && (
                       <div style={{
                         fontSize: '0.7rem',
                         color: 'var(--color-orange)',
@@ -219,7 +219,7 @@ export default function TravelTricksClient() {
                         marginTop: '3px',
                         lineHeight: 1.2
                       }}>
-                        Work backwards and save
+                        {s.subtitle}
                       </div>
                     )}
                   </div>
