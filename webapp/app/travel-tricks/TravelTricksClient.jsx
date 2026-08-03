@@ -67,50 +67,67 @@ export default function TravelTricksClient() {
           </p>
         </header>
 
-        {/* SLIM STICKY TOP PILL BAR FOR MOBILE SCREENS */}
+        {/* SLIM STICKY TOP NAVIGATION BAR FOR MOBILE (TRANSPARENT, NO WHITE BOX CONTAINER) */}
         <div className="tricks-bar-mobile">
+          {/* Horizontal Connector Line */}
+          <div style={{
+            position: 'absolute',
+            top: '26px',
+            left: '30px',
+            right: '30px',
+            height: '2px',
+            backgroundColor: 'rgba(133, 58, 81, 0.25)',
+            zIndex: 1
+          }} />
+
           {journeySteps.map((s, index) => {
             const isActive = activeStep === s.id;
             return (
-              <button
+              <div
                 key={s.id}
-                type="button"
                 onClick={() => setActiveStep(s.id)}
                 style={{
+                  position: 'relative',
+                  zIndex: 2,
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 10px',
-                  borderRadius: '20px',
-                  border: isActive ? '1.5px solid #0088FF' : '1px solid #E5E7EB',
-                  backgroundColor: isActive ? '#0088FF' : 'white',
-                  color: isActive ? 'white' : 'var(--color-purple)',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
                   cursor: 'pointer',
-                  boxShadow: isActive ? '0 0 12px rgba(0, 136, 255, 0.6)' : 'none',
-                  flex: 1,
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                  outline: 'none'
+                  flex: 1
                 }}
               >
-                <span style={{
-                  width: '18px',
-                  height: '18px',
+                {/* Circle Badge with Blue Glow when Active */}
+                <div style={{
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
-                  backgroundColor: isActive ? 'white' : '#F3F4F6',
-                  color: isActive ? '#0088FF' : 'var(--color-purple)',
-                  fontSize: '0.68rem',
-                  fontWeight: 800,
-                  display: 'inline-flex',
+                  backgroundColor: isActive ? '#0088FF' : 'white',
+                  color: isActive ? 'white' : 'var(--color-purple)',
+                  border: isActive ? '2px solid #0088FF' : '2px solid #D1D5DB',
+                  display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  flexShrink: 0,
+                  transition: 'all 0.2s ease',
+                  boxShadow: isActive ? '0 0 14px rgba(0, 136, 255, 0.8)' : '0 2px 5px rgba(0,0,0,0.06)',
+                  transform: isActive ? 'scale(1.08)' : 'scale(1)',
+                  marginBottom: '4px'
                 }}>
                   {index + 1}
+                </div>
+
+                {/* Stage Title Label */}
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: isActive ? 'var(--color-purple)' : '#555',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {s.title}
                 </span>
-                <span>{s.title}</span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -118,36 +135,21 @@ export default function TravelTricksClient() {
         {/* 2-COLUMN LAYOUT WITH STICKY VERTICAL SIDEBAR FOR DESKTOP */}
         <div style={{
           display: 'flex',
-          gap: '24px',
+          gap: '32px',
           alignItems: 'flex-start',
           position: 'relative',
           flexWrap: 'wrap'
         }}>
-          {/* STICKY VERTICAL LEFT SIDEBAR NAVIGATION (DESKTOP) */}
-          <div className="tricks-sidebar-desktop" style={{
-            position: 'sticky',
-            top: '90px',
-            zIndex: 90,
-            backgroundColor: 'white',
-            borderRadius: '24px',
-            padding: '22px 16px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-            border: '2px solid rgba(133, 58, 81, 0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '22px',
-            minWidth: '170px',
-            maxWidth: '220px',
-            flexShrink: 0
-          }}>
+          {/* STICKY VERTICAL LEFT SIDEBAR NAVIGATION (DESKTOP - TRANSPARENT & FIXED SIZE) */}
+          <div className="tricks-sidebar-desktop">
             {/* Slim Vertical Connector Line */}
             <div style={{
               position: 'absolute',
-              top: '40px',
-              bottom: '40px',
-              left: '34px',
+              top: '30px',
+              bottom: '30px',
+              left: '18px',
               width: '2px',
-              backgroundColor: 'rgba(133, 58, 81, 0.15)',
+              backgroundColor: 'rgba(133, 58, 81, 0.2)',
               zIndex: 1
             }} />
 
@@ -162,15 +164,15 @@ export default function TravelTricksClient() {
                     zIndex: 2,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
+                    gap: '14px',
                     cursor: 'pointer',
-                    padding: '2px 0'
+                    height: '46px' /* FIXED HEIGHT TO PREVENT ANY RESIZING */
                   }}
                 >
                   {/* Circle Badge with Blue Glow when Active */}
                   <div style={{
-                    width: '38px',
-                    height: '38px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '50%',
                     backgroundColor: isActive ? '#0088FF' : 'white',
                     color: isActive ? 'white' : 'var(--color-purple)',
@@ -179,49 +181,36 @@ export default function TravelTricksClient() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 800,
-                    fontSize: '1.05rem',
+                    fontSize: '1rem',
                     flexShrink: 0,
                     transition: 'all 0.25s ease',
                     boxShadow: isActive 
-                      ? '0 0 16px rgba(0, 136, 255, 0.7), 0 0 4px #0088FF' 
+                      ? '0 0 16px rgba(0, 136, 255, 0.75), 0 0 4px #0088FF' 
                       : '0 2px 6px rgba(0,0,0,0.04)',
                     transform: isActive ? 'scale(1.08)' : 'scale(1)'
                   }}>
                     {index + 1}
                   </div>
 
-                  {/* Stage Number & Title Stack */}
+                  {/* Stage Number & Title Stack (FIXED SIZE) */}
                   <div>
                     <div style={{
-                      fontSize: '0.66rem',
+                      fontSize: '0.65rem',
                       fontWeight: 800,
-                      color: isActive ? '#0088FF' : '#888',
+                      color: isActive ? '#0088FF' : '#777',
                       letterSpacing: '0.5px',
                       textTransform: 'uppercase'
                     }}>
                       Stage {index + 1}
                     </div>
                     <div style={{
-                      fontSize: '0.92rem',
+                      fontSize: '0.94rem',
                       fontWeight: 800,
                       color: isActive ? 'var(--color-purple)' : '#4B5563',
                       lineHeight: 1.15
                     }}>
                       {s.title}
                     </div>
-
-                    {/* Subtitle text for Active Stage */}
-                    {isActive && s.subtitle && (
-                      <div style={{
-                        fontSize: '0.7rem',
-                        color: 'var(--color-orange)',
-                        fontWeight: 700,
-                        marginTop: '3px',
-                        lineHeight: 1.2
-                      }}>
-                        {s.subtitle}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -246,9 +235,12 @@ export default function TravelTricksClient() {
                   <span style={{ fontSize: '1.8rem' }}>📝</span>
                   <div>
                     <span style={{ color: 'var(--color-orange)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 01</span>
-                    <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                    <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.1 }}>
                       Pre-Trip Preparation Systems
                     </h2>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-orange)', fontWeight: 700, marginTop: '2px' }}>
+                      Work backwards and save
+                    </div>
                   </div>
                 </div>
 
@@ -298,9 +290,12 @@ export default function TravelTricksClient() {
                 <span style={{ fontSize: '1.8rem' }}>🧳</span>
                 <div>
                   <span style={{ color: 'var(--color-golden)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 02</span>
-                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.1 }}>
                     Lightweight Packing Rules
                   </h2>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-orange)', fontWeight: 700, marginTop: '2px' }}>
+                    Carry-on only matrix
+                  </div>
                 </div>
               </div>
 
@@ -420,9 +415,12 @@ export default function TravelTricksClient() {
                 <span style={{ fontSize: '1.8rem' }}>✈️</span>
                 <div>
                   <span style={{ color: 'var(--color-purple)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 03</span>
-                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.1 }}>
                     On The Road Secrets
                   </h2>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-orange)', fontWeight: 700, marginTop: '2px' }}>
+                    Transit & daily rituals
+                  </div>
                 </div>
               </div>
 
@@ -467,9 +465,12 @@ export default function TravelTricksClient() {
                 <span style={{ fontSize: '1.8rem' }}>🧘</span>
                 <div>
                   <span style={{ color: 'var(--color-orange)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.72rem' }}>Stage 04</span>
-                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0 }}>
+                  <h2 style={{ fontSize: '1.8rem', color: 'var(--color-purple)', fontFamily: 'var(--font-heading)', margin: 0, lineHeight: 1.1 }}>
                     Avoiding Burnout & Relationship Rituals
                   </h2>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-orange)', fontWeight: 700, marginTop: '2px' }}>
+                    Prevent travel burnout
+                  </div>
                 </div>
               </div>
 
@@ -616,6 +617,7 @@ export default function TravelTricksClient() {
 
       {/* SPEC 1: THE TRIGGER - FLOATING ACTION PILL BUTTON */}
       <button
+        className="unzip-packs-float-btn"
         onClick={() => setGearLockerOpen(!gearLockerOpen)}
         style={{
           position: 'fixed',
