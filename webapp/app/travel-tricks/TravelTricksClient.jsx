@@ -67,7 +67,55 @@ export default function TravelTricksClient() {
           </p>
         </header>
 
-        {/* 2-COLUMN LAYOUT WITH STICKY VERTICAL SIDEBAR */}
+        {/* SLIM STICKY TOP PILL BAR FOR MOBILE SCREENS */}
+        <div className="tricks-bar-mobile">
+          {journeySteps.map((s, index) => {
+            const isActive = activeStep === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setActiveStep(s.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 10px',
+                  borderRadius: '20px',
+                  border: isActive ? '1.5px solid #0088FF' : '1px solid #E5E7EB',
+                  backgroundColor: isActive ? '#0088FF' : 'white',
+                  color: isActive ? 'white' : 'var(--color-purple)',
+                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  boxShadow: isActive ? '0 0 12px rgba(0, 136, 255, 0.6)' : 'none',
+                  flex: 1,
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  outline: 'none'
+                }}
+              >
+                <span style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: isActive ? 'white' : '#F3F4F6',
+                  color: isActive ? '#0088FF' : 'var(--color-purple)',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {index + 1}
+                </span>
+                <span>{s.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2-COLUMN LAYOUT WITH STICKY VERTICAL SIDEBAR FOR DESKTOP */}
         <div style={{
           display: 'flex',
           gap: '24px',
@@ -75,8 +123,8 @@ export default function TravelTricksClient() {
           position: 'relative',
           flexWrap: 'wrap'
         }}>
-          {/* STICKY VERTICAL LEFT SIDEBAR NAVIGATION */}
-          <div style={{
+          {/* STICKY VERTICAL LEFT SIDEBAR NAVIGATION (DESKTOP) */}
+          <div className="tricks-sidebar-desktop" style={{
             position: 'sticky',
             top: '90px',
             zIndex: 90,

@@ -1050,4 +1050,51 @@ input[type=number] {
   }
 }
 
+/* Responsive Travel Tricks Stage Navigation */
+.tricks-sidebar-desktop {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 90px;
+  z-index: 90;
+  background-color: white;
+  border-radius: 24px;
+  padding: 22px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  border: 2px solid rgba(133, 58, 81, 0.12);
+  gap: 22px;
+  min-width: 170px;
+  max-width: 220px;
+  flex-shrink: 0;
+}
+
+.tricks-bar-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .tricks-sidebar-desktop {
+    display: none !important;
+  }
+  
+  .tricks-bar-mobile {
+    display: flex !important;
+    position: sticky;
+    top: 72px;
+    z-index: 95;
+    background-color: rgba(254, 253, 249, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 6px 10px;
+    border-radius: 30px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    border: 1.5px solid rgba(133, 58, 81, 0.12);
+    gap: 4px;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
+
 
