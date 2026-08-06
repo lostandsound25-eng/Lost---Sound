@@ -8785,8 +8785,8 @@ function ManualEntryModal({
   }, []);
 
   useEffect(() => {
-    // Autofocus the title input on mount to let user type right away
-    if (titleInputRef.current) {
+    // Autofocus the title input on desktop mount to let user type right away (avoiding keyboard pop on mobile)
+    if (titleInputRef.current && typeof window !== 'undefined' && window.innerWidth > 768) {
       titleInputRef.current.focus();
     }
   }, []);
@@ -8830,7 +8830,7 @@ function ManualEntryModal({
   }, []);
 
   useEffect(() => {
-    if (isDateExpanded && calendarContainerRef && calendarContainerRef.current) {
+    if (isDateExpanded && calendarContainerRef && calendarContainerRef.current && typeof window !== 'undefined' && window.innerWidth > 768) {
       const timer = setTimeout(() => {
         try {
           if (calendarContainerRef.current) {
@@ -9637,18 +9637,6 @@ function ManualEntryModal({
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        onScroll={() => {
-          if (typeof document !== 'undefined' && document.activeElement && 
-              (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-            document.activeElement.blur();
-          }
-        }}
-        onTouchMove={() => {
-          if (typeof document !== 'undefined' && document.activeElement && 
-              (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-            document.activeElement.blur();
-          }
-        }}
         className={worthIt ? "worth-it-shimmer-modal" : ""}
         style={{
           backgroundColor: worthIt ? "#FFFDF2" : "white",
