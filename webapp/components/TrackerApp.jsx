@@ -8825,6 +8825,14 @@ function ManualEntryModal({
     };
   }, []);
 
+  useEffect(() => {
+    if (isDateExpanded && calendarContainerRef.current) {
+      setTimeout(() => {
+        calendarContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
+    }
+  }, [isDateExpanded]);
+
   const tripHashtags = (() => {
     const tagCounts = {};
     const tagLastUsed = {};
@@ -10787,15 +10795,14 @@ function ManualEntryModal({
                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#4B5563" }}>Multi-Day</span>
               </div>
 
-              {/* Collapsible Date Picker (Floating BELOW date inputs) */}
+              {/* Collapsible Date Picker (In-flow below When & Worth It section to prevent clipping) */}
               {isDateExpanded && (
                 <div
                   ref={calendarContainerRef}
                   style={{
-                    position: "absolute",
-                    top: "100%", // Float below When? Column!
-                    left: 0,
-                    width: spreadExpense ? "100%" : "calc(200% + 10px)", // dynamically span the full width
+                    gridColumn: "1 / -1",
+                    position: "relative",
+                    width: "100%",
                     marginTop: "8px",
                     padding: "10px 10px",
                     backgroundColor: "#F9F6ED",
@@ -10804,8 +10811,8 @@ function ManualEntryModal({
                     display: "flex",
                     flexDirection: "column",
                     gap: "6px",
-                    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(0, 0, 0, 0.05)",
-                    zIndex: 400,
+                    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
+                    zIndex: 10,
                     animation: "fadeInUp 0.2s ease-out"
                   }}
                 >
