@@ -9649,7 +9649,8 @@ function ManualEntryModal({
           overflowY: "auto",
           boxShadow: worthIt ? "0 20px 50px rgba(245, 158, 11, 0.25)" : "0 20px 40px rgba(0,0,0,0.12)",
           border: worthIt ? "2.5px solid #FCD34D" : "1.5px solid transparent",
-          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          position: "relative"
         }}
       >
         <div style={{
@@ -10234,67 +10235,7 @@ function ManualEntryModal({
                     </div>
                   </div>
 
-                  {/* Multi-Day Mode Orange Text Helper */}
-                  {isSeriesActive && (
-                    <div
-                      style={{
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "var(--color-orange)",
-                        backgroundColor: "rgba(232, 107, 50, 0.08)",
-                        border: "1.5px solid rgba(232, 107, 50, 0.25)",
-                        borderRadius: "12px",
-                        padding: "6px 12px",
-                        marginTop: "2px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "4px",
-                        cursor: "pointer"
-                      }}
-                      onClick={() => {
-                        const nextMode = spreadMode === "divide" ? "repeat" : "divide";
-                        handleSetSpreadMode(nextMode);
 
-                        const rawAmt = parseFloat(amount.replace(/,/g, '')) || 0;
-                        if (nextMode === "repeat") {
-                          // Split to repeat: amount was total cost, now daily cost
-                          const dailyVal = rawAmt / days;
-                          setAmount(formatInputWithCommas(dailyVal.toFixed(2)));
-                        } else {
-                          // Repeat to split: amount was daily cost, now total cost
-                          const totalVal = rawAmt * days;
-                          setAmount(formatInputWithCommas(totalVal.toFixed(2)));
-                        }
-                      }}
-                      title="Click to toggle between Split and Repeat modes"
-                    >
-                      <span>
-                        {spreadMode === "divide" ? (
-                          <>
-                            Multi-day mode: Splitting {formatMoneyAbbrev(parseFloat(amount.replace(/,/g, '')) || 0, currency)} over {days} days → {formatMoneyAbbrev((parseFloat(amount.replace(/,/g, '')) / days || 0), currency)}/day
-                          </>
-                        ) : (
-                          <>
-                            Multi-day mode: Repeating {formatMoneyAbbrev(parseFloat(amount.replace(/,/g, '')) || 0, currency)} over {days} days → {formatMoneyAbbrev((parseFloat(amount.replace(/,/g, '')) * days || 0), currency)} total
-                          </>
-                        )}
-                      </span>
-                      <span style={{ 
-                        fontSize: "0.62rem", 
-                        fontWeight: 750, 
-                        textTransform: "uppercase", 
-                        backgroundColor: "rgba(232, 107, 50, 0.12)", 
-                        color: "var(--color-orange)", 
-                        padding: "2px 6px", 
-                        borderRadius: "6px",
-                        letterSpacing: "0.5px",
-                        flexShrink: 0
-                      }}>
-                        {spreadMode === "divide" ? "Split" : "Repeat"}
-                      </span>
-                    </div>
-                  )}
                 </div>
               );
             })()}
@@ -10843,19 +10784,21 @@ function ManualEntryModal({
               <div
                 ref={calendarContainerRef}
                 style={{
-                  gridColumn: "1 / -1",
-                  position: "relative",
-                  width: "100%",
-                  marginTop: "4px",
-                  padding: "12px 12px",
-                  backgroundColor: "#F9F6ED",
-                  borderRadius: "16px",
-                  border: "1.5px solid rgba(133, 58, 81, 0.18)",
+                  position: "absolute",
+                  top: "160px",
+                  bottom: "12px",
+                  left: "14px",
+                  right: "14px",
+                  backgroundColor: "#FFFDF9",
+                  borderRadius: "20px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.22)",
+                  padding: "12px 14px",
                   display: "flex",
                   flexDirection: "column",
                   gap: "6px",
-                  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
-                  zIndex: 10,
+                  boxShadow: "0 16px 36px rgba(15, 23, 42, 0.16)",
+                  zIndex: 500,
+                  overflowY: "auto",
                   animation: "fadeInUp 0.2s ease-out"
                 }}
               >
