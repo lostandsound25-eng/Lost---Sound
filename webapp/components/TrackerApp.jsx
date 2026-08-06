@@ -8761,6 +8761,7 @@ function ManualEntryModal({
   const hashtagsDropdownRef = useRef(null);
   const establishmentInputRef = useRef(null);
   const calendarContainerRef = useRef(null);
+  const [isDateExpanded, setIsDateExpanded] = useState(false);
   const [showHashtagsDropdown, setShowHashtagsDropdown] = useState(false);
   const [hashtagFilter, setHashtagFilter] = useState("");
   const [showLocSearchInput, setShowLocSearchInput] = useState(() => {
@@ -9108,7 +9109,6 @@ function ManualEntryModal({
     }
     return false;
   });
-  const [isDateExpanded, setIsDateExpanded] = useState(false);
   const [calendarTarget, setCalendarTarget] = useState("start"); // "start" | "end"
   const [calMonth, setCalMonth] = useState(() => {
     const initDate = expenseToEdit && expenseToEdit.timestamp ? new Date(expenseToEdit.timestamp) : new Date();
