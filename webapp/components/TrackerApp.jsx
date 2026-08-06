@@ -10785,7 +10785,7 @@ function ManualEntryModal({
                 ref={calendarContainerRef}
                 style={{
                   position: "absolute",
-                  top: "calc(100% + 6px)",
+                  bottom: "calc(100% + 6px)",
                   left: 0,
                   right: 0,
                   backgroundColor: "#FFFDF9",
@@ -10795,7 +10795,7 @@ function ManualEntryModal({
                   display: "flex",
                   flexDirection: "column",
                   gap: "6px",
-                  boxShadow: "0 16px 36px rgba(15, 23, 42, 0.2)",
+                  boxShadow: "0 -16px 36px rgba(15, 23, 42, 0.2)",
                   zIndex: 1000,
                   maxHeight: "360px",
                   overflowY: "auto",
