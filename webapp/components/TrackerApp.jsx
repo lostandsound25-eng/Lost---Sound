@@ -10804,114 +10804,6 @@ function ManualEntryModal({
                 </div>
                 <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#4B5563" }}>Multi-Day</span>
               </div>
-
-              {/* Collapsible Date Picker (In-flow below When & Worth It section to prevent clipping) */}
-              {isDateExpanded && (
-                <div
-                  ref={calendarContainerRef}
-                  style={{
-                    gridColumn: "1 / -1",
-                    position: "relative",
-                    width: "100%",
-                    marginTop: "8px",
-                    padding: "10px 10px",
-                    backgroundColor: "#F9F6ED",
-                    borderRadius: "16px",
-                    border: "1.5px solid rgba(133, 58, 81, 0.18)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "6px",
-                    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
-                    zIndex: 10,
-                    animation: "fadeInUp 0.2s ease-out"
-                  }}
-                >
-                  {/* Dynamic Range Card (rendered ABOVE the calendar) */}
-                  {(() => {
-                    const start = new Date(spreadStart + "T00:00:00");
-                    const end = new Date(spreadEnd + "T00:00:00");
-
-                    if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
-                      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                      const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-                      const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
-
-                      return (
-                        <div style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "6px 8px",
-                          backgroundColor: "rgba(232, 107, 50, 0.05)",
-                          borderRadius: "12px",
-                          border: "1.5px solid rgba(232, 107, 50, 0.15)",
-                          marginBottom: "2px"
-                        }}>
-                          <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
-                            📅 {formattedStart} – {formattedEnd}
-                          </span>
-                          <span style={{
-                            fontSize: "0.68rem",
-                            fontWeight: 750,
-                            backgroundColor: "rgba(232, 107, 50, 0.12)",
-                            color: "#C2410C",
-                            padding: "1px 6px",
-                            borderRadius: "20px"
-                          }}>
-                            {days} Days
-                          </span>
-                        </div>
-                      );
-                    } else {
-                      // Single date selection card
-                      const d = new Date(expenseDate + "T00:00:00");
-                      const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
-                      return (
-                        <div style={{
-                          padding: "6px 8px",
-                          backgroundColor: "rgba(133, 58, 81, 0.04)",
-                          borderRadius: "10px",
-                          border: "1px solid rgba(133, 58, 81, 0.08)",
-                          fontSize: "0.74rem",
-                          fontWeight: 750,
-                          color: "var(--color-purple)",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "2px"
-                        }}>
-                          <span>Logging on {formattedDate}</span>
-                          <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Tap day to change</span>
-                        </div>
-                      );
-                    }
-                  })()}
-
-                  {/* Render Custom Calendar Grid */}
-                  {renderCalendarGrid()}
-
-                  {/* OK button to verify date range */}
-                  <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid rgba(133, 58, 81, 0.1)", paddingTop: "6px", marginTop: "2px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsDateExpanded(false)}
-                      style={{
-                        backgroundColor: "var(--color-purple)",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "5px 14px",
-                        fontSize: "0.76rem",
-                        fontWeight: 750,
-                        cursor: "pointer",
-                        outline: "none"
-                      }}
-                    >
-                      OK
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Worth It Column */}
@@ -10959,6 +10851,113 @@ function ManualEntryModal({
               </button>
             </div>
 
+            {/* Collapsible Date Picker (Full-width grid row spanning across both columns) */}
+            {isDateExpanded && (
+              <div
+                ref={calendarContainerRef}
+                style={{
+                  gridColumn: "1 / -1",
+                  position: "relative",
+                  width: "100%",
+                  marginTop: "4px",
+                  padding: "12px 12px",
+                  backgroundColor: "#F9F6ED",
+                  borderRadius: "16px",
+                  border: "1.5px solid rgba(133, 58, 81, 0.18)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.06)",
+                  zIndex: 10,
+                  animation: "fadeInUp 0.2s ease-out"
+                }}
+              >
+                {/* Dynamic Range Card (rendered ABOVE the calendar) */}
+                {(() => {
+                  const start = new Date(spreadStart + "T00:00:00");
+                  const end = new Date(spreadEnd + "T00:00:00");
+
+                  if (spreadExpense && !isNaN(start) && !isNaN(end) && end >= start) {
+                    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    const formattedStart = start.toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+                    const formattedEnd = end.toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' });
+
+                    return (
+                      <div style={{
+                        display: "flex",
+                        justify: "space-between",
+                        alignItems: "center",
+                        padding: "6px 8px",
+                        backgroundColor: "rgba(232, 107, 50, 0.05)",
+                        borderRadius: "12px",
+                        border: "1.5px solid rgba(232, 107, 50, 0.15)",
+                        marginBottom: "2px"
+                      }}>
+                        <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#9A3412" }}>
+                          📅 {formattedStart} – {formattedEnd}
+                        </span>
+                        <span style={{
+                          fontSize: "0.68rem",
+                          fontWeight: 750,
+                          backgroundColor: "rgba(232, 107, 50, 0.12)",
+                          color: "#C2410C",
+                          padding: "1px 6px",
+                          borderRadius: "20px"
+                        }}>
+                          {days} Days
+                        </span>
+                      </div>
+                    );
+                  } else {
+                    // Single date selection card
+                    const d = new Date(expenseDate + "T00:00:00");
+                    const formattedDate = d.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+                    return (
+                      <div style={{
+                        padding: "6px 8px",
+                        backgroundColor: "rgba(133, 58, 81, 0.04)",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(133, 58, 81, 0.08)",
+                        fontSize: "0.74rem",
+                        fontWeight: 750,
+                        color: "var(--color-purple)",
+                        display: "flex",
+                        justify: "space-between",
+                        alignItems: "center",
+                        marginBottom: "2px"
+                      }}>
+                        <span>Logging on {formattedDate}</span>
+                        <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Tap day to change</span>
+                      </div>
+                    );
+                  }
+                })()}
+
+                {/* Render Custom Calendar Grid */}
+                {renderCalendarGrid()}
+
+                {/* OK button to verify date range */}
+                <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid rgba(133, 58, 81, 0.1)", paddingTop: "6px", marginTop: "2px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDateExpanded(false)}
+                    style={{
+                      backgroundColor: "var(--color-purple)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "5px 14px",
+                      fontSize: "0.76rem",
+                      fontWeight: 750,
+                      cursor: "pointer",
+                      outline: "none"
+                    }}
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Notes Input at the bottom */}
