@@ -510,21 +510,28 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
       if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
     }
 
-    const note = (exp.title || exp.note || "").toLowerCase();
-    const location = (exp.establishment || exp.location || "").toLowerCase();
-    const category = (exp.category || "").toLowerCase();
-    const currency = (exp.currency || "").toLowerCase();
+    const titleText = (exp.title || "").toLowerCase();
+    const notesText = (exp.notes || exp.note || exp.extraNotes || "").toLowerCase();
+    const locationText = (exp.establishment || exp.location || exp.city || exp.country || exp.place || "").toLowerCase();
+    const categoryText = (exp.category || "").toLowerCase();
+    const currencyText = (exp.currency || "").toLowerCase();
 
     if (term.startsWith("#")) {
       const tag = term.slice(1);
-      return note.includes(term) || (exp.tags && exp.tags.some(t => t.toLowerCase() === tag));
+      return (
+        titleText.includes(term) ||
+        notesText.includes(term) ||
+        locationText.includes(term) ||
+        (exp.tags && exp.tags.some(t => t.toLowerCase() === tag))
+      );
     }
 
     return (
-      note.includes(term) ||
-      location.includes(term) ||
-      category.includes(term) ||
-      currency.includes(term) ||
+      titleText.includes(term) ||
+      notesText.includes(term) ||
+      locationText.includes(term) ||
+      categoryText.includes(term) ||
+      currencyText.includes(term) ||
       (exp.tags && exp.tags.some(t => t.toLowerCase().includes(term)))
     );
   });
@@ -9131,13 +9138,10 @@ function ManualEntryModal({
     
     const handleDayClick = (dayStr) => {
       if (!spreadExpense) {
-        if (expenseDate === dayStr) {
-          setIsDateExpanded(false);
-        } else {
-          setExpenseDate(dayStr);
-          setSpreadStart(dayStr);
-          setSpreadEnd(null);
-        }
+        setExpenseDate(dayStr);
+        setSpreadStart(dayStr);
+        setSpreadEnd(null);
+        setIsDateExpanded(false);
       } else {
         if (spreadStart && spreadEnd) {
           // If range is already complete, clicking starts a new selection
@@ -9154,6 +9158,7 @@ function ManualEntryModal({
           // calendarTarget === "end"
           if (dayStr >= spreadStart) {
             setSpreadEnd(dayStr);
+            setIsDateExpanded(false);
           } else {
             // Clicked date is before start date -> make it new start date
             setSpreadStart(dayStr);
