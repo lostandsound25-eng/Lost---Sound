@@ -9176,7 +9176,6 @@ function ManualEntryModal({
           // calendarTarget === "end"
           if (dayStr >= spreadStart) {
             setSpreadEnd(dayStr);
-            setIsDateExpanded(false);
           } else {
             // Clicked date is before start date -> make it new start date
             setSpreadStart(dayStr);
