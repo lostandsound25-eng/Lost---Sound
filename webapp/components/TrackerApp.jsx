@@ -475,7 +475,7 @@ const getDayLabel = (timestamp) => {
 };
 
 const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
-  if (!query) return true;
+  if (!query || !exp) return true;
   let q = query.trim().toLowerCase();
   if (!q) return true;
 
@@ -488,12 +488,21 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
   q = q.replace(/\bbelow\b/g, '<');
 
   // 2. Normalize spaces and dollar signs around operators.
-  // e.g. "dinner >  $  100" -> "dinner >100"
   q = q.replace(/(>=|<=|>|<|==|=)\s*\$?\s*(?=[0-9])/g, '$1');
 
   // Split into whitespace separated terms
   const terms = q.split(/\s+/).filter(t => t);
   if (terms.length === 0) return true;
+
+  const titleText = (exp.title || "").toString().toLowerCase();
+  const notesText = (exp.notes || exp.note || exp.extraNotes || "").toString().toLowerCase();
+  const locationText = (exp.establishment || exp.location || exp.city || exp.country || exp.place || "").toString().toLowerCase();
+  const categoryText = (exp.category || "").toString().toLowerCase();
+  const currencyText = (exp.currency || "").toString().toLowerCase();
+
+  const safeTags = Array.isArray(exp.tags)
+    ? exp.tags.map(t => (t ? String(t).toLowerCase() : "")).filter(Boolean)
+    : [];
 
   return terms.every(term => {
     // Check if this term is an operator comparison (e.g. ">100" or "<=50.5")
@@ -501,7 +510,7 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
     if (termOpMatch) {
       const op = termOpMatch[1];
       const targetVal = parseFloat(termOpMatch[2]);
-      const amountInHome = convertCurrency(exp.amount, exp.currency, homeCurrency, rates);
+      const amountInHome = convertCurrency ? convertCurrency(exp.amount || 0, exp.currency, homeCurrency, rates) : (exp.amount || 0);
 
       if (op === ">") return amountInHome > targetVal;
       if (op === ">=") return amountInHome >= targetVal;
@@ -510,19 +519,13 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
       if (op === "=" || op === "==") return Math.abs(amountInHome - targetVal) < 0.01;
     }
 
-    const titleText = (exp.title || "").toLowerCase();
-    const notesText = (exp.notes || exp.note || exp.extraNotes || "").toLowerCase();
-    const locationText = (exp.establishment || exp.location || exp.city || exp.country || exp.place || "").toLowerCase();
-    const categoryText = (exp.category || "").toLowerCase();
-    const currencyText = (exp.currency || "").toLowerCase();
-
     if (term.startsWith("#")) {
       const tag = term.slice(1);
       return (
         titleText.includes(term) ||
         notesText.includes(term) ||
         locationText.includes(term) ||
-        (exp.tags && exp.tags.some(t => t.toLowerCase() === tag))
+        safeTags.some(t => t === tag)
       );
     }
 
@@ -532,7 +535,7 @@ const parseSearchQuery = (query, exp, homeCurrency, convertCurrency, rates) => {
       locationText.includes(term) ||
       categoryText.includes(term) ||
       currencyText.includes(term) ||
-      (exp.tags && exp.tags.some(t => t.toLowerCase().includes(term)))
+      safeTags.some(t => t.includes(term))
     );
   });
 };
@@ -8826,10 +8829,17 @@ function ManualEntryModal({
   }, []);
 
   useEffect(() => {
-    if (isDateExpanded && calendarContainerRef.current) {
-      setTimeout(() => {
-        calendarContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (isDateExpanded && calendarContainerRef && calendarContainerRef.current) {
+      const timer = setTimeout(() => {
+        try {
+          if (calendarContainerRef.current) {
+            calendarContainerRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        } catch (err) {
+          // ignore DOM scroll errors
+        }
       }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isDateExpanded]);
 
