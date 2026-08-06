@@ -10785,10 +10785,9 @@ function ManualEntryModal({
                 ref={calendarContainerRef}
                 style={{
                   position: "absolute",
-                  top: "160px",
-                  bottom: "12px",
-                  left: "14px",
-                  right: "14px",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  right: 0,
                   backgroundColor: "#FFFDF9",
                   borderRadius: "20px",
                   border: "1.5px solid rgba(133, 58, 81, 0.22)",
@@ -10796,8 +10795,9 @@ function ManualEntryModal({
                   display: "flex",
                   flexDirection: "column",
                   gap: "6px",
-                  boxShadow: "0 16px 36px rgba(15, 23, 42, 0.16)",
-                  zIndex: 500,
+                  boxShadow: "0 16px 36px rgba(15, 23, 42, 0.2)",
+                  zIndex: 1000,
+                  maxHeight: "360px",
                   overflowY: "auto",
                   animation: "fadeInUp 0.2s ease-out"
                 }}
