@@ -9207,31 +9207,31 @@ function ManualEntryModal({
     
     return (
       <div style={{ padding: "2px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
           <button 
             type="button" 
             onClick={() => changeMonth(-1)}
-            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+            style={{ border: "none", background: "none", fontSize: "1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "1px 6px" }}
           >
             ◀
           </button>
-          <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.95rem" }}>
+          <span style={{ fontWeight: 850, color: "var(--color-purple)", fontSize: "0.88rem" }}>
             {months[calMonth]} {calYear}
           </span>
           <button 
             type="button" 
             onClick={() => changeMonth(1)}
-            style={{ border: "none", background: "none", fontSize: "1.1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "2px 8px" }}
+            style={{ border: "none", background: "none", fontSize: "1rem", cursor: "pointer", color: "var(--color-purple)", fontWeight: 800, padding: "1px 6px" }}
           >
             ▶
           </button>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.68rem", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", textAlign: "center", fontWeight: 800, color: "#9CA3AF", fontSize: "0.65rem", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
         </div>
         
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "4px", columnGap: "2px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", rowGap: "2px", columnGap: "2px" }}>
           {daysGrid.map((item, idx) => {
             const isToday = new Date().toLocaleDateString('en-CA') === item.dateStr;
             const isStart = spreadStart === item.dateStr;
@@ -9270,8 +9270,8 @@ function ManualEntryModal({
                   background: bg,
                   color: color,
                   fontWeight: fontWeight,
-                  fontSize: "0.7rem",
-                  height: "26px",
+                  fontSize: "0.68rem",
+                  height: "23px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -10785,19 +10785,19 @@ function ManualEntryModal({
                 ref={calendarContainerRef}
                 style={{
                   position: "absolute",
-                  bottom: "calc(100% + 6px)",
+                  bottom: "calc(100% + 4px)",
                   left: 0,
                   right: 0,
                   backgroundColor: "#FFFDF9",
                   borderRadius: "20px",
                   border: "1.5px solid rgba(133, 58, 81, 0.22)",
-                  padding: "12px 14px",
+                  padding: "8px 12px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "6px",
-                  boxShadow: "0 -16px 36px rgba(15, 23, 42, 0.2)",
+                  gap: "4px",
+                  boxShadow: "0 -12px 30px rgba(15, 23, 42, 0.18)",
                   zIndex: 1000,
-                  maxHeight: "360px",
+                  maxHeight: "310px",
                   overflowY: "auto",
                   animation: "fadeInUp 0.2s ease-out"
                 }}
